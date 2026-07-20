@@ -23,6 +23,8 @@ You adopt each one *when you feel the pain it solves* — not all at once, and n
 8. [Getting started](#getting-started)
 9. [Further reading](#further-reading)
 
+**📊 Diagrams:** [RAG data flow](#diagram-rag-data-flow) · [How they work together at runtime](#how-they-work-together-at-runtime) · [How the three problems stack](#how-the-three-problems-stack)
+
 ---
 
 ## Problem 1: too much glue code → LangChain
@@ -45,6 +47,8 @@ You adopt each one *when you feel the pain it solves* — not all at once, and n
 A complete Retrieval-Augmented Generation pipeline: load text, split it, embed it into a vector store, retrieve relevant chunks for a question, and have the model answer **using only those chunks**.
 
 Every request flows through the same fixed steps, once, in order — a straight line with no loops or branches:
+
+#### Diagram: RAG data flow
 
 ```mermaid
 flowchart LR
