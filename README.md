@@ -444,6 +444,30 @@ These tools aren't the only answer to each problem — useful to know the neighb
 - **Problem 2 (orchestration / agents):** **CrewAI** (role-based, higher-level, faster to start), **Microsoft AutoGen** (conversational multi-agent), **LlamaIndex Workflows** (event-driven), **OpenAI Agents SDK** (lightweight handoffs). LangGraph trades a bit of upfront verbosity for the most control over state and flow.
 - **Problem 3 (observability / eval):** **Langfuse** and **Arize Phoenix** are popular open-source, self-hostable alternatives; **Helicone** (proxy-based), **Braintrust** (eval-first), **W&B Weave**; many interoperate via **OpenTelemetry**.
 
+### Comparison table
+
+Organized by the **problem** each tool addresses, so you compare like-for-like rather than brand-for-brand. The "vs LangX" column says how it differs from the LangChain-ecosystem tool for that same problem.
+
+| Tool | Problem it addresses | Language(s) | Strength / focus | vs the LangX tool |
+|---|---|---|---|---|
+| **LangChain** | 1 · building blocks & RAG | Py, JS/TS | Broadest component library, provider-agnostic, huge ecosystem | — (baseline) |
+| **LlamaIndex** | 1 · building blocks & RAG | Py, TS | Best-in-class indexing/retrieval over your data | Deeper on RAG; lighter on general agents. Often used *with* LangChain |
+| **Haystack** | 1 · building blocks & RAG | Py | Mature production search/RAG pipelines | Pipeline mental model; strong search focus |
+| **Semantic Kernel** | 1 · building blocks & RAG | C#, Py, Java | Enterprise/.NET, plugins & planners | Better .NET story; smaller Python ecosystem than LangChain |
+| **Pydantic AI** | 1 · building blocks & RAG | Py | Type-safe, minimal, great DX | Lighter and more typed; fewer batteries included |
+| **Vercel AI SDK** | 1 · building blocks & RAG | JS/TS | Web/streaming UIs, framework-native | Best for JS frontends; a LangChain.js alternative |
+| **LangGraph** | 2 · orchestration & agents | Py, JS/TS | Explicit stateful graphs, loops, HITL, persistence | — (baseline) |
+| **CrewAI** | 2 · orchestration & agents | Py | Role-based "crew" of agents, quick to start | Higher-level & opinionated; less low-level control than LangGraph |
+| **Microsoft AutoGen** | 2 · orchestration & agents | Py, .NET | Conversational multi-agent, research-oriented | Conversation-driven vs LangGraph's explicit graph |
+| **LlamaIndex Workflows** | 2 · orchestration & agents | Py, TS | Event-driven step orchestration | Events instead of an explicit graph |
+| **OpenAI Agents SDK** | 2 · orchestration & agents | Py, JS/TS | Lightweight agent handoffs | Minimal & OpenAI-centric; fewer features than LangGraph |
+| **LangSmith** | 3 · observability & eval | any (SDK/OTel) | Tracing + evals + monitoring, auto-instruments LangChain | — (baseline). Commercial, hosted (free tier) |
+| **Langfuse** | 3 · observability & eval | any (SDK/OTel) | Open-source, self-hostable tracing/evals/prompt mgmt | OSS & self-host vs hosted LangSmith |
+| **Arize Phoenix** | 3 · observability & eval | any (OTel) | Open-source LLM/ML observability & evals | OSS, strong OpenTelemetry & eval focus |
+| **Helicone** | 3 · observability & eval | any (proxy) | Drop-in proxy: logging, cost, caching | Proxy-based; minimal code change |
+| **Braintrust** | 3 · observability & eval | any (SDK) | Eval-first, CI regression testing | Sharpest on evals/experiments |
+| **W&B Weave** | 3 · observability & eval | Py, JS/TS | LLM tracing on top of broad ML tooling | Fits teams already on Weights & Biases |
+
 Teams routinely **mix** across problems — e.g. LlamaIndex retrieval inside a LangGraph agent, traced by Langfuse. Pick per problem, not per brand.
 
 ---
