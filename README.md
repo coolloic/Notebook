@@ -18,12 +18,13 @@ You adopt each one *when you feel the pain it solves* — not all at once, and n
 3. [Problem 2: the logic isn't a straight line → LangGraph](#problem-2-the-logic-isnt-a-straight-line--langgraph)
 4. [Full example — a LangGraph agent](#full-example--a-langgraph-agent)
 5. [Problem 3: it's a black box you can't measure → LangSmith](#problem-3-its-a-black-box-you-cant-measure--langsmith)
-6. [How the three problems stack](#how-the-three-problems-stack)
-7. [When you might reach for something else](#when-you-might-reach-for-something-else)
-8. [Getting started](#getting-started)
-9. [Further reading](#further-reading)
+6. [Full example — an evaluation dataset](#full-example--an-evaluation-dataset)
+7. [How the three problems stack](#how-the-three-problems-stack)
+8. [When you might reach for something else](#when-you-might-reach-for-something-else)
+9. [Getting started](#getting-started)
+10. [Further reading](#further-reading)
 
-**📊 Diagrams:** [RAG data flow](#diagram-rag-data-flow) · [LangSmith trace](#diagram-what-a-trace-looks-like) · [How they work together at runtime](#how-they-work-together-at-runtime) · [How the three problems stack](#how-the-three-problems-stack)
+**📊 Diagrams:** [RAG data flow](#diagram-rag-data-flow) · [LangSmith trace](#diagram-what-a-trace-looks-like) · [Evaluation loop](#diagram-the-evaluation-loop) · [How they work together at runtime](#how-they-work-together-at-runtime) · [How the three problems stack](#how-the-three-problems-stack)
 
 ---
 
@@ -280,6 +281,85 @@ flowchart TB
 **Reading the trace:** the root span is the whole agent invocation; its children are each pass through the graph, in execution order — `agent (LLM) → get_weather → agent (LLM) → calculator → agent (LLM, final)`. The **three LLM calls** are the agent's reason→act→observe **loop** made visible. Clicking any span in the real UI expands the exact prompt, response, and tool arguments. If the answer were wrong, this tree tells you *immediately* whether the fault was a bad tool result, a weak prompt, or the model's reasoning.
 
 **Use it from day one.** Tracing pays for itself the first time you debug a bad answer; evals pay for themselves the first time a "small" prompt change silently regresses quality.
+
+---
+
+## Full example — an evaluation dataset
+
+Tracing tells you *what happened on one run*. **Evaluation** answers the harder question: *is the app actually good, and did my last change make it better or worse?* You build a dataset of inputs with reference answers, define graders, run your app over the whole set, and get scores you can compare across versions.
+
+This example evaluates the **RAG chain** from earlier against a small QA dataset, using both a cheap heuristic grader and an LLM-as-judge.
+
+```python
+# pip install langsmith langchain-anthropic
+
+from langsmith import Client, evaluate
+from langchain_anthropic import ChatAnthropic
+
+client = Client()
+
+# 1. CREATE a dataset: question -> reference answer
+dataset = client.create_dataset("refund-policy-qa", description="RAG QA eval set")
+client.create_examples(
+    dataset_id=dataset.id,
+    examples=[
+        {"inputs": {"question": "How many days do I have to return an item?"},
+         "outputs": {"answer": "30 days"}},
+        {"inputs": {"question": "Are shipping fees refundable?"},
+         "outputs": {"answer": "No, shipping fees are non-refundable"}},
+        {"inputs": {"question": "Who pays for return shipping?"},
+         "outputs": {"answer": "The customer pays return shipping"}},
+    ],
+)
+
+# 2. TARGET: the system under test (our RAG chain from the LangChain example)
+def target(inputs: dict) -> dict:
+    return {"answer": rag_chain.invoke(inputs["question"])}
+
+# 3a. EVALUATOR — heuristic: does the answer contain the reference fact? (fast, free)
+def keyword_match(outputs: dict, reference_outputs: dict) -> bool:
+    return reference_outputs["answer"].lower() in outputs["answer"].lower()
+
+# 3b. EVALUATOR — LLM-as-judge: is the answer correct given the reference? (nuanced)
+judge = ChatAnthropic(model="claude-opus-4-8", temperature=0)
+def llm_correctness(inputs: dict, outputs: dict, reference_outputs: dict) -> dict:
+    verdict = judge.invoke(
+        f"""Question: {inputs['question']}
+Reference answer: {reference_outputs['answer']}
+Model answer: {outputs['answer']}
+Is the model answer correct and grounded in the reference? Reply only 'true' or 'false'."""
+    ).content.strip().lower()
+    return {"key": "correctness", "score": verdict.startswith("true")}
+
+# 4. RUN — scores land in LangSmith, per-example and aggregated
+results = evaluate(
+    target,
+    data="refund-policy-qa",
+    evaluators=[keyword_match, llm_correctness],
+    experiment_prefix="rag-v1",   # name this experiment/version
+)
+```
+
+### Diagram: the evaluation loop
+
+```mermaid
+flowchart LR
+    DS[("📋 Dataset<br/>inputs + reference answers")] --> RUN
+    APP["🎯 Target<br/>(RAG chain / agent)"] --> RUN
+    RUN["Run target over every example"] --> EV{"Evaluators<br/>heuristic + LLM-judge"}
+    EV --> SCORES[["📊 Scored experiment<br/>rag-v1: correctness 0.67"]]
+    SCORES --> CMP{"Compare vs<br/>previous experiment"}
+    CMP -->|"better"| SHIP(["✅ Ship the change"])
+    CMP -->|"worse / regression"| FIX(["🔧 Fix prompt/model, re-run"])
+    FIX -.-> APP
+
+    classDef data fill:#bfdbfe,stroke:#1e40af,color:#000;
+    classDef smith fill:#fde68a,stroke:#b45309,color:#000;
+    class DS,APP,RUN data
+    class EV,SCORES,CMP,SHIP,FIX smith
+```
+
+**The workflow this unlocks — regression testing for prompts.** Run `rag-v1` to get a baseline (say correctness 0.67). Change a prompt or swap the model, run again as `rag-v2`, and LangSmith shows the two experiments **side by side, per example** — so you can see at a glance whether your change genuinely improved quality or fixed one case while breaking two others. That turns "it feels better" into a measured decision, and lets you wire evals into CI to block regressions before they ship.
 
 ---
 
