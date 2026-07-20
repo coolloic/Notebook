@@ -1,5 +1,8 @@
 # Building LLM Applications: LangChain, LangGraph & LangSmith
 
+[![License: MIT](https://img.shields.io/github/license/coolloic/Notebook)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/coolloic/Notebook?style=social)](https://github.com/coolloic/Notebook/stargazers)
+
 These three tools are **not competitors** — they solve **three different problems** you hit, in order, as an LLM application grows up. This README is organized around those problems, not around a feature bake-off.
 
 > The one-line story:
