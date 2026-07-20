@@ -23,7 +23,7 @@ You adopt each one *when you feel the pain it solves* — not all at once, and n
 8. [Getting started](#getting-started)
 9. [Further reading](#further-reading)
 
-**📊 Diagrams:** [RAG data flow](#diagram-rag-data-flow) · [How they work together at runtime](#how-they-work-together-at-runtime) · [How the three problems stack](#how-the-three-problems-stack)
+**📊 Diagrams:** [RAG data flow](#diagram-rag-data-flow) · [LangSmith trace](#diagram-what-a-trace-looks-like) · [How they work together at runtime](#how-they-work-together-at-runtime) · [How the three problems stack](#how-the-three-problems-stack)
 
 ---
 
@@ -249,6 +249,35 @@ It's **framework-agnostic and cross-cutting**: LangChain and LangGraph apps are 
 export LANGSMITH_TRACING=true
 export LANGSMITH_API_KEY="<your-key>"
 ```
+
+#### Diagram: what a trace looks like
+
+Running the LangGraph agent above on *"What's the weather in Paris, and what's 15% of 240?"* produces a **nested run tree** in LangSmith. Each node (span) shows latency, token usage, and cost, so you can see exactly where time and money went — and pinpoint which step misbehaved.
+
+```mermaid
+flowchart TB
+    Root["🕸️ LangGraph run — agent<br/>latency 3.1s · 1,240 tokens · $0.021 · ✅"]
+
+    Root --> A1["🤖 agent · LLM call #1 (Claude)<br/>0.9s · 320 tok · decides: call get_weather('Paris')"]
+    Root --> T1["🔧 tools · get_weather<br/>0.1s · returns '18°C, cloudy'"]
+    Root --> A2["🤖 agent · LLM call #2 (Claude)<br/>0.8s · 360 tok · decides: call calculator('240*0.15')"]
+    Root --> T2["🔧 tools · calculator<br/>0.02s · returns '36'"]
+    Root --> A3["🤖 agent · LLM call #3 (Claude)<br/>1.1s · 560 tok · final answer ✅"]
+
+    A1 -.->|"prompt · response · tool_calls"| D1[["expandable: full messages"]]
+    A3 -.->|"prompt · response"| D3[["expandable: full messages"]]
+
+    classDef root fill:#fde68a,stroke:#b45309,color:#000;
+    classDef llm  fill:#e9d5ff,stroke:#7e22ce,color:#000;
+    classDef tool fill:#bbf7d0,stroke:#15803d,color:#000;
+    classDef detail fill:#f1f5f9,stroke:#94a3b8,color:#000;
+    class Root root
+    class A1,A2,A3 llm
+    class T1,T2 tool
+    class D1,D3 detail
+```
+
+**Reading the trace:** the root span is the whole agent invocation; its children are each pass through the graph, in execution order — `agent (LLM) → get_weather → agent (LLM) → calculator → agent (LLM, final)`. The **three LLM calls** are the agent's reason→act→observe **loop** made visible. Clicking any span in the real UI expands the exact prompt, response, and tool arguments. If the answer were wrong, this tree tells you *immediately* whether the fault was a bad tool result, a weak prompt, or the model's reasoning.
 
 **Use it from day one.** Tracing pays for itself the first time you debug a bad answer; evals pay for themselves the first time a "small" prompt change silently regresses quality.
 
