@@ -133,6 +133,8 @@ print(answer)
 
 **Why this is a chain, not a graph:** every request flows through the same fixed steps in the same order, exactly once. There's no loop, no branching, no "try again if the answer is weak." That's precisely the sweet spot LangChain is built for — and precisely what starts to break down next.
 
+> **Where do the chunks actually live?** This example uses an in-memory FAISS store for brevity. For the storage layer in depth — how vector databases work, the popular options (Chroma, FAISS, Qdrant, Pinecone, pgvector, …), and full examples of storing chunk data in each — see the companion guide: **[Vector Databases](vector-databases.md)**.
+
 ---
 
 ## Problem 2: the logic isn't a straight line → LangGraph
