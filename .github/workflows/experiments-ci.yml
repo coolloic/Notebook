@@ -1,0 +1,48 @@
+name: Experiments CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "experiments/**"
+      - ".github/workflows/experiments-ci.yml"
+  pull_request:
+    paths:
+      - "experiments/**"
+      - ".github/workflows/experiments-ci.yml"
+  workflow_dispatch:
+
+jobs:
+  py-compile:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: py_compile every experiment's main.py
+        run: |
+          set -e
+          fail=0
+          for f in experiments/*/main.py; do
+            if python -m py_compile "$f"; then
+              echo "OK   $f"
+            else
+              echo "FAIL $f"
+              fail=1
+            fi
+          done
+          echo "----"
+          if [ "$fail" -ne 0 ]; then
+            echo "One or more experiments failed to compile."
+            exit 1
+          fi
+          echo "All experiments compiled cleanly."
