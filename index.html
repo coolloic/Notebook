@@ -195,7 +195,8 @@
       <li><a href="#langsmith">4 · LangSmith</a></li>
       <li><a href="#vectordb">5 · Vector databases</a></li>
       <li><a href="#cli">6 · create-llm-app</a></li>
-      <li><a href="#quiz">7 · Knowledge check</a></li>
+      <li><a href="#experiments">7 · Agentic patterns</a></li>
+      <li><a href="#quiz">8 · Knowledge check</a></li>
       <li><a href="#next">Next steps</a></li>
     </ol>
   </nav>
@@ -484,9 +485,49 @@ python main.py</code></pre>
       <p>Under the hood it maps your choices to a <em>provider registry</em> and renders Jinja2 templates — the same chat / RAG / agent code you saw in sections 1–3.</p>
     </section>
 
+    <section id="experiments">
+      <h2>7 · Agentic design patterns</h2>
+      <p>Once a single agent isn't enough, you compose <strong>multiple</strong> — and there's a small catalogue of proven shapes for doing so. This repo has a <strong>runnable scaffold for each</strong>, following Google Cloud's <a href="https://docs.cloud.google.com/architecture/choose-design-pattern-agentic-ai-system" target="_blank" rel="noopener">Choose a design pattern for your agentic AI system</a>, built on the same LangChain / LangGraph / LangSmith stack from this tutorial.</p>
+
+      <p>The doc's key axis is <strong>who decides the route</strong>:</p>
+      <div class="flow">
+        <span class="node">predetermined route</span>
+        <span class="arrow">— code decides —</span>
+        <span class="node">sequential · parallel · loop</span>
+        <span class="arrow">vs</span>
+        <span class="node">AI decides</span>
+        <span class="arrow">— model routes —</span>
+        <span class="node">coordinator · hierarchical · swarm</span>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Pattern</th><th>When to use</th><th>Stack</th></tr></thead>
+          <tbody>
+            <tr><td>01</td><td><strong>Single-Agent</strong></td><td>Moderate multi-step tasks, no delegation</td><td>LangGraph (prebuilt ReAct)</td></tr>
+            <tr><td>02</td><td><strong>Sequential</strong></td><td>Structured, repeatable pipelines</td><td>LangChain (LCEL)</td></tr>
+            <tr><td>03</td><td><strong>Parallel</strong></td><td>Independent sub-tasks; diverse perspectives at once</td><td>LangChain (RunnableParallel)</td></tr>
+            <tr><td>04</td><td><strong>Loop</strong></td><td>Iterative refinement with an exit condition</td><td>LangGraph (cycle)</td></tr>
+            <tr><td>05</td><td><strong>Review &amp; Critique</strong></td><td>High accuracy / compliance validation</td><td>LangGraph (generator + critic)</td></tr>
+            <tr><td>06</td><td><strong>Iterative Refinement</strong></td><td>Output hard to nail in one shot; quality gate</td><td>LangGraph (self-score loop)</td></tr>
+            <tr><td>07</td><td><strong>Coordinator</strong></td><td>Adaptive routing of varied inputs</td><td>LangGraph (router)</td></tr>
+            <tr><td>08</td><td><strong>Hierarchical</strong></td><td>Ambiguous, open-ended problems</td><td>LangGraph (orchestrator–worker)</td></tr>
+            <tr><td>09</td><td><strong>Swarm</strong></td><td>Complex problems that benefit from debate</td><td>LangChain (multi-persona)</td></tr>
+            <tr><td>10</td><td><strong>ReAct</strong></td><td>Dynamic tasks needing tools + adaptation</td><td>LangChain (manual loop)</td></tr>
+            <tr><td>11</td><td><strong>Human-in-the-Loop</strong></td><td>High-stakes / safety / compliance approvals</td><td>LangGraph (interrupt)</td></tr>
+            <tr><td>12</td><td><strong>Custom Logic</strong></td><td>Mixed-pattern, bespoke branching</td><td>LangChain (plain Python)</td></tr>
+            <tr><td>13</td><td><strong>RAG</strong></td><td>Ground answers in your own data</td><td>LangChain + FAISS</td></tr>
+            <tr><td>14</td><td><strong>RAG + CAG</strong></td><td>Stable facts cached + volatile corpus retrieved</td><td>LangChain + FAISS + prompt caching</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout"><strong>All 14 are syntax-verified in CI</strong> (<code>py_compile</code> on Python 3.11–3.13). Each folder has a README, a runnable <code>main.py</code>, <code>requirements.txt</code>, and <code>.env.example</code>. Browse them: <a href="https://github.com/coolloic/Notebook/tree/main/experiments" target="_blank" rel="noopener">experiments/ on GitHub</a>.</div>
+    </section>
+
     <section id="quiz">
-      <h2>7 · Knowledge check</h2>
-      <p>Four quick questions. Pick an answer for each, then check your score.</p>
+      <h2>8 · Knowledge check</h2>
+      <p>Five quick questions. Pick an answer for each, then check your score.</p>
       <form class="quiz" id="quiz">
         <div class="q" data-answer="b">
           <p>1. Your app needs to loop — call tools repeatedly until it can answer. Which tool fits?</p>
@@ -512,6 +553,12 @@ python main.py</code></pre>
           <label><input type="radio" name="q4" value="b"> A distributed Milvus cluster</label>
           <label><input type="radio" name="q4" value="c"> None — vectors aren't needed for RAG</label>
         </div>
+        <div class="q" data-answer="b">
+          <p>5. A human must approve a refund before the agent sends it. Which agentic pattern?</p>
+          <label><input type="radio" name="q5" value="a"> Swarm</label>
+          <label><input type="radio" name="q5" value="b"> Human-in-the-Loop</label>
+          <label><input type="radio" name="q5" value="c"> Sequential</label>
+        </div>
         <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
         <span id="score" role="status" aria-live="polite"></span>
       </form>
@@ -523,6 +570,7 @@ python main.py</code></pre>
         <div class="card"><h4>📘 LangChain guide</h4><p><a href="README.md">The full LangChain / LangGraph / LangSmith write-up</a> with diagrams and comparisons.</p></div>
         <div class="card"><h4>🗄️ Vector databases</h4><p><a href="vector-databases.md">Deep dive on storing chunk data</a> across Chroma, FAISS, Qdrant, Pinecone, pgvector.</p></div>
         <div class="card"><h4>🛠️ create-llm-app</h4><p><a href="https://github.com/coolloic/create-llm-app">The CLI on GitHub</a> — scaffold a runnable app in seconds.</p></div>
+        <div class="card"><h4>🧪 Agentic experiments</h4><p><a href="https://github.com/coolloic/Notebook/tree/main/experiments">14 runnable pattern scaffolds</a> — one per Google Cloud agentic design pattern.</p></div>
       </div>
     </section>
 
