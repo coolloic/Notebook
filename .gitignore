@@ -1,0 +1,9 @@
+# Local scratch / planning (not part of the published docs)
+docs/
+
+# IDE
+.idea/
+
+# Python
+__pycache__/
+*.pyc
