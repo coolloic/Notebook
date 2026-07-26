@@ -486,7 +486,7 @@ python main.py</code></pre>
     </section>
 
     <section id="experiments">
-      <h2>7 · Agentic design patterns</h2>
+      <h2>7 · Agentic patterns &amp; techniques</h2>
       <p>Once a single agent isn't enough, you compose <strong>multiple</strong> — and there's a small catalogue of proven shapes for doing so. This repo has a <strong>runnable scaffold for each</strong>, following Google Cloud's <a href="https://docs.cloud.google.com/architecture/choose-design-pattern-agentic-ai-system" target="_blank" rel="noopener">Choose a design pattern for your agentic AI system</a>, built on the same LangChain / LangGraph / LangSmith stack from this tutorial.</p>
 
       <p>The doc's key axis is <strong>who decides the route</strong>:</p>
@@ -500,6 +500,7 @@ python main.py</code></pre>
         <span class="node">coordinator · hierarchical · swarm</span>
       </div>
 
+      <h3>Design patterns (Google Cloud)</h3>
       <div class="tbl-wrap">
         <table>
           <thead><tr><th>#</th><th>Pattern</th><th>When to use</th><th>Stack</th></tr></thead>
@@ -522,7 +523,28 @@ python main.py</code></pre>
         </table>
       </div>
 
-      <div class="callout"><strong>All 14 are syntax-verified in CI</strong> (<code>py_compile</code> on Python 3.11–3.13). Each folder has a README, a runnable <code>main.py</code>, <code>requirements.txt</code>, and <code>.env.example</code>. Browse them: <a href="https://github.com/coolloic/Notebook/tree/main/experiments" target="_blank" rel="noopener">experiments/ on GitHub</a>.</div>
+      <h3>Reasoning &amp; agentic techniques</h3>
+      <p>Prompting, reasoning, and retrieval techniques that make an <em>individual</em> agent smarter — complementary to the orchestration patterns above.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Technique</th><th>What it adds</th><th>Stack</th></tr></thead>
+          <tbody>
+            <tr><td>15</td><td><strong>Chain-of-Thought</strong></td><td>Reason step by step before answering</td><td>LangChain</td></tr>
+            <tr><td>16</td><td><strong>Self-Consistency</strong></td><td>Sample many CoT paths, majority-vote</td><td>LangChain</td></tr>
+            <tr><td>17</td><td><strong>Tree of Thoughts</strong></td><td>Branch, score, expand the best (search)</td><td>LangChain</td></tr>
+            <tr><td>18</td><td><strong>Reflexion</strong></td><td>Retry with accumulated self-feedback</td><td>LangGraph</td></tr>
+            <tr><td>19</td><td><strong>Plan-and-Execute</strong></td><td>Plan up front, then run each step</td><td>LangGraph</td></tr>
+            <tr><td>20</td><td><strong>ReWOO</strong></td><td>Plan all tool calls once, then solve</td><td>LangChain</td></tr>
+            <tr><td>21</td><td><strong>Chain-of-Verification</strong></td><td>Draft → verify → revise (anti-hallucination)</td><td>LangChain</td></tr>
+            <tr><td>22</td><td><strong>Agentic RAG</strong></td><td>Retrieve on demand as a tool</td><td>LangGraph + FAISS</td></tr>
+            <tr><td>23</td><td><strong>Corrective RAG</strong></td><td>Grade retrieval, fall back if weak</td><td>LangChain + FAISS</td></tr>
+            <tr><td>24</td><td><strong>Self-RAG</strong></td><td>Model gates its own retrieval + grounding</td><td>LangChain + FAISS</td></tr>
+            <tr><td>25</td><td><strong>Memory Agent</strong></td><td>Recall earlier turns (checkpointer)</td><td>LangGraph</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout"><strong>All 25 are syntax-verified in CI</strong> (<code>py_compile</code> on Python 3.11–3.13). Each folder has a README, a runnable <code>main.py</code>, <code>requirements.txt</code>, and <code>.env.example</code>. Browse them: <a href="https://github.com/coolloic/Notebook/tree/main/experiments" target="_blank" rel="noopener">experiments/ on GitHub</a>.</div>
     </section>
 
     <section id="quiz">
