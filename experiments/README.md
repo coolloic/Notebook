@@ -1,5 +1,7 @@
 # Agentic AI Pattern Experiments
 
+[![Experiments CI](https://github.com/coolloic/Notebook/actions/workflows/experiments-ci.yml/badge.svg)](https://github.com/coolloic/Notebook/actions/workflows/experiments-ci.yml)
+
 Runnable scaffolds — one per agentic AI design pattern from Google Cloud's
 [**Choose a design pattern for your agentic AI system**](https://docs.cloud.google.com/architecture/choose-design-pattern-agentic-ai-system),
 plus two retrieval experiments (RAG and RAG + CAG).
