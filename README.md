@@ -501,6 +501,12 @@ export LANGSMITH_API_KEY="<your-key>"
 
 ---
 
+## Experiments
+
+Runnable scaffolds for each agentic AI design pattern (from Google Cloud's *Choose a design pattern for your agentic AI system*), plus RAG and RAG + CAG — one folder each, built on LangChain / LangGraph / LangSmith. See **[experiments/](experiments/)**.
+
+---
+
 ## Further reading
 
 - LangChain docs — https://python.langchain.com / https://js.langchain.com
