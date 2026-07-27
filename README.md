@@ -509,6 +509,8 @@ Runnable scaffolds for each agentic AI design pattern (from Google Cloud's *Choo
 
 ## Further reading
 
+- **[AWS Services Field Guide](aws-services.html)** — an architect's tour of 40 core AWS services: the problem each one solves, its real limits and quotas, and when to choose it (pairs with Bedrock for LLM apps).
+- **[Agent Development Kits Compared](adk.html)** — Google ADK vs AWS Strands + Bedrock AgentCore vs LangGraph: what problem each solves, its limits, and when to choose it.
 - LangChain docs — https://python.langchain.com / https://js.langchain.com
 - LangGraph docs — https://langchain-ai.github.io/langgraph/
 - LangSmith docs — https://docs.smith.langchain.com

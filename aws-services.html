@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="An architect's field guide to 40 core AWS services — the problem each one solves, its real limitations and quotas, and when to choose it.">
+<title>AWS Services — Problems They Solve &amp; Their Limits</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f5f7fa;
+    --bg-code: #232f3e;      /* AWS squid ink */
+    --text: #1a2130;
+    --text-soft: #55617a;
+    --border: #e2e8f0;
+    --accent: #d9701a;       /* AWS orange (AA-contrast on white) */
+    --ink: #232f3e;          /* AWS squid ink */
+    --solve: #15803d;        /* green — the problem it solves */
+    --limit: #b45309;        /* amber — the limitations */
+    --choose: #1e40af;       /* blue — when to choose it */
+    --solve-bg: #dcfce7;
+    --limit-bg: #fef3c7;
+    --choose-bg: #dbeafe;
+    --radius: 12px;
+    --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #0f172a;
+    --bg-soft: #17233d;
+    --bg-code: #0b1220;
+    --text: #e6ecf7;
+    --text-soft: #9fb0cc;
+    --border: #263450;
+    --accent: #f0a35e;
+    --ink: #cbd5e1;
+    --solve: #86efac;
+    --limit: #fcd34d;
+    --choose: #93c5fd;
+    --solve-bg: #14351f;
+    --limit-bg: #3a2a0c;
+    --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: var(--font);
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  .skip-link {
+    position: absolute; left: -999px; top: 0;
+    background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100;
+  }
+  .skip-link:focus { left: 0; }
+
+  /* Progress bar */
+  #progress {
+    position: fixed; top: 0; left: 0; height: 4px; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--ink));
+    z-index: 60; transition: width .1s linear;
+  }
+
+  /* Header */
+  header.top {
+    position: sticky; top: 0; z-index: 50;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 1rem;
+    padding: .6rem 1rem;
+  }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; }
+  header.top .brand span { color: var(--accent); }
+  header.top .spacer { flex: 1; }
+  .btn {
+    font: inherit; cursor: pointer; border: 1px solid var(--border);
+    background: var(--bg-soft); color: var(--text);
+    border-radius: 999px; padding: .5rem .9rem; min-height: 44px;
+    display: inline-flex; align-items: center; gap: .4rem;
+  }
+  .btn:hover { border-color: var(--accent); }
+  #menuToggle { display: none; }
+
+  /* Layout */
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side {
+    position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px);
+    overflow-y: auto; padding: 1.25rem 0; font-size: .93rem;
+  }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a {
+    display: block; padding: .45rem .75rem; border-radius: 8px;
+    color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent;
+  }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); }
+  nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.15rem; margin: 1.75rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+
+  /* Cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; }
+  .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .card .count { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+
+  /* Callout */
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; }
+  .callout strong { color: var(--accent); }
+
+  /* Service block */
+  .svc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-soft); padding: 1rem 1.2rem; margin: 1.1rem 0; }
+  .svc h3 { margin: 0 0 .6rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
+  .svc h3 .full { font-size: .82rem; font-weight: 500; color: var(--text-soft); font-family: var(--mono); }
+  .svc p { margin: .4rem 0; font-size: .95rem; }
+  .tag { display: inline-block; min-width: 5.6rem; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .12rem .5rem; border-radius: 6px; margin-right: .5rem; text-align: center; }
+  .tag.solve  { background: var(--solve-bg);  color: var(--solve); }
+  .tag.limit  { background: var(--limit-bg);  color: var(--limit); }
+  .tag.choose { background: var(--choose-bg); color: var(--choose); }
+
+  /* Table */
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-soft); }
+  code { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; }
+
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); }
+  details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+
+  /* Quiz */
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; }
+  .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); }
+  .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; }
+  [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; }
+  #score { font-weight: 700; margin-left: 1rem; }
+
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; }
+    #menuToggle { display: inline-flex; }
+    main { padding-top: .5rem; }
+    .tag { min-width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <div class="brand">AWS <span>Services</span> Field Guide</div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#foundation">1 · Foundation &amp; Identity</a></li>
+      <li><a href="#compute">2 · Compute</a></li>
+      <li><a href="#storage">3 · Storage</a></li>
+      <li><a href="#databases">4 · Databases</a></li>
+      <li><a href="#networking">5 · Networking &amp; Delivery</a></li>
+      <li><a href="#integration">6 · Integration &amp; Messaging</a></li>
+      <li><a href="#ops">7 · Observability &amp; IaC</a></li>
+      <li><a href="#analytics">8 · Analytics &amp; AI/ML</a></li>
+      <li><a href="#security">9 · Security &amp; Edge</a></li>
+      <li><a href="#cheatsheet">Look-alikes cheat sheet</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>AWS Services — the problem each one solves</h1>
+      <p class="lede">AWS has 200+ services, but you build most systems from a few dozen. This is an architect's field guide to <strong>40 core services</strong>: for each, the <strong>problem it solves</strong>, its <strong>real limitations &amp; quotas</strong>, and <strong>when to choose it</strong>.</p>
+
+      <div class="callout">
+        <strong>How to read each entry.</strong> Every service has three labeled lines —
+        <span class="tag solve">Solves</span> the problem it exists for,
+        <span class="tag limit">Limits</span> the constraints, quotas and gotchas that bite in production, and
+        <span class="tag choose">Choose</span> when it's the right tool. Quotas noted are <em>defaults</em>; many are soft limits you can raise via a support request.
+      </div>
+
+      <div class="cards">
+        <div class="card"><span class="count">4 services</span><h4>1 · Foundation &amp; Identity</h4><p>Who you are and who can do what: IAM, Organizations, KMS, Secrets Manager.</p></div>
+        <div class="card"><span class="count">7 services</span><h4>2 · Compute</h4><p>Where code runs: EC2, Lambda, ECS, EKS, Fargate, Beanstalk, Auto Scaling.</p></div>
+        <div class="card"><span class="count">4 services</span><h4>3 · Storage</h4><p>Where bytes live: S3, EBS, EFS, S3 Glacier.</p></div>
+        <div class="card"><span class="count">5 services</span><h4>4 · Databases</h4><p>Structured state: RDS, Aurora, DynamoDB, ElastiCache, Redshift.</p></div>
+        <div class="card"><span class="count">5 services</span><h4>5 · Networking &amp; Delivery</h4><p>Connectivity &amp; reach: VPC, Route 53, CloudFront, API Gateway, ELB.</p></div>
+        <div class="card"><span class="count">5 services</span><h4>6 · Integration &amp; Messaging</h4><p>Decoupling: SQS, SNS, EventBridge, Step Functions, Kinesis.</p></div>
+        <div class="card"><span class="count">3 services</span><h4>7 · Observability &amp; IaC</h4><p>See &amp; provision: CloudWatch, CloudTrail, CloudFormation.</p></div>
+        <div class="card"><span class="count">4 services</span><h4>8 · Analytics &amp; AI/ML</h4><p>Insight &amp; intelligence: Athena, Glue, SageMaker, Bedrock.</p></div>
+        <div class="card"><span class="count">3 services</span><h4>9 · Security &amp; Edge</h4><p>Protect the perimeter: Cognito, WAF, GuardDuty.</p></div>
+      </div>
+    </section>
+
+    <!-- ============ 1 · FOUNDATION & IDENTITY ============ -->
+    <section id="foundation">
+      <h2><span class="pill">Category 1</span> &nbsp;Foundation &amp; Identity</h2>
+      <p>Before anything runs, AWS must know <em>who</em> is acting and <em>what</em> they're allowed to do. These services are the substrate every other service depends on.</p>
+
+      <article class="svc">
+        <h3>IAM <span class="full">Identity &amp; Access Management</span></h3>
+        <p><span class="tag solve">Solves</span> Centralized control of <em>who</em> (users, roles, services) can perform <em>which</em> actions on <em>which</em> resources — the authorization layer for all of AWS. Roles let workloads assume short-lived credentials instead of hard-coding keys.</p>
+        <p><span class="tag limit">Limits</span> Policy changes are eventually consistent (propagation lag). Policy evaluation (allow/deny/boundaries/SCPs) gets complex fast. Quotas: e.g. 10 managed policies per role, ~6 KB inline policy size. IAM authenticates <em>AWS principals</em>, not your app's end users — that's Cognito.</p>
+        <p><span class="tag choose">Choose</span> Always. Design least-privilege roles per workload from day one; prefer roles over long-lived access keys.</p>
+      </article>
+
+      <article class="svc">
+        <h3>Organizations <span class="full">multi-account governance</span></h3>
+        <p><span class="tag solve">Solves</span> Managing many AWS accounts as one: consolidated billing, and guardrails via Service Control Policies (SCPs) that cap what any account <em>can</em> do. Account-per-team/env is the recommended isolation boundary.</p>
+        <p><span class="tag limit">Limits</span> SCPs only <em>restrict</em> — they never grant permissions (you still need IAM). The management account is a high-value target and can't be constrained by SCPs. New accounts take time to provision; some quotas are per-account.</p>
+        <p><span class="tag choose">Choose</span> The moment you have more than one account — for isolation, blast-radius control, and central billing.</p>
+      </article>
+
+      <article class="svc">
+        <h3>KMS <span class="full">Key Management Service</span></h3>
+        <p><span class="tag solve">Solves</span> Creating, storing and controlling encryption keys, with envelope encryption and audited key usage — so "encrypt everything at rest" becomes a checkbox integrated into S3, EBS, RDS, etc.</p>
+        <p><span class="tag limit">Limits</span> Direct <code>Encrypt</code> is capped at 4 KB (use data keys / envelope encryption for larger payloads). Keys are regional (except multi-Region keys). Cryptographic requests share a per-region rate quota; cost accrues per key per month plus per request.</p>
+        <p><span class="tag choose">Choose</span> Any time you need managed, auditable encryption keys — especially for compliance (customer-managed keys, key rotation, grants).</p>
+      </article>
+
+      <article class="svc">
+        <h3>Secrets Manager <span class="full">secret storage &amp; rotation</span></h3>
+        <p><span class="tag solve">Solves</span> Storing database credentials, API keys and tokens securely, with built-in automatic rotation and fine-grained IAM access — no more secrets in env files or code.</p>
+        <p><span class="tag limit">Limits</span> Priced per secret per month plus API calls. Rotation requires a Lambda function. Max secret size 64 KB. For plain config or cheaper storage without auto-rotation, SSM Parameter Store is often the better fit.</p>
+        <p><span class="tag choose">Choose</span> Credentials that must rotate (RDS/Redshift integration is turnkey) or secrets needing tight audit and access control.</p>
+      </article>
+    </section>
+
+    <!-- ============ 2 · COMPUTE ============ -->
+    <section id="compute">
+      <h2><span class="pill">Category 2</span> &nbsp;Compute</h2>
+      <p>The spectrum runs from "I manage the whole machine" to "I just hand AWS a function." Higher up the ladder means less operational burden but less control — pick the least you can get away with.</p>
+
+      <article class="svc">
+        <h3>EC2 <span class="full">Elastic Compute Cloud</span></h3>
+        <p><span class="tag solve">Solves</span> On-demand, resizable virtual servers with full OS-level control — the general-purpose "rent a computer" primitive. Hundreds of instance types (CPU, memory, GPU, ARM Graviton).</p>
+        <p><span class="tag limit">Limits</span> <em>You</em> own patching, scaling, and multi-AZ resilience. Regional vCPU service quotas cap how much you can launch; specific instance types can hit capacity shortages. Idle instances still cost money.</p>
+        <p><span class="tag choose">Choose</span> Lift-and-shift, long-running stateful workloads, GPU/ML, or anything needing full control over the OS and kernel.</p>
+      </article>
+
+      <article class="svc">
+        <h3>Lambda <span class="full">serverless functions</span></h3>
+        <p><span class="tag solve">Solves</span> Running code with zero server management, triggered by events, billed per millisecond — scales from zero to thousands of concurrent executions automatically.</p>
+        <p><span class="tag limit">Limits</span> 15-minute max execution, 10 GB memory ceiling, 250 MB unzipped package (or 10 GB container image), 6 MB synchronous payload. Cold starts add latency; functions are stateless; default 1,000 concurrent executions per region (soft).</p>
+        <p><span class="tag choose">Choose</span> Event-driven glue, spiky/unpredictable traffic, short tasks, and APIs behind API Gateway. Avoid for long-running or ultra-low-latency-sensitive paths.</p>
+      </article>
+
+      <article class="svc">
+        <h3>ECS <span class="full">Elastic Container Service</span></h3>
+        <p><span class="tag solve">Solves</span> Running and orchestrating Docker containers with a simple, AWS-native control plane — deep IAM/VPC/ALB integration and far less complexity than Kubernetes.</p>
+        <p><span class="tag limit">Limits</span> AWS-proprietary — not portable to other clouds like Kubernetes is. Smaller ecosystem of third-party tooling. Service/task quotas apply; networking (awsvpc mode, ENIs per instance) needs planning.</p>
+        <p><span class="tag choose">Choose</span> You want containers on AWS without the operational weight of Kubernetes and don't need multi-cloud portability.</p>
+      </article>
+
+      <article class="svc">
+        <h3>EKS <span class="full">Elastic Kubernetes Service</span></h3>
+        <p><span class="tag solve">Solves</span> A managed Kubernetes control plane so you get the portable, standard k8s API and ecosystem without running etcd/masters yourself.</p>
+        <p><span class="tag limit">Limits</span> All of Kubernetes' complexity remains yours (YAML, upgrades, add-ons, RBAC). The control plane costs a flat hourly fee per cluster. Version upgrades are frequent and mandatory; steeper learning curve than ECS.</p>
+        <p><span class="tag choose">Choose</span> You've standardized on Kubernetes, need its ecosystem (Helm, operators), or want workload portability across clouds/on-prem.</p>
+      </article>
+
+      <article class="svc">
+        <h3>Fargate <span class="full">serverless containers</span></h3>
+        <p><span class="tag solve">Solves</span> Running ECS/EKS containers <em>without</em> provisioning or patching EC2 nodes — you specify CPU/memory per task and AWS runs it. No cluster capacity to manage.</p>
+        <p><span class="tag limit">Limits</span> Higher per-unit cost than well-utilized EC2. Fixed CPU/memory combinations; limited host customization (no GPUs on ECS-Fargate, no privileged/daemonset patterns). Task startup is slower than a warm EC2 host.</p>
+        <p><span class="tag choose">Choose</span> Bursty or low-ops container workloads where you'd rather pay a premium than manage node fleets and bin-packing.</p>
+      </article>
+
+      <article class="svc">
+        <h3>Elastic Beanstalk <span class="full">PaaS for web apps</span></h3>
+        <p><span class="tag solve">Solves</span> Deploying a standard web app (upload code, pick a platform) while AWS provisions the EC2, load balancer, auto-scaling and health checks for you — a fast on-ramp for teams new to AWS.</p>
+        <p><span class="tag limit">Limits</span> The abstraction leaks — debugging the generated infra can be confusing. Less control, and it lags behind the newest AWS features. Many teams outgrow it and move to ECS/EKS or raw CloudFormation/CDK.</p>
+        <p><span class="tag choose">Choose</span> Quick deployment of a conventional web/API app when you don't yet want to hand-wire the underlying infrastructure.</p>
+      </article>
+
+      <article class="svc">
+        <h3>Auto Scaling <span class="full">EC2 Auto Scaling / Application Auto Scaling</span></h3>
+        <p><span class="tag solve">Solves</span> Automatically adding/removing capacity to match demand — maintain availability during spikes and cut cost during troughs, driven by metrics or schedules.</p>
+        <p><span class="tag limit">Limits</span> Scaling is reactive — there's a lag between load rising and capacity arriving (mitigate with warm pools, predictive scaling, headroom). Requires stateless, horizontally-scalable design and good CloudWatch signals.</p>
+        <p><span class="tag choose">Choose</span> Any variable-load fleet (EC2, ECS tasks, DynamoDB, etc.) where you want elasticity instead of static over-provisioning.</p>
+      </article>
+    </section>
+
+    <!-- ============ 3 · STORAGE ============ -->
+    <section id="storage">
+      <h2><span class="pill">Category 3</span> &nbsp;Storage</h2>
+      <p>Three shapes of storage — object, block, and file — plus an archive tier. Matching the access pattern to the storage type is one of the highest-leverage architecture decisions.</p>
+
+      <article class="svc">
+        <h3>S3 <span class="full">Simple Storage Service</span></h3>
+        <p><span class="tag solve">Solves</span> Virtually unlimited, extremely durable (11 nines) object storage over HTTPS — the default home for files, backups, data lakes, static sites and logs. Now strongly read-after-write consistent.</p>
+        <p><span class="tag limit">Limits</span> It's object storage, not a filesystem: no in-place edits or appends (rewrite the whole object). Max object size 5 TB (5 GB per single PUT). Higher latency than block storage; very high request rates need key-prefix planning.</p>
+        <p><span class="tag choose">Choose</span> Almost any bulk, static, or write-once-read-many data. The backbone of data lakes and content delivery (behind CloudFront).</p>
+      </article>
+
+      <article class="svc">
+        <h3>EBS <span class="full">Elastic Block Store</span></h3>
+        <p><span class="tag solve">Solves</span> Persistent, low-latency block storage that attaches to an EC2 instance like a physical disk — the boot volume and database disk for EC2.</p>
+        <p><span class="tag limit">Limits</span> Locked to a single Availability Zone; normally attaches to one instance at a time (io1/io2 Multi-Attach is the exception). To move across AZs you snapshot to S3 and restore. IOPS/throughput are provisioned (and priced) per volume type.</p>
+        <p><span class="tag choose">Choose</span> A disk for one EC2 instance — databases, boot volumes, anything needing consistent low-latency block I/O.</p>
+      </article>
+
+      <article class="svc">
+        <h3>EFS <span class="full">Elastic File System</span></h3>
+        <p><span class="tag solve">Solves</span> A shared, elastic NFS filesystem that many instances (or Lambda/containers) mount at once and that grows/shrinks automatically — the answer to "multiple compute nodes need the same files."</p>
+        <p><span class="tag limit">Limits</span> Higher latency and cost than EBS. Throughput depends on mode (Bursting/Elastic/Provisioned). Linux/NFS only — for Windows/SMB or high-performance HPC use Amazon FSx. Overkill (and pricey) for a single instance.</p>
+        <p><span class="tag choose">Choose</span> Shared file access across many compute nodes — web content, CMS uploads, shared home directories, ML training data.</p>
+      </article>
+
+      <article class="svc">
+        <h3>S3 Glacier <span class="full">archival storage</span></h3>
+        <p><span class="tag solve">Solves</span> Long-term archival at a fraction of standard S3 cost — for compliance data, backups and cold data you rarely read (Glacier Instant / Flexible / Deep Archive tiers).</p>
+        <p><span class="tag limit">Limits</span> Retrieval carries latency (minutes to 12+ hours for Deep Archive) and per-GB retrieval fees. Minimum storage-duration charges (90 days Flexible, 180 days Deep Archive) — deleting early still bills. Not for anything accessed frequently.</p>
+        <p><span class="tag choose">Choose</span> Regulatory retention, backup archives, and cold data — usually applied automatically via S3 Lifecycle rules.</p>
+      </article>
+    </section>
+
+    <!-- ============ 4 · DATABASES ============ -->
+    <section id="databases">
+      <h2><span class="pill">Category 4</span> &nbsp;Databases</h2>
+      <p>Relational for consistency and joins, NoSQL for scale and flexible schemas, in-memory for speed, columnar for analytics. The data model, not the brand, drives the choice.</p>
+
+      <article class="svc">
+        <h3>RDS <span class="full">Relational Database Service</span></h3>
+        <p><span class="tag solve">Solves</span> A managed relational database (PostgreSQL, MySQL, MariaDB, Oracle, SQL Server) — AWS handles provisioning, patching, backups, and Multi-AZ failover so you keep SQL without the DBA toil.</p>
+        <p><span class="tag limit">Limits</span> Scales vertically (bigger instance) far more easily than horizontally; write throughput is bounded by one primary. Superuser and some engine features are restricted. Maintenance windows, storage and max-connection caps apply.</p>
+        <p><span class="tag choose">Choose</span> Traditional transactional apps needing ACID, joins and a familiar SQL engine at small-to-medium scale.</p>
+      </article>
+
+      <article class="svc">
+        <h3>Aurora <span class="full">cloud-native relational</span></h3>
+        <p><span class="tag solve">Solves</span> MySQL/PostgreSQL-compatible databases re-architected for the cloud: auto-scaling storage, up to 15 low-latency read replicas, faster failover, and Serverless v2 that scales capacity to load.</p>
+        <p><span class="tag limit">Limits</span> AWS-only (no portability). More expensive than plain RDS at small scale. Still a single writer node (writes don't scale horizontally by default). Engine versions can lag upstream community releases.</p>
+        <p><span class="tag choose">Choose</span> Relational workloads that have outgrown RDS on read scaling, availability, or need serverless elasticity — while staying MySQL/PostgreSQL-compatible.</p>
+      </article>
+
+      <article class="svc">
+        <h3>DynamoDB <span class="full">managed NoSQL</span></h3>
+        <p><span class="tag solve">Solves</span> A fully-managed, serverless key-value/document database with single-digit-millisecond latency at effectively any scale — no servers, automatic partitioning, on-demand capacity.</p>
+        <p><span class="tag limit">Limits</span> You must design the table around your access patterns up front — no ad-hoc queries or SQL joins, and re-modeling later is painful. 400 KB max item size; queries need partition keys or GSIs; hot partitions throttle; reads are eventually consistent unless you ask for strong.</p>
+        <p><span class="tag choose">Choose</span> High-scale, well-understood access patterns — user sessions, carts, IoT, event stores, anything needing predictable latency at massive throughput.</p>
+      </article>
+
+      <article class="svc">
+        <h3>ElastiCache <span class="full">Redis / Memcached / Valkey</span></h3>
+        <p><span class="tag solve">Solves</span> A managed in-memory cache/data store that puts microsecond reads in front of a slower database — offloading hot queries, sessions, rate limits and leaderboards.</p>
+        <p><span class="tag limit">Limits</span> Memory is expensive, so datasets are size-bound. It's volatile — treat it as a cache, not the source of truth (data can be evicted or lost on failure unless persistence/replication is configured). Scaling clusters is an operational task.</p>
+        <p><span class="tag choose">Choose</span> Read-heavy hot paths, session stores, real-time leaderboards, and anywhere sub-millisecond latency matters.</p>
+      </article>
+
+      <article class="svc">
+        <h3>Redshift <span class="full">data warehouse</span></h3>
+        <p><span class="tag solve">Solves</span> Petabyte-scale columnar analytics (OLAP) — run complex aggregate SQL across huge datasets far faster than a row-store transactional DB could.</p>
+        <p><span class="tag limit">Limits</span> Built for analytics, not high-concurrency transactional writes (not OLTP). Loading is batch-oriented (ETL pipelines needed); concurrency has limits (mitigated by concurrency scaling / Serverless). Right-sizing clusters takes tuning.</p>
+        <p><span class="tag choose">Choose</span> BI dashboards, reporting, and large-scale aggregations over structured data — often fed from S3 via Glue.</p>
+      </article>
+    </section>
+
+    <!-- ============ 5 · NETWORKING & DELIVERY ============ -->
+    <section id="networking">
+      <h2><span class="pill">Category 5</span> &nbsp;Networking &amp; Delivery</h2>
+      <p>These services define the private network your resources live in, resolve names to them, and get content to users quickly and safely.</p>
+
+      <article class="svc">
+        <h3>VPC <span class="full">Virtual Private Cloud</span></h3>
+        <p><span class="tag solve">Solves</span> A logically isolated virtual network you fully control — subnets, route tables, security groups, NACLs, gateways — so resources talk privately and are exposed only where intended.</p>
+        <p><span class="tag limit">Limits</span> Real networking complexity (public/private subnets, NAT, peering, endpoints). CIDR ranges are painful to change after the fact — plan address space early. Regional; quotas on VPCs, subnets and route entries. NAT Gateways bill per hour <em>and</em> per GB.</p>
+        <p><span class="tag choose">Choose</span> Every non-trivial deployment — it's the network foundation almost all other services run inside.</p>
+      </article>
+
+      <article class="svc">
+        <h3>Route 53 <span class="full">DNS &amp; domain routing</span></h3>
+        <p><span class="tag solve">Solves</span> Highly-available DNS with health checks and traffic policies (latency, geolocation, weighted, failover) — plus domain registration. It's how users' requests find your infrastructure.</p>
+        <p><span class="tag limit">Limits</span> DNS changes are bound by TTL/propagation, so failover isn't instant. Priced per hosted zone and per query. It routes to endpoints — it is not a CDN or a load balancer itself.</p>
+        <p><span class="tag choose">Choose</span> Any public domain, plus advanced routing (multi-region failover, latency-based routing, blue/green DNS switches).</p>
+      </article>
+
+      <article class="svc">
+        <h3>CloudFront <span class="full">content delivery network</span></h3>
+        <p><span class="tag solve">Solves</span> A global CDN that caches content at edge locations near users — cutting latency, offloading origins, and terminating TLS plus absorbing DDoS at the edge (with Shield/WAF).</p>
+        <p><span class="tag limit">Limits</span> Cache invalidations cost money and take time to propagate — versioned asset names are preferred. Highly dynamic, per-user, uncacheable content sees less benefit. TTL and cache-key tuning has a learning curve.</p>
+        <p><span class="tag choose">Choose</span> Serving static assets, media, and websites globally; fronting S3 or an API/ALB for edge caching and security.</p>
+      </article>
+
+      <article class="svc">
+        <h3>API Gateway <span class="full">managed API front door</span></h3>
+        <p><span class="tag solve">Solves</span> A fully-managed front door for REST/HTTP/WebSocket APIs — routing, throttling, auth (IAM/Cognito/JWT), request validation, caching and versioning — most often fronting Lambda.</p>
+        <p><span class="tag limit">Limits</span> 29-second integration timeout; 10 MB payload limit. Per-request pricing (REST APIs cost more than the lighter HTTP APIs). Adds latency versus a direct call; feature-rich REST configuration can get intricate.</p>
+        <p><span class="tag choose">Choose</span> Exposing serverless or microservice APIs with built-in throttling, auth and metering — especially in front of Lambda.</p>
+      </article>
+
+      <article class="svc">
+        <h3>Elastic Load Balancing <span class="full">ALB / NLB / GWLB</span></h3>
+        <p><span class="tag solve">Solves</span> Distributing incoming traffic across healthy targets for availability and scale — ALB for HTTP(S)/L7 routing, NLB for ultra-low-latency L4/TCP, Gateway LB for inline appliances.</p>
+        <p><span class="tag limit">Limits</span> Regional, not global (combine with Route 53 or Global Accelerator for multi-region). Huge instantaneous spikes may need pre-warming. Priced per hour plus per LCU/capacity unit; ALB is HTTP(S)-only.</p>
+        <p><span class="tag choose">Choose</span> Fronting any fleet of EC2/ECS/Lambda targets — ALB for web apps and path/host routing, NLB for extreme throughput or static IPs.</p>
+      </article>
+    </section>
+
+    <!-- ============ 6 · INTEGRATION & MESSAGING ============ -->
+    <section id="integration">
+      <h2><span class="pill">Category 6</span> &nbsp;Integration &amp; Messaging</h2>
+      <p>These services let components communicate without being directly coupled — the backbone of resilient, event-driven, microservice architectures. Their differences are subtle, so a cheat sheet follows below.</p>
+
+      <article class="svc">
+        <h3>SQS <span class="full">Simple Queue Service</span></h3>
+        <p><span class="tag solve">Solves</span> A durable, fully-managed message queue that decouples producers from consumers — buffering work so a slow or failed downstream doesn't drop requests or take the system down.</p>
+        <p><span class="tag limit">Limits</span> Standard queues are at-least-once (expect occasional duplicates) and best-effort ordered; FIFO guarantees order/exactly-once but with throughput caps. 256 KB message max, 14-day max retention. It's poll-based (not push) and does no content-based routing.</p>
+        <p><span class="tag choose">Choose</span> Point-to-point work queues, load leveling, and absorbing spikes between services (e.g. web tier → worker tier).</p>
+      </article>
+
+      <article class="svc">
+        <h3>SNS <span class="full">Simple Notification Service</span></h3>
+        <p><span class="tag solve">Solves</span> Pub/sub fan-out — one published message pushed to many subscribers at once (SQS queues, Lambda, HTTP endpoints, email, SMS). The classic "notify N systems of an event" primitive.</p>
+        <p><span class="tag limit">Limits</span> No message storage or replay — if a subscriber is down it can miss the message (the SNS→SQS fan-out pattern fixes this). 256 KB payload; limited delivery retries. It's a broadcaster, not a queue or a rich router.</p>
+        <p><span class="tag choose">Choose</span> Fan-out notifications and simple event broadcasting, especially SNS→multiple SQS queues for durable parallel processing.</p>
+      </article>
+
+      <article class="svc">
+        <h3>EventBridge <span class="full">serverless event bus</span></h3>
+        <p><span class="tag solve">Solves</span> A serverless event bus that routes events from AWS services, SaaS apps and your own apps to targets, with rich content-based filtering, a schema registry and scheduling — the connective tissue of event-driven architectures.</p>
+        <p><span class="tag limit">Limits</span> Delivery is asynchronous and at-least-once (design idempotent consumers). 256 KB event size; quotas on rules/targets per bus. Slightly higher latency than a direct call, and debugging routing rules takes care.</p>
+        <p><span class="tag choose">Choose</span> Decoupled, many-to-many event routing with filtering — especially integrating AWS service events or third-party SaaS into your app.</p>
+      </article>
+
+      <article class="svc">
+        <h3>Step Functions <span class="full">workflow orchestration</span></h3>
+        <p><span class="tag solve">Solves</span> Coordinating multi-step workflows as visual state machines — sequencing, branching, parallelism, retries with back-off, error handling and human-approval steps — without writing brittle orchestration glue.</p>
+        <p><span class="tag limit">Limits</span> Standard workflows run up to 1 year but bill per state transition (chatty workflows add up); Express workflows are cheap but cap at 5 minutes. State/payload passed between steps is limited (256 KB). Learning Amazon States Language takes time.</p>
+        <p><span class="tag choose">Choose</span> Long-running or multi-step business processes (order fulfillment, ETL, approvals) that need reliable retries, visibility and error handling.</p>
+      </article>
+
+      <article class="svc">
+        <h3>Kinesis <span class="full">real-time streaming</span></h3>
+        <p><span class="tag solve">Solves</span> Ingesting and processing high-volume real-time streams — clickstreams, logs, IoT telemetry — with ordered, replayable records (Data Streams) or managed delivery to S3/Redshift (Firehose).</p>
+        <p><span class="tag limit">Limits</span> Data Streams throughput is shard-based (1 MB/s or 1,000 records/s write per shard) — you manage/monitor shard counts (on-demand mode eases this). Ordering is only guaranteed within a shard. Retention 24 h (up to 365 days, priced). Firehose adds buffering latency.</p>
+        <p><span class="tag choose">Choose</span> Real-time analytics and stream processing where ordering, replay and multiple independent consumers matter (vs. SQS's simple queueing).</p>
+      </article>
+    </section>
+
+    <!-- ============ 7 · OBSERVABILITY & IaC ============ -->
+    <section id="ops">
+      <h2><span class="pill">Category 7</span> &nbsp;Observability &amp; Infrastructure-as-Code</h2>
+      <p>You can't operate what you can't see, and you can't scale what you build by hand. These cover monitoring, auditing, and repeatable provisioning.</p>
+
+      <article class="svc">
+        <h3>CloudWatch <span class="full">metrics, logs &amp; alarms</span></h3>
+        <p><span class="tag solve">Solves</span> The central telemetry service — collects metrics, logs, and events from AWS and your apps, then drives dashboards, alarms and automated responses. The default "is it healthy?" console.</p>
+        <p><span class="tag limit">Limits</span> Costs climb with high-cardinality custom metrics and large log volumes (ingestion + Logs Insights queries + retention). Standard metric granularity is 1 minute (high-resolution 1s costs more). It's monitoring, not full distributed tracing — pair with X-Ray.</p>
+        <p><span class="tag choose">Choose</span> Baseline monitoring, alerting and log aggregation for essentially every workload.</p>
+      </article>
+
+      <article class="svc">
+        <h3>CloudTrail <span class="full">API activity audit log</span></h3>
+        <p><span class="tag solve">Solves</span> An immutable audit trail of <em>who did what, when</em> across the AWS API — indispensable for security investigation, compliance and change tracking.</p>
+        <p><span class="tag limit">Limits</span> Management events are recorded by default, but high-volume data events (S3 object-level, Lambda invokes) cost extra. Delivery has minutes of latency, so it's forensic, not real-time alerting on its own. Long-term storage in S3 adds cost.</p>
+        <p><span class="tag choose">Choose</span> Always on for governance — every account should log to a secure, centralized trail for audit and incident response.</p>
+      </article>
+
+      <article class="svc">
+        <h3>CloudFormation <span class="full">infrastructure as code</span></h3>
+        <p><span class="tag solve">Solves</span> Declaratively defining your infrastructure in templates so entire stacks are provisioned, updated and torn down repeatably and reviewably — no click-ops drift between environments.</p>
+        <p><span class="tag limit">Limits</span> Templates get verbose (YAML/JSON); failed updates can trigger slow rollbacks; manual console changes cause drift. New AWS features sometimes lag in coverage. ~500 resources per stack (use nested stacks). Prefer the CDK (generates CloudFormation) or Terraform for a nicer authoring experience.</p>
+        <p><span class="tag choose">Choose</span> Any environment you need to reproduce reliably — which is all of them. Start IaC early; retrofitting is painful.</p>
+      </article>
+    </section>
+
+    <!-- ============ 8 · ANALYTICS & AI/ML ============ -->
+    <section id="analytics">
+      <h2><span class="pill">Category 8</span> &nbsp;Analytics &amp; AI/ML</h2>
+      <p>Turning raw data in S3 into queryable insight, and adding machine learning — from custom models to ready-to-use foundation models.</p>
+
+      <article class="svc">
+        <h3>Athena <span class="full">serverless SQL over S3</span></h3>
+        <p><span class="tag solve">Solves</span> Running standard SQL directly against data sitting in S3 — no servers, no loading, no ETL. Point it at your data lake and query in seconds (Presto/Trino under the hood).</p>
+        <p><span class="tag limit">Limits</span> Billed per terabyte scanned — costs explode without partitioning and columnar formats (Parquet/ORC). Latency grows with scan size; it's read-only analytics, not a low-latency application database. Complex queries inherit Trino quirks.</p>
+        <p><span class="tag choose">Choose</span> Ad-hoc exploration, log analysis and occasional queries over a data lake where standing up a warehouse would be overkill.</p>
+      </article>
+
+      <article class="svc">
+        <h3>Glue <span class="full">serverless ETL &amp; Data Catalog</span></h3>
+        <p><span class="tag solve">Solves</span> Discovering, cataloging and transforming data at scale without managing Spark clusters — crawlers infer schemas into the Data Catalog (shared by Athena/Redshift/EMR), and serverless jobs run the ETL.</p>
+        <p><span class="tag limit">Limits</span> Spark jobs have cold-start time and DPU-based cost; debugging distributed jobs has a learning curve. Crawlers have their own cost and quirks. Primarily batch (streaming ETL exists but is less mature).</p>
+        <p><span class="tag choose">Choose</span> Building the ingestion/transformation layer of a data lake and maintaining a central schema catalog for analytics services.</p>
+      </article>
+
+      <article class="svc">
+        <h3>SageMaker <span class="full">end-to-end machine learning</span></h3>
+        <p><span class="tag solve">Solves</span> The full custom-ML lifecycle in one managed platform — label, build, train, tune, deploy and monitor models — removing the heavy infrastructure lifting of doing ML from scratch.</p>
+        <p><span class="tag limit">Limits</span> Broad and complex surface area with a real learning curve. Costs add up (training jobs plus always-on inference endpoints). GPU instance quotas can block training. Overkill if you only need to call a pre-trained model API.</p>
+        <p><span class="tag choose">Choose</span> Teams training and serving <em>custom</em> models at scale who want managed training, tuning and deployment infrastructure.</p>
+      </article>
+
+      <article class="svc">
+        <h3>Bedrock <span class="full">managed foundation models</span></h3>
+        <p><span class="tag solve">Solves</span> Accessing top foundation models (Anthropic Claude, and others) through a single API — no infrastructure to run — with built-in support for RAG (Knowledge Bases), agents and guardrails.</p>
+        <p><span class="tag limit">Limits</span> Per-token pricing; model and feature availability varies by region. On-demand throughput has quotas (reserve capacity via Provisioned Throughput for scale). Less control than self-hosting, and each model has its own context-window and prompt limits.</p>
+        <p><span class="tag choose">Choose</span> Adding generative-AI features (chat, summarization, RAG, agents) without managing GPUs or model serving — the fast path to LLMs on AWS.</p>
+      </article>
+    </section>
+
+    <!-- ============ 9 · SECURITY & EDGE ============ -->
+    <section id="security">
+      <h2><span class="pill">Category 9</span> &nbsp;Security &amp; Edge</h2>
+      <p>Beyond IAM's authorization, these protect your application's users and its perimeter — a reminder that security is layered, not a single service.</p>
+
+      <article class="svc">
+        <h3>Cognito <span class="full">application user identity</span></h3>
+        <p><span class="tag solve">Solves</span> Authentication and authorization for <em>your app's end users</em> — sign-up/sign-in, User Pools, hosted UI, OAuth2/OIDC, and federation with Google/Apple/SAML — so you don't build an auth system yourself.</p>
+        <p><span class="tag limit">Limits</span> Customization and UX flexibility are limited (the hosted UI is basic); advanced flows can be fiddly. Quotas on users/requests; migrating an existing user base in has friction. It is <em>not</em> for authorizing AWS API calls — that's IAM.</p>
+        <p><span class="tag choose">Choose</span> Web/mobile apps needing managed user sign-in, social/enterprise federation, and token issuance without running your own identity provider.</p>
+      </article>
+
+      <article class="svc">
+        <h3>WAF <span class="full">Web Application Firewall</span></h3>
+        <p><span class="tag solve">Solves</span> Filtering malicious HTTP(S) traffic — SQL injection, XSS, bad bots — with rate-based rules and managed rule groups, attached to CloudFront, ALB, API Gateway or AppSync.</p>
+        <p><span class="tag limit">Limits</span> Rules need tuning to avoid false positives/negatives; managed rules still require review for your app. Priced per web ACL, per rule and per million requests. It's Layer-7 filtering — it is not by itself volumetric DDoS protection (that's Shield).</p>
+        <p><span class="tag choose">Choose</span> Public web apps/APIs needing protection against common exploits, bot mitigation and per-IP rate limiting at the edge.</p>
+      </article>
+
+      <article class="svc">
+        <h3>GuardDuty <span class="full">threat detection</span></h3>
+        <p><span class="tag solve">Solves</span> Continuous, intelligent threat detection — it analyzes CloudTrail, VPC Flow Logs and DNS logs with ML and threat intel to flag compromised credentials, crypto-mining, recon and anomalies. No agents to deploy.</p>
+        <p><span class="tag limit">Limits</span> It <em>detects</em>, it doesn't <em>prevent</em> — findings still need triage and a response workflow (wire to EventBridge/Security Hub). Priced on analyzed data volume; must be enabled per region; can produce noise needing tuning.</p>
+        <p><span class="tag choose">Choose</span> Baseline continuous security monitoring for any account handling sensitive workloads — low-effort, high-value detection.</p>
+      </article>
+    </section>
+
+    <!-- ============ CHEAT SHEET ============ -->
+    <section id="cheatsheet">
+      <h2>Look-alikes cheat sheet</h2>
+      <p>The services architects most often confuse — and the one question that separates them.</p>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>When you're torn between…</th><th>Reach for…</th><th>The deciding question</th></tr></thead>
+          <tbody>
+            <tr><td><strong>SQS vs SNS vs EventBridge</strong></td><td>SQS / SNS / EventBridge</td><td>One consumer pulls work? <strong>SQS</strong>. Broadcast to many now? <strong>SNS</strong>. Route/filter events to varied targets? <strong>EventBridge</strong>.</td></tr>
+            <tr><td><strong>SQS vs Kinesis</strong></td><td>SQS / Kinesis</td><td>Just decouple &amp; process-then-delete? <strong>SQS</strong>. Need ordering, replay, or multiple independent readers? <strong>Kinesis</strong>.</td></tr>
+            <tr><td><strong>EC2 vs ECS vs Lambda</strong></td><td>EC2 / ECS/Fargate / Lambda</td><td>Full OS control? <strong>EC2</strong>. Containers? <strong>ECS/Fargate</strong>. Short event-driven functions? <strong>Lambda</strong>.</td></tr>
+            <tr><td><strong>ECS vs EKS</strong></td><td>ECS / EKS</td><td>Want simplest AWS-native orchestration? <strong>ECS</strong>. Need the Kubernetes ecosystem / portability? <strong>EKS</strong>.</td></tr>
+            <tr><td><strong>S3 vs EBS vs EFS</strong></td><td>S3 / EBS / EFS</td><td>Objects over HTTP? <strong>S3</strong>. One instance's disk? <strong>EBS</strong>. Shared filesystem for many? <strong>EFS</strong>.</td></tr>
+            <tr><td><strong>RDS vs DynamoDB</strong></td><td>RDS/Aurora / DynamoDB</td><td>Need joins, ad-hoc queries, ACID relations? <strong>RDS/Aurora</strong>. Known access patterns at massive scale? <strong>DynamoDB</strong>.</td></tr>
+            <tr><td><strong>RDS vs Redshift</strong></td><td>RDS / Redshift</td><td>Transactional reads/writes (OLTP)? <strong>RDS</strong>. Big analytical aggregations (OLAP)? <strong>Redshift</strong>.</td></tr>
+            <tr><td><strong>IAM vs Cognito</strong></td><td>IAM / Cognito</td><td>Authorizing AWS principals/services? <strong>IAM</strong>. Authenticating <em>your app's</em> end users? <strong>Cognito</strong>.</td></tr>
+            <tr><td><strong>WAF vs Shield vs GuardDuty</strong></td><td>WAF / Shield / GuardDuty</td><td>Filter bad requests (L7)? <strong>WAF</strong>. Absorb DDoS? <strong>Shield</strong>. Detect account/threat anomalies? <strong>GuardDuty</strong>.</td></tr>
+            <tr><td><strong>SageMaker vs Bedrock</strong></td><td>SageMaker / Bedrock</td><td>Train/host your <em>own</em> models? <strong>SageMaker</strong>. Call ready-made foundation models via API? <strong>Bedrock</strong>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout"><strong>The recurring theme:</strong> AWS gives you a <em>ladder</em> of managed-ness for every need — more management means less control and (often) higher per-unit cost, in exchange for less operational burden. Good architecture is choosing the <em>lowest rung that meets the requirement</em>.</div>
+    </section>
+
+    <!-- ============ QUIZ ============ -->
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions on matching problems to services. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="c">
+          <p>1. You need to run a short, event-driven function that scales to zero when idle. Best fit?</p>
+          <label><input type="radio" name="q1" value="a"> EC2 with Auto Scaling</label>
+          <label><input type="radio" name="q1" value="b"> Elastic Beanstalk</label>
+          <label><input type="radio" name="q1" value="c"> Lambda</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>2. Multiple EC2 instances must read and write the <em>same</em> set of files concurrently. Which storage?</p>
+          <label><input type="radio" name="q2" value="a"> EBS</label>
+          <label><input type="radio" name="q2" value="b"> EFS</label>
+          <label><input type="radio" name="q2" value="c"> S3 Glacier</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>3. Your workload has well-known access patterns and needs single-digit-millisecond reads at massive scale. Which database?</p>
+          <label><input type="radio" name="q3" value="a"> DynamoDB</label>
+          <label><input type="radio" name="q3" value="b"> Redshift</label>
+          <label><input type="radio" name="q3" value="c"> RDS for Oracle</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>4. One event must fan out to several independent services, each with a durable queue that can retry. Best pattern?</p>
+          <label><input type="radio" name="q4" value="a"> A single SQS queue</label>
+          <label><input type="radio" name="q4" value="b"> Kinesis Data Streams</label>
+          <label><input type="radio" name="q4" value="c"> SNS fanning out to multiple SQS queues</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>5. You want to authenticate your mobile app's end users with social and email sign-in. Which service?</p>
+          <label><input type="radio" name="q5" value="a"> IAM users</label>
+          <label><input type="radio" name="q5" value="b"> Cognito User Pools</label>
+          <label><input type="radio" name="q5" value="c"> Secrets Manager</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. What's the key limitation to design around when choosing DynamoDB?</p>
+          <label><input type="radio" name="q6" value="a"> It can't store more than 1 GB total</label>
+          <label><input type="radio" name="q6" value="b"> You must model the table around access patterns up front — no ad-hoc joins</label>
+          <label><input type="radio" name="q6" value="c"> It only works inside a single Availability Zone</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>📘 AWS Well-Architected</h4><p><a href="https://aws.amazon.com/architecture/well-architected/" target="_blank" rel="noopener">The five pillars</a> — the framework for evaluating these choices against cost, reliability, security, performance and operations.</p></div>
+        <div class="card"><h4>🧭 Service quotas</h4><p><a href="https://docs.aws.amazon.com/general/latest/gr/aws_service_limits.html" target="_blank" rel="noopener">The full default-limits reference</a> — verify the numbers above for your region before you design around them.</p></div>
+        <div class="card"><h4>🏛️ Architecture Center</h4><p><a href="https://aws.amazon.com/architecture/" target="_blank" rel="noopener">Reference architectures</a> that combine these services into proven, end-to-end patterns.</p></div>
+        <div class="card"><h4>🤖 LLM apps tutorial</h4><p><a href="index.html">The companion guide</a> — building LLM applications with LangChain, LangGraph and vector databases (pairs with Bedrock).</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  An architect's field guide to core AWS services — problems, limits, and trade-offs. Quotas are defaults; confirm current values in the AWS docs. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  // Theme toggle (persisted)
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) {
+    root.setAttribute("data-theme", t);
+    tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 ";
+    tLabel.textContent = t === "dark" ? "Light" : "Dark";
+  }
+  var saved = null;
+  try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () {
+    var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    applyTheme(next);
+    try { localStorage.setItem("theme", next); } catch (e) {}
+  });
+
+  // Mobile menu
+  var menuBtn = document.getElementById("menuToggle");
+  var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () {
+    var open = side.classList.toggle("open");
+    menuBtn.setAttribute("aria-expanded", String(open));
+  });
+  side.addEventListener("click", function (e) {
+    if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); }
+  });
+
+  // Reading progress
+  var bar = document.getElementById("progress");
+  function onScroll() {
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%";
+  }
+  document.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
+  // Active section highlighting
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a"));
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (en.isIntersecting) {
+        links.forEach(function (a) { a.classList.remove("active"); });
+        if (map[en.target.id]) map[en.target.id].classList.add("active");
+      }
+    });
+  }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+
+  // Quiz
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q");
+    var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      var correctLabel = q.querySelector('input[value="' + answer + '"]').parentNode;
+      correctLabel.classList.add("correct");
+      if (chosen) {
+        if (chosen.value === answer) { score++; }
+        else { chosen.parentNode.classList.add("wrong"); }
+      }
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length +
+      (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>

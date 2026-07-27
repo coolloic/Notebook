@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="An architect's guide to Agent Development Kits (ADKs) — the problem they solve, and a Problem/Solution/Limits comparison of Google ADK, AWS Strands + Bedrock AgentCore, and LangGraph.">
+<title>Agent Development Kits — Google ADK, AWS Strands &amp; LangGraph Compared</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f5f7fa;
+    --bg-code: #0f2b2b;      /* deep teal ink */
+    --text: #1a2130;
+    --text-soft: #55617a;
+    --border: #e2e8f0;
+    --accent: #0f766e;       /* teal-700 (AA on white) */
+    --ink: #334155;          /* slate */
+    --solve: #15803d;        /* green — the problem it solves */
+    --limit: #b45309;        /* amber — the limitations */
+    --choose: #1e40af;       /* blue — when to choose it */
+    --solve-bg: #dcfce7;
+    --limit-bg: #fef3c7;
+    --choose-bg: #dbeafe;
+    --radius: 12px;
+    --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #0f172a;
+    --bg-soft: #17233d;
+    --bg-code: #06141a;
+    --text: #e6ecf7;
+    --text-soft: #9fb0cc;
+    --border: #263450;
+    --accent: #5eead4;
+    --ink: #cbd5e1;
+    --solve: #86efac;
+    --limit: #fcd34d;
+    --choose: #93c5fd;
+    --solve-bg: #14351f;
+    --limit-bg: #3a2a0c;
+    --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: var(--font);
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  .skip-link {
+    position: absolute; left: -999px; top: 0;
+    background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100;
+  }
+  .skip-link:focus { left: 0; }
+
+  /* Progress bar */
+  #progress {
+    position: fixed; top: 0; left: 0; height: 4px; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--ink));
+    z-index: 60; transition: width .1s linear;
+  }
+
+  /* Header */
+  header.top {
+    position: sticky; top: 0; z-index: 50;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 1rem;
+    padding: .6rem 1rem;
+  }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; }
+  header.top .brand span { color: var(--accent); }
+  header.top .spacer { flex: 1; }
+  .btn {
+    font: inherit; cursor: pointer; border: 1px solid var(--border);
+    background: var(--bg-soft); color: var(--text);
+    border-radius: 999px; padding: .5rem .9rem; min-height: 44px;
+    display: inline-flex; align-items: center; gap: .4rem;
+  }
+  .btn:hover { border-color: var(--accent); }
+  #menuToggle { display: none; }
+
+  /* Layout */
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side {
+    position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px);
+    overflow-y: auto; padding: 1.25rem 0; font-size: .93rem;
+  }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a {
+    display: block; padding: .45rem .75rem; border-radius: 8px;
+    color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent;
+  }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); }
+  nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.15rem; margin: 1.75rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+
+  /* Cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; }
+  .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .card .count { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+
+  /* Callout */
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; }
+  .callout strong { color: var(--accent); }
+
+  /* Steps flow */
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 1.25rem 0; }
+  .flow .node { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: .5rem .8rem; font-size: .88rem; font-weight: 600; }
+  .flow .arrow { color: var(--text-soft); font-weight: 700; }
+
+  /* Service / framework block */
+  .svc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-soft); padding: 1rem 1.2rem; margin: 1.1rem 0; }
+  .svc h3 { margin: 0 0 .6rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
+  .svc h3 .full { font-size: .82rem; font-weight: 500; color: var(--text-soft); font-family: var(--mono); }
+  .svc p { margin: .4rem 0; font-size: .95rem; }
+  .tag { display: inline-block; min-width: 5.6rem; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .12rem .5rem; border-radius: 6px; margin-right: .5rem; text-align: center; }
+  .tag.solve  { background: var(--solve-bg);  color: var(--solve); }
+  .tag.limit  { background: var(--limit-bg);  color: var(--limit); }
+  .tag.choose { background: var(--choose-bg); color: var(--choose); }
+  .tag.core   { background: var(--bg); color: var(--ink); border: 1px solid var(--border); }
+
+  /* Code */
+  .code-wrap { margin: 1.1rem 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  pre { margin: 0; background: var(--bg-code); color: #e6ecf7; padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .86rem; line-height: 1.6; }
+  pre code { font-family: inherit; }
+  .code-head { display: flex; align-items: center; justify-content: space-between; background: var(--bg-code); padding: .35rem .6rem .35rem 1rem; }
+  .code-head .label { color: #94a3b8; font-size: .78rem; font-family: var(--mono); }
+  .copy { font: inherit; cursor: pointer; background: #1f4d4d; color: #e6ecf7; border: none; border-radius: 6px; padding: .35rem .7rem; min-height: 36px; font-size: .8rem; }
+  .copy:hover { background: #2a6a6a; }
+  .cmt { color: #7c9a9a; }
+  code.inline { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; }
+
+  /* Table */
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-soft); }
+
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); }
+  details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+
+  /* Quiz */
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; }
+  .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); }
+  .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; }
+  [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; }
+  #score { font-weight: 700; margin-left: 1rem; }
+
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; }
+    #menuToggle { display: inline-flex; }
+    main { padding-top: .5rem; }
+    .tag { min-width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <div class="brand">Agent <span>Development Kits</span></div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#blocks">1 · What an ADK gives you</a></li>
+      <li><a href="#google-adk">2 · Google ADK</a></li>
+      <li><a href="#strands">3 · AWS Strands Agents</a></li>
+      <li><a href="#agentcore">4 · Bedrock AgentCore</a></li>
+      <li><a href="#langgraph">5 · LangGraph baseline</a></li>
+      <li><a href="#cheatsheet">Comparison cheat sheet</a></li>
+      <li><a href="#choosing">Choosing guide</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>Agent Development Kits — from a demo loop to a production agent</h1>
+      <p class="lede">A raw model plus a <code class="inline">while</code> loop gets you a demo. A <strong>production agent</strong> needs tools, multi-agent delegation, memory, streaming, guardrails, evaluation, observability and deployment. An <strong>Agent Development Kit (ADK)</strong> packages those so you don't rebuild them each time.</p>
+
+      <div class="callout">
+        <strong>What this compares.</strong> "ADK" most often means <strong>Google's Agent Development Kit</strong>, but it's really a <em>category</em>. This guide frames the category, then puts four options side by side in a Problem → Solution → Limits format:
+        <strong>Google ADK</strong>, AWS's <strong>Strands Agents SDK</strong> and <strong>Bedrock AgentCore</strong>, and the <strong>LangGraph</strong> approach this repo's <a href="index.html">LLM tutorial</a> already teaches.
+      </div>
+
+      <div class="cards">
+        <div class="card"><span class="count">Structured framework</span><h4>Google ADK</h4><p>Batteries-included agents with workflow + LLM orchestration; deploys to Vertex AI.</p></div>
+        <div class="card"><span class="count">Lightweight SDK</span><h4>AWS Strands</h4><p>Model-driven agent loop in a few lines; model-agnostic, Bedrock-default.</p></div>
+        <div class="card"><span class="count">Managed runtime</span><h4>Bedrock AgentCore</h4><p>Not a framework — hosts <em>any</em> framework's agent with memory, identity, tools.</p></div>
+        <div class="card"><span class="count">Low-level graph</span><h4>LangGraph</h4><p>Explicit nodes/edges/state — maximum control, more wiring.</p></div>
+      </div>
+
+      <p>They aren't mutually exclusive: you might <em>build</em> with Google ADK or Strands and <em>deploy</em> on AgentCore, or drop to LangGraph when you need control an opinionated framework won't give you.</p>
+    </section>
+
+    <!-- ============ 1 · BUILDING BLOCKS ============ -->
+    <section id="blocks">
+      <h2><span class="pill">The category</span> &nbsp;What an ADK gives you</h2>
+      <p>Every ADK exists to turn the same eight production concerns into library features instead of bespoke code. When you evaluate one, you're really asking how well it handles each of these:</p>
+
+      <div class="cards">
+        <div class="card"><h4>🔁 Reasoning loop</h4><p>The reason→act→observe cycle that lets an agent call tools repeatedly until it can answer.</p></div>
+        <div class="card"><h4>🛠️ Tools</h4><p>Turning functions, APIs, and MCP servers into things the model can invoke — safely and with typed I/O.</p></div>
+        <div class="card"><h4>🧩 Orchestration</h4><p>Coordinating multiple agents: deterministic (sequential/parallel/loop) vs. model-driven delegation.</p></div>
+        <div class="card"><h4>🧠 Memory &amp; sessions</h4><p>Short-term state within a run and long-term memory across conversations.</p></div>
+        <div class="card"><h4>📡 Streaming</h4><p>Token, event, and (increasingly) bidirectional audio/video streaming to the client.</p></div>
+        <div class="card"><h4>🛡️ Guardrails</h4><p>Input/output validation, policy checks, and human-in-the-loop approval gates.</p></div>
+        <div class="card"><h4>📊 Evaluation</h4><p>Test agents against datasets — trajectory <em>and</em> final-answer scoring — to catch regressions.</p></div>
+        <div class="card"><h4>🚀 Deploy &amp; observe</h4><p>Getting the agent to a scalable runtime with tracing, logging and session isolation.</p></div>
+      </div>
+
+      <div class="callout"><strong>The axis that matters most:</strong> <em>who decides the route</em> — your code (deterministic workflow agents) or the model (autonomous delegation). Frameworks differ mostly in how much of each they make easy. It's the same predetermined-vs-AI-decides split from the <a href="index.html#experiments">agentic patterns</a> section.</div>
+    </section>
+
+    <!-- ============ 2 · GOOGLE ADK ============ -->
+    <section id="google-adk">
+      <h2><span class="pill">Option 1</span> &nbsp;Google ADK</h2>
+      <article class="svc">
+        <h3>Google Agent Development Kit <span class="full">google-adk · Python &amp; Java · open source</span></h3>
+        <p><span class="tag solve">Solves</span> Building and deploying agents with a <strong>batteries-included, code-first framework</strong>. It gives you both LLM-driven agents and deterministic <em>workflow agents</em> (Sequential, Parallel, Loop), multi-agent hierarchies, a rich tool ecosystem (functions, OpenAPI, MCP, even LangChain/CrewAI tools), sessions/state/memory, bidirectional streaming, a built-in eval framework, and a local dev UI (<code class="inline">adk web</code>).</p>
+        <p><span class="tag core">Primitives</span> <code class="inline">Agent</code>/<code class="inline">LlmAgent</code>, <code class="inline">SequentialAgent</code>·<code class="inline">ParallelAgent</code>·<code class="inline">LoopAgent</code>, sub-agents, <code class="inline">Runner</code>, <code class="inline">Session</code>/<code class="inline">State</code>/<code class="inline">Memory</code>, tools, callbacks.</p>
+        <p><span class="tag limit">Limits</span> Young and fast-moving — the API still has breaking changes between versions. Model-agnostic in principle (via LiteLLM) but the smoothest path is Gemini + Vertex AI, so you lean into Google's ecosystem. Smaller community and less third-party content than LangChain. Documentation is still maturing.</p>
+        <p><span class="tag choose">Choose</span> You want a structured, opinionated framework with orchestration and deployment built in — especially if you're on Google Cloud / Gemini or want first-class deterministic multi-agent workflows.</p>
+      </article>
+
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">weather_agent.py</span><button class="copy">Copy</button></div>
+<pre><code><span class="cmt"># pip install google-adk</span>
+from google.adk.agents import Agent
+
+def get_weather(city: str) -&gt; dict:
+    """Return the current weather for a city."""
+    return {"status": "success", "report": f"Sunny, 24°C in {city}."}
+
+root_agent = Agent(
+    name="weather_agent",
+    model="gemini-2.0-flash",                     <span class="cmt"># or Claude/GPT via LiteLLM</span>
+    instruction="Answer weather questions with get_weather.",
+    tools=[get_weather],                          <span class="cmt"># a plain function becomes a tool</span>
+)
+<span class="cmt"># run it locally in the dev UI:  adk web</span></code></pre>
+      </div>
+
+      <details>
+        <summary>Deterministic orchestration — the part LangGraph makes you wire by hand</summary>
+        <p>Workflow agents give you predictable control flow without writing a graph. A <code class="inline">SequentialAgent</code> runs sub-agents in order; <code class="inline">ParallelAgent</code> fans out; <code class="inline">LoopAgent</code> repeats until an exit condition — while <code class="inline">LlmAgent</code> sub-agents still delegate autonomously where you want the model to decide.</p>
+<pre><code>from google.adk.agents import SequentialAgent
+
+pipeline = SequentialAgent(
+    name="research_pipeline",
+    sub_agents=[researcher, summarizer, critic],  <span class="cmt"># deterministic order</span>
+)</code></pre>
+      </details>
+    </section>
+
+    <!-- ============ 3 · STRANDS ============ -->
+    <section id="strands">
+      <h2><span class="pill">Option 2</span> &nbsp;AWS Strands Agents SDK</h2>
+      <article class="svc">
+        <h3>Strands Agents <span class="full">strands-agents · Python · open source</span></h3>
+        <p><span class="tag solve">Solves</span> Building an agent in <strong>a handful of lines</strong> with a <em>model-driven</em> philosophy: you give it a model, a prompt, and tools, and let the model plan-and-act in a loop — instead of you hand-coding the orchestration graph. Tools are just decorated Python functions or MCP servers.</p>
+        <p><span class="tag core">Primitives</span> <code class="inline">Agent(model, tools, system_prompt)</code>, the <code class="inline">@tool</code> decorator, model providers (Bedrock, Anthropic, OpenAI, Ollama, LiteLLM), MCP integration, session/state.</p>
+        <p><span class="tag limit">Limits</span> New (open-sourced 2025) with a still-growing ecosystem. Model-driven simplicity means <em>less</em> explicit structure than Google ADK's workflow agents — great for autonomy, less so when you need tightly deterministic multi-step control. Defaults and best integration lean toward AWS Bedrock.</p>
+        <p><span class="tag choose">Choose</span> You want the fastest path from idea to working agent, prefer autonomous model-driven behavior over rigid graphs, and are comfortable in (or targeting) the AWS/Bedrock ecosystem.</p>
+      </article>
+
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">agent.py</span><button class="copy">Copy</button></div>
+<pre><code><span class="cmt"># pip install strands-agents strands-agents-tools</span>
+from strands import Agent, tool
+from strands_tools import calculator
+
+@tool
+def word_count(text: str) -&gt; int:
+    """Count the words in a piece of text."""
+    return len(text.split())
+
+agent = Agent(tools=[calculator, word_count])     <span class="cmt"># defaults to a Bedrock model</span>
+agent("What is 1234 * 5678, and how many words are in this sentence?")
+<span class="cmt"># the model loops: calls calculator, calls word_count, then answers</span></code></pre>
+      </div>
+    </section>
+
+    <!-- ============ 4 · AGENTCORE ============ -->
+    <section id="agentcore">
+      <h2><span class="pill">Option 3</span> &nbsp;Amazon Bedrock AgentCore</h2>
+      <article class="svc">
+        <h3>Bedrock AgentCore <span class="full">managed agent runtime &amp; services · AWS</span></h3>
+        <p><span class="tag solve">Solves</span> The <em>other half</em> of the problem: not authoring the agent, but <strong>running it in production at scale</strong>. AgentCore is <strong>framework-agnostic infrastructure</strong> — take an agent built with Strands, LangGraph, CrewAI <em>or</em> Google ADK and get serverless hosting with session isolation, plus managed Memory, Identity, a Gateway that turns APIs/Lambdas into MCP tools, and sandboxed Browser &amp; Code-Interpreter tools, all with built-in observability.</p>
+        <p><span class="tag core">Primitives</span> Runtime (serverless, session-isolated, long-running), Memory, Gateway (API→MCP), Identity, Browser tool, Code Interpreter, Observability.</p>
+        <p><span class="tag limit">Limits</span> AWS-only and newer (launched in preview in 2025) — expect evolving APIs and quotas. It's a managed <em>platform</em>, so you pay for the convenience and accept its runtime constraints. It doesn't design your agent's logic — you still pick a framework for that.</p>
+        <p><span class="tag choose">Choose</span> You've built an agent (in any framework) and need production-grade hosting, memory, tool gateways and identity on AWS without assembling that plumbing yourself.</p>
+      </article>
+
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">deploy.py</span><button class="copy">Copy</button></div>
+<pre><code><span class="cmt"># Wrap ANY framework's agent for managed, serverless hosting.</span>
+from bedrock_agentcore.runtime import BedrockAgentCoreApp
+
+app = BedrockAgentCoreApp()
+
+@app.entrypoint
+def invoke(payload):
+    <span class="cmt"># `agent` could be a Strands, LangGraph, CrewAI, or Google ADK agent</span>
+    return agent(payload["prompt"])
+
+app.run()   <span class="cmt"># AgentCore Runtime handles scaling + session isolation</span></code></pre>
+      </div>
+
+      <div class="callout"><strong>Build vs. run.</strong> Google ADK and Strands are <em>authoring</em> frameworks; AgentCore is a <em>runtime</em>. They compose — a common shape is "author in Strands or ADK, deploy on AgentCore."</div>
+    </section>
+
+    <!-- ============ 5 · LANGGRAPH ============ -->
+    <section id="langgraph">
+      <h2><span class="pill">Baseline</span> &nbsp;LangGraph — the low-level comparison</h2>
+      <article class="svc">
+        <h3>LangGraph <span class="full">langgraph · Python &amp; JS · already used in this repo</span></h3>
+        <p><span class="tag solve">Solves</span> Modeling an agent as an explicit <strong>graph</strong> — nodes (steps), edges (control flow, including cycles), and a shared state object. You get maximum control: custom branching, loops, checkpointing, and human-in-the-loop pauses, with no opinions imposed.</p>
+        <p><span class="tag core">Primitives</span> <code class="inline">StateGraph</code>, nodes, conditional edges, <code class="inline">ToolNode</code>, checkpointers (durable/resumable state).</p>
+        <p><span class="tag limit">Limits</span> Lower-level than Google ADK or Strands — you assemble more yourself (define the state schema, wire every edge), so simple agents need more boilerplate and the learning curve is steeper. It's an authoring library, not a deployment platform (pair with LangGraph Platform or AgentCore).</p>
+        <p><span class="tag choose">Choose</span> You need precise, custom control over complex or unusual agent flows that an opinionated framework can't express cleanly — and you value framework neutrality.</p>
+      </article>
+
+      <div class="callout"><strong>See it in action.</strong> The <a href="index.html#langgraph">LLM apps tutorial</a> builds a full LangGraph <code class="inline">agent ⇄ tools</code> loop and a support-agent capstone — a concrete reference point for "how much do I have to wire by hand?" versus the kits above.</div>
+    </section>
+
+    <!-- ============ CHEAT SHEET ============ -->
+    <section id="cheatsheet">
+      <h2>Comparison cheat sheet</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Kit</th><th>What it is</th><th>Style</th><th>Model / cloud</th><th>Watch out for</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Google ADK</strong></td><td>Structured authoring framework</td><td>Workflow agents + LLM delegation</td><td>Model-agnostic, Gemini/Vertex-optimized</td><td>Young API; best on Google stack</td></tr>
+            <tr><td><strong>AWS Strands</strong></td><td>Lightweight authoring SDK</td><td>Model-driven agentic loop</td><td>Model-agnostic, Bedrock-default</td><td>New; thin higher-level structure</td></tr>
+            <tr><td><strong>Bedrock AgentCore</strong></td><td><em>Runtime</em>, not a framework</td><td>Hosts any framework's agent</td><td>AWS / Bedrock</td><td>AWS-only; preview; platform cost</td></tr>
+            <tr><td><strong>LangGraph</strong></td><td>Low-level authoring library</td><td>Explicit graph (nodes/edges/state)</td><td>Framework-neutral</td><td>More boilerplate; steeper curve</td></tr>
+            <tr><td><strong>CrewAI</strong></td><td>Opinionated authoring framework</td><td>Role-based "crews"</td><td>Framework-neutral</td><td>Opinionated; less fine control</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Notice two are <strong>authoring</strong> tools (Google ADK, Strands, LangGraph, CrewAI) and one is a <strong>runtime</strong> (AgentCore). The first question isn't "which is best" — it's "am I choosing how to <em>build</em> the agent, or how to <em>run</em> it?"</p>
+    </section>
+
+    <!-- ============ CHOOSING ============ -->
+    <section id="choosing">
+      <h2>Choosing guide</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>If you…</th><th>Reach for…</th></tr></thead>
+          <tbody>
+            <tr><td>Are on Google Cloud / Gemini and want structure out of the box</td><td><strong>Google ADK</strong></td></tr>
+            <tr><td>Want the fewest lines to a working, autonomous agent on AWS</td><td><strong>Strands Agents</strong></td></tr>
+            <tr><td>Need deterministic multi-step pipelines <em>and</em> LLM delegation together</td><td><strong>Google ADK</strong> (workflow agents)</td></tr>
+            <tr><td>Need precise control over a complex, custom, cyclical flow</td><td><strong>LangGraph</strong></td></tr>
+            <tr><td>Have an agent (any framework) and need to run it at scale on AWS</td><td><strong>Bedrock AgentCore</strong></td></tr>
+            <tr><td>Want quick role-based multi-agent collaboration</td><td><strong>CrewAI</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><strong>Rule of thumb:</strong> start with the <em>most opinionated kit that still fits your problem</em> (ADK or Strands) for speed, and only drop to LangGraph when you hit a wall its abstractions can't express. Keep authoring and runtime decisions separate — you can host any of them on AgentCore.</div>
+    </section>
+
+    <!-- ============ QUIZ ============ -->
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions on the ADK landscape. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="c">
+          <p>1. What core problem does an Agent Development Kit solve?</p>
+          <label><input type="radio" name="q1" value="a"> It replaces the language model with a cheaper one</label>
+          <label><input type="radio" name="q1" value="b"> It stores vectors for retrieval</label>
+          <label><input type="radio" name="q1" value="c"> It packages production concerns — tools, memory, orchestration, eval, deployment — beyond a raw model + loop</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>2. Which of these is <em>not</em> an authoring framework but a managed runtime that can host agents from any framework?</p>
+          <label><input type="radio" name="q2" value="a"> Google ADK</label>
+          <label><input type="radio" name="q2" value="b"> Bedrock AgentCore</label>
+          <label><input type="radio" name="q2" value="c"> LangGraph</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>3. Google ADK's <em>deterministic</em> orchestration is expressed with…</p>
+          <label><input type="radio" name="q3" value="a"> Workflow agents (Sequential / Parallel / Loop)</label>
+          <label><input type="radio" name="q3" value="b"> A single while-loop you write yourself</label>
+          <label><input type="radio" name="q3" value="c"> CloudFormation templates</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>4. You need maximum control over a complex, cyclical custom flow with explicit shared state. Best fit?</p>
+          <label><input type="radio" name="q4" value="a"> Strands Agents</label>
+          <label><input type="radio" name="q4" value="b"> Bedrock AgentCore</label>
+          <label><input type="radio" name="q4" value="c"> LangGraph</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>5. Which kit emphasizes a <em>model-driven</em> loop and the fewest lines to a working agent?</p>
+          <label><input type="radio" name="q5" value="a"> LangGraph</label>
+          <label><input type="radio" name="q5" value="b"> AWS Strands Agents</label>
+          <label><input type="radio" name="q5" value="c"> CrewAI</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. A limitation shared by Google ADK, Strands and AgentCore right now is…</p>
+          <label><input type="radio" name="q6" value="a"> They can't call external tools</label>
+          <label><input type="radio" name="q6" value="b"> They're young and fast-moving, with evolving APIs and smaller ecosystems</label>
+          <label><input type="radio" name="q6" value="c"> They only work with a single hard-coded model</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>🧭 Google ADK docs</h4><p><a href="https://google.github.io/adk-docs/" target="_blank" rel="noopener">Official documentation</a> — quickstarts, agents, tools, and deployment to Vertex AI.</p></div>
+        <div class="card"><h4>🟠 Strands Agents</h4><p><a href="https://strandsagents.com/" target="_blank" rel="noopener">AWS Strands SDK</a> — the model-driven, few-lines agent framework.</p></div>
+        <div class="card"><h4>🏗️ Bedrock AgentCore</h4><p><a href="https://aws.amazon.com/bedrock/agentcore/" target="_blank" rel="noopener">AgentCore</a> — managed runtime, memory, gateway and identity for agents.</p></div>
+        <div class="card"><h4>🤖 LLM apps tutorial</h4><p><a href="index.html">The companion guide</a> — build the LangGraph agent this page uses as a baseline.</p></div>
+        <div class="card"><h4>☁️ AWS services guide</h4><p><a href="aws-services.html">The AWS field guide</a> — where Bedrock, Lambda and the rest fit.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  An architect's comparison of Agent Development Kits — Google ADK, AWS Strands + Bedrock AgentCore, and LangGraph. These frameworks move fast; confirm APIs against the current official docs. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  // Theme toggle (persisted)
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) {
+    root.setAttribute("data-theme", t);
+    tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 ";
+    tLabel.textContent = t === "dark" ? "Light" : "Dark";
+  }
+  var saved = null;
+  try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () {
+    var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    applyTheme(next);
+    try { localStorage.setItem("theme", next); } catch (e) {}
+  });
+
+  // Mobile menu
+  var menuBtn = document.getElementById("menuToggle");
+  var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () {
+    var open = side.classList.toggle("open");
+    menuBtn.setAttribute("aria-expanded", String(open));
+  });
+  side.addEventListener("click", function (e) {
+    if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); }
+  });
+
+  // Reading progress
+  var bar = document.getElementById("progress");
+  function onScroll() {
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%";
+  }
+  document.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
+  // Active section highlighting
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a"));
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (en.isIntersecting) {
+        links.forEach(function (a) { a.classList.remove("active"); });
+        if (map[en.target.id]) map[en.target.id].classList.add("active");
+      }
+    });
+  }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+
+  // Copy buttons — copy the <pre> in the same code-wrap
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var wrap = btn.closest(".code-wrap");
+      var pre = wrap.querySelector("pre");
+      var text = pre ? pre.innerText : "";
+      var done = function () { var o = btn.textContent; btn.textContent = "Copied!"; setTimeout(function () { btn.textContent = o; }, 1400); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, done);
+      } else {
+        var ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); } catch (e) {}
+        document.body.removeChild(ta); done();
+      }
+    });
+  });
+
+  // Quiz
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q");
+    var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      var correctLabel = q.querySelector('input[value="' + answer + '"]').parentNode;
+      correctLabel.classList.add("correct");
+      if (chosen) {
+        if (chosen.value === answer) { score++; }
+        else { chosen.parentNode.classList.add("wrong"); }
+      }
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length +
+      (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>
