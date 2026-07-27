@@ -139,6 +139,9 @@
   .code-head .label { color: #94a3b8; font-size: .78rem; font-family: var(--mono); }
   .copy { font: inherit; cursor: pointer; background: #334155; color: #e6ecf7; border: none; border-radius: 6px; padding: .35rem .7rem; min-height: 36px; font-size: .8rem; }
   .copy:hover { background: #475569; }
+  .code-actions { display: inline-flex; gap: .4rem; }
+  .copyall { font: inherit; cursor: pointer; background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: .35rem .7rem; min-height: 36px; font-size: .8rem; }
+  .copyall:hover { filter: brightness(1.12); }
   .cmt { color: #7c8aa5; }
 
   /* Table */
@@ -606,7 +609,7 @@ python agent.py           <span class="cmt"># grounded answer, then an escalatio
           <button class="tab" role="tab" aria-selected="false" data-target="cap-src-4">agent.py</button>
           <button class="tab" role="tab" aria-selected="false" data-target="cap-src-5">data/knowledge_base.md</button>
         </div>
-        <div class="code-head"><span class="label">examples/support-agent/</span><button class="copy">Copy</button></div>
+        <div class="code-head"><span class="label">examples/support-agent/</span><span class="code-actions"><button class="copyall">Copy all files</button><button class="copy">Copy file</button></span></div>
 <pre id="cap-src-0" role="tabpanel"><code>python-dotenv
 langchain
 langchain-core
@@ -942,6 +945,31 @@ if __name__ == "__main__":
       var pre = wrap.querySelector("pre:not([hidden])");
       var text = pre ? pre.innerText : "";
       var done = function () { var o = btn.textContent; btn.textContent = "Copied!"; setTimeout(function () { btn.textContent = o; }, 1400); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, done);
+      } else {
+        var ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); } catch (e) {}
+        document.body.removeChild(ta); done();
+      }
+    });
+  });
+
+  // Copy-all — bundle every file in the code-wrap with a FILE: header.
+  // Use textContent (not innerText) so hidden tab panels are included.
+  document.querySelectorAll(".copyall").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var wrap = btn.closest(".code-wrap");
+      var nameById = {};
+      wrap.querySelectorAll(".tab").forEach(function (t) { nameById[t.dataset.target] = t.textContent.trim(); });
+      var parts = [];
+      wrap.querySelectorAll("pre").forEach(function (pre) {
+        var name = nameById[pre.id] || pre.id;
+        parts.push("##### FILE: " + name + " #####\n" + pre.textContent);
+      });
+      var text = parts.join("\n\n");
+      var done = function () { var o = btn.textContent; btn.textContent = "Copied all!"; setTimeout(function () { btn.textContent = o; }, 1500); };
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(done, done);
       } else {
