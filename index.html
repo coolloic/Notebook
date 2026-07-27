@@ -595,6 +595,213 @@ python ingest.py          <span class="cmt"># load KB -&gt; embed -&gt; store in
 python agent.py           <span class="cmt"># grounded answer, then an escalation</span></code></pre>
       </div>
 
+      <h3>Complete source — copy each file</h3>
+      <p>The whole example, ready to paste into a new <code>support-agent/</code> folder. Switch tabs and hit <em>Copy</em> per file.</p>
+      <div class="code-wrap" data-tabs>
+        <div class="tabs" role="tablist" aria-label="Support agent source files">
+          <button class="tab" role="tab" aria-selected="true" data-target="cap-src-0">requirements.txt</button>
+          <button class="tab" role="tab" aria-selected="false" data-target="cap-src-1">.env.example</button>
+          <button class="tab" role="tab" aria-selected="false" data-target="cap-src-2">config.py</button>
+          <button class="tab" role="tab" aria-selected="false" data-target="cap-src-3">ingest.py</button>
+          <button class="tab" role="tab" aria-selected="false" data-target="cap-src-4">agent.py</button>
+          <button class="tab" role="tab" aria-selected="false" data-target="cap-src-5">data/knowledge_base.md</button>
+        </div>
+        <div class="code-head"><span class="label">examples/support-agent/</span><button class="copy">Copy</button></div>
+<pre id="cap-src-0" role="tabpanel"><code>python-dotenv
+langchain
+langchain-core
+langchain-openai
+langchain-chroma
+langchain-text-splitters
+chromadb
+langgraph
+langsmith</code></pre>
+<pre id="cap-src-1" role="tabpanel" hidden><code># Required — OpenAI powers both the chat model and the embeddings
+OPENAI_API_KEY=sk-...
+
+# Optional — enable LangSmith tracing to see every step of the agent loop
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=your-langsmith-key
+
+# Optional overrides (defaults shown)
+CHAT_MODEL=gpt-4o
+EMBED_MODEL=text-embedding-3-small
+CHROMA_DIR=./chroma_db</code></pre>
+<pre id="cap-src-2" role="tabpanel" hidden><code>"""Shared settings for the support agent (overridable via environment variables)."""
+import os
+
+# Where the Chroma vector store persists on disk.
+CHROMA_DIR = os.getenv("CHROMA_DIR", "./chroma_db")
+COLLECTION = os.getenv("CHROMA_COLLECTION", "support_kb")
+
+# OpenAI models.
+CHAT_MODEL = os.getenv("CHAT_MODEL", "gpt-4o")
+EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-3-small")
+
+# Source knowledge base (relative to this folder).
+KB_PATH = os.getenv("KB_PATH", "data/knowledge_base.md")</code></pre>
+<pre id="cap-src-3" role="tabpanel" hidden><code>"""Ingest step — load the knowledge base, chunk it, embed with OpenAI, and store
+the vectors in a persistent Chroma database.
+
+Run this ONCE before the agent (re-run to rebuild the index):
+
+    python ingest.py
+"""
+from pathlib import Path
+
+from dotenv import load_dotenv
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_openai import OpenAIEmbeddings
+from langchain_chroma import Chroma
+
+from config import CHROMA_DIR, COLLECTION, EMBED_MODEL, KB_PATH
+
+load_dotenv()  # OPENAI_API_KEY from .env
+
+
+def build_index() -&gt; int:
+    text = Path(KB_PATH).read_text(encoding="utf-8")
+
+    # Split into overlapping chunks so retrieval returns focused, self-contained
+    # passages while preserving context across boundaries.
+    splitter = RecursiveCharacterTextSplitter(chunk_size=600, chunk_overlap=80)
+    chunks = splitter.create_documents([text], metadatas=[{"source": KB_PATH}])
+
+    # Embed with OpenAI and persist to Chroma on disk.
+    store = Chroma(
+        collection_name=COLLECTION,
+        embedding_function=OpenAIEmbeddings(model=EMBED_MODEL),
+        persist_directory=CHROMA_DIR,
+    )
+    store.add_documents(chunks)
+    return len(chunks)
+
+
+if __name__ == "__main__":
+    n = build_index()
+    print(f"Ingested {n} chunks into Chroma collection '{COLLECTION}' at {CHROMA_DIR}")</code></pre>
+<pre id="cap-src-4" role="tabpanel" hidden><code>"""Customer-support agent.
+
+Ties together the whole stack:
+  - LangGraph  — the stateful agent loop (agent ⇄ tools) with conversation memory
+  - OpenAI     — gpt-4o for reasoning, text-embedding-3-small for retrieval
+  - Chroma     — the persistent vector database holding the knowledge base
+  - RAG        — the `search_kb` tool retrieves grounding context on demand
+  - LangSmith  — automatic tracing when LANGSMITH_TRACING=true
+
+Run `python ingest.py` first to build the vector store, then `python agent.py`.
+"""
+from typing import Annotated, TypedDict
+
+from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_chroma import Chroma
+from langchain_core.tools import tool
+from langchain_core.messages import HumanMessage, SystemMessage
+from langgraph.graph import StateGraph, START
+from langgraph.graph.message import add_messages
+from langgraph.prebuilt import ToolNode, tools_condition
+from langgraph.checkpoint.memory import MemorySaver
+
+from config import CHROMA_DIR, COLLECTION, CHAT_MODEL, EMBED_MODEL
+
+load_dotenv()  # OPENAI_API_KEY, LANGSMITH_TRACING, LANGSMITH_API_KEY
+
+# Connect to the vector store built by ingest.py.
+_store = Chroma(
+    collection_name=COLLECTION,
+    embedding_function=OpenAIEmbeddings(model=EMBED_MODEL),
+    persist_directory=CHROMA_DIR,
+)
+
+
+@tool
+def search_kb(query: str) -&gt; str:
+    """Search the customer-support knowledge base for relevant policy/help text."""
+    docs = _store.similarity_search(query, k=4)  # RAG retrieval over Chroma
+    return "\n\n".join(d.page_content for d in docs) or "No relevant policy found."
+
+
+@tool
+def escalate_to_human(reason: str) -&gt; str:
+    """Escalate to a human agent when the KB can't answer or the issue is sensitive."""
+    return f"Escalated to a human specialist. Reason: {reason}"
+
+
+TOOLS = [search_kb, escalate_to_human]
+model = ChatOpenAI(model=CHAT_MODEL, temperature=0).bind_tools(TOOLS)
+
+SYSTEM = SystemMessage(
+    "You are Acme's support assistant. Ground every policy answer by calling search_kb first. "
+    "If the knowledge base lacks the answer, or the request is sensitive (refunds over $500, "
+    "legal, account security), call escalate_to_human instead of guessing. "
+    "Cite the policy you relied on and keep replies concise."
+)
+
+
+class State(TypedDict):
+    messages: Annotated[list, add_messages]
+
+
+def agent(state: State) -&gt; State:
+    # The model reasons over the conversation and decides: answer, or call a tool.
+    return {"messages": [model.invoke([SYSTEM] + state["messages"])]}
+
+
+builder = StateGraph(State)
+builder.add_node("agent", agent)
+builder.add_node("tools", ToolNode(TOOLS))
+builder.add_edge(START, "agent")
+builder.add_conditional_edges("agent", tools_condition)  # agent -&gt; tools, or -&gt; END
+builder.add_edge("tools", "agent")                        # loop back after a tool runs
+# The checkpointer gives the agent short-term memory across turns of a thread.
+graph = builder.compile(checkpointer=MemorySaver())
+
+
+def ask(question: str, thread_id: str = "demo") -&gt; str:
+    cfg = {"configurable": {"thread_id": thread_id}}
+    out = graph.invoke({"messages": [HumanMessage(question)]}, cfg)
+    return out["messages"][-1].content
+
+
+if __name__ == "__main__":
+    # A grounded policy question (agent should call search_kb):
+    print("Q1:", ask("How many days do I have to return an item, and who pays return shipping?"))
+    print("-" * 60)
+    # A sensitive request on the same thread (agent should escalate):
+    print("Q2:", ask("I want a $2000 refund for a laptop that arrived damaged."))</code></pre>
+<pre id="cap-src-5" role="tabpanel" hidden><code># Acme Support Knowledge Base
+
+## Returns &amp; Refunds
+- Items may be returned within **30 days** of delivery for a full refund.
+- The **customer pays return shipping** unless the item arrived damaged or incorrect.
+- Refunds are issued to the original payment method within **5–7 business days** of us receiving the return.
+- **Shipping fees are non-refundable** except for damaged or incorrect items.
+- Digital goods are **non-refundable** once downloaded.
+- Refund requests over **$500** require manual review by a specialist.
+
+## Shipping
+- Standard shipping takes **3–5 business days**; express takes **1–2 business days**.
+- Free standard shipping on orders over **$50**.
+- We ship to the US, Canada, the UK, and the EU.
+- Tracking numbers are emailed once an order ships.
+
+## Orders
+- Orders can be **modified or cancelled within 1 hour** of being placed.
+- After 1 hour, an order enters fulfillment and can no longer be changed.
+- To check order status, sign in and visit **Account → Orders**.
+
+## Accounts &amp; Security
+- Reset your password from the sign-in page via **"Forgot password"**.
+- We never ask for your password by email. Report suspicious messages to security@acme.example.
+- Account deletion requests are handled by a specialist and require identity verification.
+
+## Payments
+- We accept Visa, Mastercard, American Express, and PayPal.
+- Prices are in **USD**.
+- Promo codes apply to the item subtotal only, not taxes or shipping.</code></pre>
+      </div>
+
       <div class="callout">Full multi-file source (config · ingest · agent · sample KB) with an architecture diagram: <a href="https://github.com/coolloic/Notebook/tree/main/examples/support-agent" target="_blank" rel="noopener">examples/support-agent on GitHub</a>. It's syntax-checked in the same CI as the experiments.</div>
     </section>
 
