@@ -196,7 +196,8 @@
       <li><a href="#vectordb">5 · Vector databases</a></li>
       <li><a href="#cli">6 · create-llm-app</a></li>
       <li><a href="#experiments">7 · Agentic patterns</a></li>
-      <li><a href="#quiz">8 · Knowledge check</a></li>
+      <li><a href="#capstone">8 · Full-stack example</a></li>
+      <li><a href="#quiz">9 · Knowledge check</a></li>
       <li><a href="#next">Next steps</a></li>
     </ol>
   </nav>
@@ -547,8 +548,58 @@ python main.py</code></pre>
       <div class="callout"><strong>All 25 are syntax-verified in CI</strong> (<code>py_compile</code> on Python 3.11–3.13). Each folder has a README, a runnable <code>main.py</code>, <code>requirements.txt</code>, and <code>.env.example</code>. Browse them: <a href="https://github.com/coolloic/Notebook/tree/main/experiments" target="_blank" rel="noopener">experiments/ on GitHub</a>.</div>
     </section>
 
+    <section id="capstone">
+      <h2>8 · Full-stack example: a support agent</h2>
+      <p>Everything in this tutorial, wired into one runnable app: a <strong>customer-support agent</strong> that answers questions grounded in a knowledge base and escalates to a human when it can't help. It combines all six pieces:</p>
+
+      <div class="cards">
+        <div class="card graph"><h4>LangGraph</h4><p>The <code>agent ⇄ tools</code> loop + memory across turns.</p></div>
+        <div class="card"><h4>OpenAI</h4><p><code>gpt-4o</code> reasoning + <code>text-embedding-3-small</code> embeddings.</p></div>
+        <div class="card chain"><h4>Chroma</h4><p>Persistent <strong>vector database</strong> for the knowledge base.</p></div>
+        <div class="card chain"><h4>RAG</h4><p><code>search_kb</code> retrieves grounding context on demand.</p></div>
+        <div class="card smith"><h4>LangSmith</h4><p>Traces every model + tool + retrieval step.</p></div>
+      </div>
+
+      <div class="flow">
+        <span class="node">user</span><span class="arrow">→</span>
+        <span class="node">agent · gpt-4o</span><span class="arrow">⇄</span>
+        <span class="node">tools · search_kb / escalate</span><span class="arrow">→</span>
+        <span class="node">grounded reply</span>
+      </div>
+      <p>Retrieval is a <em>tool the agent chooses to call</em> (agentic RAG), and a sensitive request routes to <code>escalate_to_human</code> instead of a guess.</p>
+
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">agent.py (trimmed)</span><button class="copy">Copy</button></div>
+<pre><code>@tool
+def search_kb(query: str) -&gt; str:
+    """Search the support KB — RAG over the Chroma vector store."""
+    docs = store.similarity_search(query, k=4)
+    return "\n\n".join(d.page_content for d in docs)
+
+model = ChatOpenAI(model="gpt-4o", temperature=0).bind_tools([search_kb, escalate_to_human])
+
+builder = StateGraph(State)
+builder.add_node("agent", agent)                      <span class="cmt"># gpt-4o reasons</span>
+builder.add_node("tools", ToolNode(TOOLS))            <span class="cmt"># search_kb (RAG) + escalate</span>
+builder.add_edge(START, "agent")
+builder.add_conditional_edges("agent", tools_condition)  <span class="cmt"># call a tool, or answer?</span>
+builder.add_edge("tools", "agent")                    <span class="cmt"># loop back with the result</span>
+graph = builder.compile(checkpointer=MemorySaver())   <span class="cmt"># memory across turns</span></code></pre>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">run it</span><button class="copy">Copy</button></div>
+<pre><code>pip install -r requirements.txt
+cp .env.example .env      <span class="cmt"># add your OPENAI_API_KEY</span>
+python ingest.py          <span class="cmt"># load KB -&gt; embed -&gt; store in Chroma (once)</span>
+python agent.py           <span class="cmt"># grounded answer, then an escalation</span></code></pre>
+      </div>
+
+      <div class="callout">Full multi-file source (config · ingest · agent · sample KB) with an architecture diagram: <a href="https://github.com/coolloic/Notebook/tree/main/examples/support-agent" target="_blank" rel="noopener">examples/support-agent on GitHub</a>. It's syntax-checked in the same CI as the experiments.</div>
+    </section>
+
     <section id="quiz">
-      <h2>8 · Knowledge check</h2>
+      <h2>9 · Knowledge check</h2>
       <p>Five quick questions. Pick an answer for each, then check your score.</p>
       <form class="quiz" id="quiz">
         <div class="q" data-answer="b">
@@ -592,7 +643,8 @@ python main.py</code></pre>
         <div class="card"><h4>📘 LangChain guide</h4><p><a href="README.md">The full LangChain / LangGraph / LangSmith write-up</a> with diagrams and comparisons.</p></div>
         <div class="card"><h4>🗄️ Vector databases</h4><p><a href="vector-databases.md">Deep dive on storing chunk data</a> across Chroma, FAISS, Qdrant, Pinecone, pgvector.</p></div>
         <div class="card"><h4>🛠️ create-llm-app</h4><p><a href="https://github.com/coolloic/create-llm-app">The CLI on GitHub</a> — scaffold a runnable app in seconds.</p></div>
-        <div class="card"><h4>🧪 Agentic experiments</h4><p><a href="https://github.com/coolloic/Notebook/tree/main/experiments">14 runnable pattern scaffolds</a> — one per Google Cloud agentic design pattern.</p></div>
+        <div class="card"><h4>🧪 Agentic experiments</h4><p><a href="https://github.com/coolloic/Notebook/tree/main/experiments">25 runnable scaffolds</a> — agentic design patterns plus reasoning techniques.</p></div>
+        <div class="card"><h4>🤖 Support agent</h4><p><a href="https://github.com/coolloic/Notebook/tree/main/examples/support-agent">The full-stack example</a> — LangGraph + OpenAI + Chroma RAG + LangSmith.</p></div>
       </div>
     </section>
 
