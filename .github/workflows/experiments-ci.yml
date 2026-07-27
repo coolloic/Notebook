@@ -5,10 +5,12 @@ on:
     branches: [main]
     paths:
       - "experiments/**"
+      - "examples/**"
       - ".github/workflows/experiments-ci.yml"
   pull_request:
     paths:
       - "experiments/**"
+      - "examples/**"
       - ".github/workflows/experiments-ci.yml"
   workflow_dispatch:
 
@@ -28,11 +30,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: py_compile every experiment's main.py
+      - name: py_compile experiments and examples
         run: |
           set -e
           fail=0
-          for f in experiments/*/main.py; do
+          for f in experiments/*/main.py examples/*/*.py; do
             if python -m py_compile "$f"; then
               echo "OK   $f"
             else
@@ -42,7 +44,7 @@ jobs:
           done
           echo "----"
           if [ "$fail" -ne 0 ]; then
-            echo "One or more experiments failed to compile."
+            echo "One or more files failed to compile."
             exit 1
           fi
-          echo "All experiments compiled cleanly."
+          echo "All experiments and examples compiled cleanly."

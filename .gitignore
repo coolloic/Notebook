@@ -7,3 +7,7 @@ docs/
 # Python
 __pycache__/
 *.pyc
+
+# Generated vector store (examples)
+chroma_db/
+examples/**/chroma_db/
