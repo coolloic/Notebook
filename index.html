@@ -599,7 +599,7 @@ python agent.py           <span class="cmt"># grounded answer, then an escalatio
       </div>
 
       <h3>Complete source — copy each file</h3>
-      <p>The whole example, ready to paste into a new <code>support-agent/</code> folder. Switch tabs and hit <em>Copy</em> per file.</p>
+      <p>The whole example, ready to build. Hit <strong>Copy setup script</strong> and paste it into a terminal — it writes every file into a new <code>support-agent/</code> folder. Or switch tabs and <em>Copy file</em> one at a time.</p>
       <div class="code-wrap" data-tabs>
         <div class="tabs" role="tablist" aria-label="Support agent source files">
           <button class="tab" role="tab" aria-selected="true" data-target="cap-src-0">requirements.txt</button>
@@ -609,7 +609,7 @@ python agent.py           <span class="cmt"># grounded answer, then an escalatio
           <button class="tab" role="tab" aria-selected="false" data-target="cap-src-4">agent.py</button>
           <button class="tab" role="tab" aria-selected="false" data-target="cap-src-5">data/knowledge_base.md</button>
         </div>
-        <div class="code-head"><span class="label">examples/support-agent/</span><span class="code-actions"><button class="copyall">Copy all files</button><button class="copy">Copy file</button></span></div>
+        <div class="code-head"><span class="label">examples/support-agent/</span><span class="code-actions"><button class="copyall">Copy setup script</button><button class="copy">Copy file</button></span></div>
 <pre id="cap-src-0" role="tabpanel"><code>python-dotenv
 langchain
 langchain-core
@@ -956,20 +956,26 @@ if __name__ == "__main__":
     });
   });
 
-  // Copy-all — bundle every file in the code-wrap with a FILE: header.
+  // Copy setup script — emit a runnable bash script that writes every file via
+  // heredocs, so one paste into a terminal builds the whole folder.
   // Use textContent (not innerText) so hidden tab panels are included.
   document.querySelectorAll(".copyall").forEach(function (btn) {
     btn.addEventListener("click", function () {
       var wrap = btn.closest(".code-wrap");
       var nameById = {};
       wrap.querySelectorAll(".tab").forEach(function (t) { nameById[t.dataset.target] = t.textContent.trim(); });
-      var parts = [];
+      var text = "#!/usr/bin/env bash\nset -e\nmkdir -p support-agent/data\n\n";
       wrap.querySelectorAll("pre").forEach(function (pre) {
-        var name = nameById[pre.id] || pre.id;
-        parts.push("##### FILE: " + name + " #####\n" + pre.textContent);
+        var name = nameById[pre.id] || pre.id;                 // e.g. agent.py, data/knowledge_base.md
+        var content = pre.textContent.replace(/\n+$/, "");     // trim trailing newlines
+        // single-quoted heredoc delimiter -> file content is written verbatim
+        text += 'cat > "support-agent/' + name + '" <<\'SA_EOF\'\n' + content + '\nSA_EOF\n\n';
       });
-      var text = parts.join("\n\n");
-      var done = function () { var o = btn.textContent; btn.textContent = "Copied all!"; setTimeout(function () { btn.textContent = o; }, 1500); };
+      text += 'echo "Created support-agent/. Next steps:"\n';
+      text += 'echo "  cd support-agent && pip install -r requirements.txt"\n';
+      text += 'echo "  cp .env.example .env   # add your OPENAI_API_KEY"\n';
+      text += 'echo "  python ingest.py && python agent.py"\n';
+      var done = function () { var o = btn.textContent; btn.textContent = "Copied script!"; setTimeout(function () { btn.textContent = o; }, 1500); };
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(done, done);
       } else {
