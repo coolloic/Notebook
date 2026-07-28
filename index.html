@@ -25,6 +25,7 @@
     --rag: #be185d;   /* rose    */
     --lci: #a16207;   /* gold    */
     --adk: #0f766e;   /* teal    */
+    --net: #4d7c0f;   /* lime    */
     --api: #0369a1;   /* sky     */
     --web: #a21caf;   /* fuchsia */
     --n8n: #dc2626;   /* red     */
@@ -48,6 +49,7 @@
     --rag: #f472b6;
     --lci: #fbbf24;
     --adk: #5eead4;
+    --net: #a3e635;
     --api: #7dd3fc;
     --web: #f0abfc;
     --n8n: #f87171;
@@ -120,6 +122,7 @@
   .tile.rag { --tile: var(--rag); }
   .tile.lci { --tile: var(--lci); }
   .tile.adk { --tile: var(--adk); }
+  .tile.net { --tile: var(--net); }
   .tile.api { --tile: var(--api); }
   .tile.web { --tile: var(--web); }
   .tile.n8n { --tile: var(--n8n); }
@@ -149,6 +152,7 @@
   .path li.rag { --step: var(--rag); }
   .path li.lci { --step: var(--lci); }
   .path li.adk { --step: var(--adk); }
+  .path li.net { --step: var(--net); }
   .path li.api { --step: var(--api); }
   .path li.web { --step: var(--web); }
   .path li.n8n { --step: var(--n8n); }
@@ -194,7 +198,7 @@
   <div class="hero">
     <p class="eyebrow">Interactive tutorials</p>
     <h1>Build with LLMs, agents &amp; AWS</h1>
-    <p>Twelve self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
+    <p>Thirteen self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
   </div>
 
   <div class="search" role="search">
@@ -253,6 +257,13 @@
         <h3>Agent Development Kits</h3>
         <p>Google ADK vs AWS Strands + Bedrock AgentCore vs LangGraph — what problem each solves, its limits, and when to choose it, in a clear Problem → Solution → Limits format.</p>
         <span class="go">Compare kits</span>
+      </a>
+
+      <a class="tile net" href="rest-graphql-grpc.html">
+        <div class="top"><span class="ico">🔀</span><span class="kicker">API design</span></div>
+        <h3>REST vs GraphQL vs gRPC</h3>
+        <p>Three ways for services to talk: REST's resources over HTTP, GraphQL's ask-for-exactly-what-you-need queries, and gRPC's fast typed binary RPC — the problem each solves, and when to choose which.</p>
+        <span class="go">Compare API styles</span>
       </a>
 
       <a class="tile api" href="api-mcp.html">
@@ -329,6 +340,10 @@
         <h3><a href="adk.html">Agent Development Kits</a></h3>
         <p>Now zoom out: how the frameworks for <em>building</em> agents differ, and how to pick one for the job.</p>
       </li>
+      <li class="net">
+        <h3><a href="rest-graphql-grpc.html">REST vs GraphQL vs gRPC</a></h3>
+        <p>How services actually talk over the network — the API-design choices beneath every app and agent.</p>
+      </li>
       <li class="api">
         <h3><a href="api-mcp.html">APIs vs MCP</a></h3>
         <p>How those agents reach the outside world — and why MCP standardizes connecting them to tools.</p>
@@ -354,7 +369,7 @@
 </main>
 
 <footer>
-  Twelve interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
+  Thirteen interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
 </footer>
 
 <script>

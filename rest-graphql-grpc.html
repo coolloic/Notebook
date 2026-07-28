@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔀</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="REST vs GraphQL vs gRPC — the problem each API style solves, their limits, the same request three ways, a direct comparison, and when to choose which.">
+<title>REST vs GraphQL vs gRPC — Which API Style?</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f5f7fa;
+    --bg-code: #16220a;      /* deep lime ink */
+    --text: #1a2130;
+    --text-soft: #55617a;
+    --border: #e2e8f0;
+    --accent: #4d7c0f;       /* lime-700 (AA on white) */
+    --ink: #3f6212;          /* lime-800 */
+    --solve: #15803d;
+    --limit: #b45309;
+    --choose: #1e40af;
+    --solve-bg: #dcfce7;
+    --limit-bg: #fef3c7;
+    --choose-bg: #dbeafe;
+    --radius: 12px;
+    --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #0f172a;
+    --bg-soft: #17233d;
+    --bg-code: #131f07;
+    --text: #e6ecf7;
+    --text-soft: #9fb0cc;
+    --border: #263450;
+    --accent: #a3e635;
+    --ink: #bef264;
+    --solve: #86efac;
+    --limit: #fcd34d;
+    --choose: #93c5fd;
+    --solve-bg: #14351f;
+    --limit-bg: #3a2a0c;
+    --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: var(--font); color: var(--text); background: var(--bg); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  .skip-link { position: absolute; left: -999px; top: 0; background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100; }
+  .skip-link:focus { left: 0; }
+  #progress { position: fixed; top: 0; left: 0; height: 4px; width: 0%; background: linear-gradient(90deg, var(--accent), var(--ink)); z-index: 60; transition: width .1s linear; }
+  header.top { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; padding: .6rem 1rem; }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; }
+  header.top .brand span { color: var(--accent); }
+  header.top .spacer { flex: 1; }
+  .btn { font: inherit; cursor: pointer; border: 1px solid var(--border); background: var(--bg-soft); color: var(--text); border-radius: 999px; padding: .5rem .9rem; min-height: 44px; display: inline-flex; align-items: center; gap: .4rem; }
+  .btn:hover { border-color: var(--accent); }
+  #menuToggle { display: none; }
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side { position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px); overflow-y: auto; padding: 1.25rem 0; font-size: .93rem; }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a { display: block; padding: .45rem .75rem; border-radius: 8px; color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent; }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); }
+  nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.15rem; margin: 1.75rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; }
+  .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .card .count { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; }
+  .callout strong { color: var(--accent); }
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 1.25rem 0; }
+  .flow .node { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: .5rem .8rem; font-size: .88rem; font-weight: 600; }
+  .flow .node.hot { border-color: var(--accent); color: var(--accent); }
+  .flow .arrow { color: var(--text-soft); font-weight: 700; }
+  .svc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-soft); padding: 1rem 1.2rem; margin: 1.1rem 0; }
+  .svc h3 { margin: 0 0 .6rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
+  .svc h3 .full { font-size: .82rem; font-weight: 500; color: var(--text-soft); font-family: var(--mono); }
+  .svc p { margin: .4rem 0; font-size: .95rem; }
+  .tag { display: inline-block; min-width: 5.6rem; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .12rem .5rem; border-radius: 6px; margin-right: .5rem; text-align: center; }
+  .tag.solve  { background: var(--solve-bg);  color: var(--solve); }
+  .tag.limit  { background: var(--limit-bg);  color: var(--limit); }
+  .tag.choose { background: var(--choose-bg); color: var(--choose); }
+  .code-wrap { margin: 1.1rem 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .tabs { display: flex; flex-wrap: wrap; gap: .25rem; background: var(--bg-soft); padding: .4rem .4rem 0; border-bottom: 1px solid var(--border); }
+  .tab { font: inherit; cursor: pointer; border: none; background: transparent; color: var(--text-soft); padding: .55rem .9rem; border-radius: 8px 8px 0 0; min-height: 40px; }
+  .tab[aria-selected="true"] { background: var(--bg-code); color: #eef7dd; font-weight: 600; }
+  pre { margin: 0; background: var(--bg-code); color: #eef7dd; padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .86rem; line-height: 1.6; }
+  pre code { font-family: inherit; }
+  .code-head { display: flex; align-items: center; justify-content: space-between; background: var(--bg-code); padding: .35rem .6rem .35rem 1rem; }
+  .code-head .label { color: #a7c07f; font-size: .78rem; font-family: var(--mono); }
+  .copy { font: inherit; cursor: pointer; background: #33471a; color: #eef7dd; border: none; border-radius: 6px; padding: .35rem .7rem; min-height: 36px; font-size: .8rem; }
+  .copy:hover { background: #445f24; }
+  .cmt { color: #93ab6b; }
+  code.inline { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; }
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-soft); }
+  /* Request-three-ways diagram */
+  .r3-wrap { overflow-x: auto; margin: 1.3rem 0; }
+  .r3 { width: 100%; min-width: 640px; max-width: 760px; height: auto; display: block; margin: 0 auto; font-family: var(--font); }
+  .r3-box { fill: var(--bg-soft); stroke: var(--border); stroke-width: 1.5; }
+  .r3-rest { stroke: var(--choose); stroke-width: 1.8; fill: none; }
+  .r3-gql  { stroke: var(--accent); stroke-width: 1.8; fill: none; }
+  .r3-grpc { stroke: var(--solve); stroke-width: 1.8; fill: none; }
+  .r3-t { fill: var(--text); font-size: 12px; font-weight: 600; }
+  .r3-sub { fill: var(--text-soft); font-size: 11px; }
+  .r3-h-rest { fill: var(--choose); font-size: 13px; font-weight: 800; }
+  .r3-h-gql  { fill: var(--accent); font-size: 13px; font-weight: 800; }
+  .r3-h-grpc { fill: var(--solve); font-size: 13px; font-weight: 800; }
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); }
+  details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; }
+  .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); }
+  .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; }
+  [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; }
+  #score { font-weight: 700; margin-left: 1rem; }
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; }
+    #menuToggle { display: inline-flex; }
+    main { padding-top: .5rem; }
+    .tag { min-width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <a class="btn home" href="index.html" aria-label="Back to all tutorials">← All tutorials</a>
+  <div class="brand">REST <span>·</span> GraphQL <span>·</span> gRPC</div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#threeways">1 · The request, three ways</a></li>
+      <li><a href="#rest">2 · REST</a></li>
+      <li><a href="#graphql">3 · GraphQL</a></li>
+      <li><a href="#grpc">4 · gRPC</a></li>
+      <li><a href="#code">5 · Same data, three styles</a></li>
+      <li><a href="#compare">6 · Side by side</a></li>
+      <li><a href="#choose">7 · When to choose which</a></li>
+      <li><a href="#cheatsheet">Cheat sheet</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>REST vs GraphQL vs gRPC — which API style?</h1>
+      <p class="lede">All three let a client and a server talk over the network — they just disagree on <em>how</em>. <strong>REST</strong> exposes resources over plain HTTP; <strong>GraphQL</strong> lets the client ask for exactly the data it wants from one endpoint; <strong>gRPC</strong> makes fast, typed, binary remote-procedure calls between services.</p>
+
+      <div class="cards">
+        <div class="card"><span class="count">Resources over HTTP</span><h4>🌐 REST</h4><p>Simple, universal, cacheable. The default for public web APIs.</p></div>
+        <div class="card"><span class="count">Ask for what you need</span><h4>🔷 GraphQL</h4><p>One endpoint, a typed query — no over- or under-fetching.</p></div>
+        <div class="card"><span class="count">Fast typed RPC</span><h4>⚡ gRPC</h4><p>Binary Protobuf over HTTP/2 with streaming. Built for microservices.</p></div>
+      </div>
+
+      <div class="callout"><strong>One line each.</strong> REST: "GET this resource." GraphQL: "here's exactly the shape of data I want." gRPC: "call this function on that service, fast."</div>
+    </section>
+
+    <!-- ============ 1 · THREE WAYS ============ -->
+    <section id="threeways">
+      <h2><span class="pill">At a glance</span> &nbsp;The request, three ways</h2>
+      <p>Fetching a user and their orders looks different in each — and that difference is the whole story:</p>
+
+      <div class="r3-wrap">
+        <svg class="r3" viewBox="0 0 760 300" role="img" aria-labelledby="r3-title r3-desc">
+          <title id="r3-title">How REST, GraphQL and gRPC fetch data</title>
+          <desc id="r3-desc">REST makes several round trips to multiple endpoints. GraphQL sends one query to one endpoint and gets exactly the requested fields. gRPC makes a fast binary RPC call over HTTP/2, with streaming.</desc>
+          <defs>
+            <marker id="r3-a-rest" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--choose)"/></marker>
+            <marker id="r3-a-gql" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent)"/></marker>
+            <marker id="r3-a-grpc" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--solve)"/></marker>
+          </defs>
+
+          <text class="r3-h-rest" x="130" y="26" text-anchor="middle">REST</text>
+          <text class="r3-h-gql"  x="380" y="26" text-anchor="middle">GraphQL</text>
+          <text class="r3-h-grpc" x="630" y="26" text-anchor="middle">gRPC</text>
+
+          <!-- REST: client, server, 3 round trips -->
+          <rect class="r3-box" x="70" y="44" width="120" height="30" rx="7"/><text class="r3-t" x="130" y="64" text-anchor="middle">client</text>
+          <rect class="r3-box" x="70" y="216" width="120" height="30" rx="7"/><text class="r3-t" x="130" y="236" text-anchor="middle">server</text>
+          <path class="r3-rest" d="M96,74 L96,216" marker-end="url(#r3-a-rest)"/>
+          <path class="r3-rest" d="M130,74 L130,216" marker-end="url(#r3-a-rest)"/>
+          <path class="r3-rest" d="M164,74 L164,216" marker-end="url(#r3-a-rest)"/>
+          <text class="r3-sub" x="130" y="132" text-anchor="middle">GET /user</text>
+          <text class="r3-sub" x="130" y="150" text-anchor="middle">GET /orders</text>
+          <text class="r3-sub" x="130" y="168" text-anchor="middle">3 round trips</text>
+
+          <!-- GraphQL: one query, one response -->
+          <rect class="r3-box" x="320" y="44" width="120" height="30" rx="7"/><text class="r3-t" x="380" y="64" text-anchor="middle">client</text>
+          <rect class="r3-box" x="320" y="216" width="120" height="30" rx="7"/><text class="r3-t" x="380" y="236" text-anchor="middle">server</text>
+          <path class="r3-gql" d="M366,74 L366,216" marker-end="url(#r3-a-gql)"/>
+          <path class="r3-gql" d="M394,216 L394,74" marker-end="url(#r3-a-gql)"/>
+          <text class="r3-sub" x="380" y="134" text-anchor="middle">1 query</text>
+          <text class="r3-sub" x="380" y="152" text-anchor="middle">exact fields</text>
+          <text class="r3-sub" x="380" y="170" text-anchor="middle">1 endpoint</text>
+
+          <!-- gRPC: bidirectional binary stream -->
+          <rect class="r3-box" x="570" y="44" width="120" height="30" rx="7"/><text class="r3-t" x="630" y="64" text-anchor="middle">service A</text>
+          <rect class="r3-box" x="570" y="216" width="120" height="30" rx="7"/><text class="r3-t" x="630" y="236" text-anchor="middle">service B</text>
+          <path class="r3-grpc" d="M630,74 L630,216" marker-end="url(#r3-a-grpc)"/>
+          <path class="r3-grpc" d="M614,216 L614,74" marker-end="url(#r3-a-grpc)"/>
+          <text class="r3-sub" x="646" y="134" text-anchor="start">Protobuf</text>
+          <text class="r3-sub" x="646" y="152" text-anchor="start">HTTP/2</text>
+          <text class="r3-sub" x="646" y="170" text-anchor="start">streaming</text>
+        </svg>
+      </div>
+      <p>REST's multiple round trips and fixed responses (over-fetching) are exactly what GraphQL set out to fix; gRPC instead optimizes for raw speed and typed contracts between <em>services</em>.</p>
+    </section>
+
+    <!-- ============ 2 · REST ============ -->
+    <section id="rest">
+      <h2><span class="pill">Style 1</span> &nbsp;REST</h2>
+      <article class="svc">
+        <h3>REST <span class="full">Representational State Transfer · JSON over HTTP</span></h3>
+        <p><span class="tag solve">Solves</span> Simple, universal client-server APIs. Model your domain as <em>resources</em> with URLs (<code class="inline">/users/1</code>) and act on them with HTTP verbs (GET/POST/PUT/DELETE). It's stateless, human-readable JSON, works with every language and browser, and gets HTTP <strong>caching</strong> for free.</p>
+        <p><span class="tag limit">Limits</span> Fixed endpoints cause <strong>over-fetching</strong> (you get fields you don't need) and <strong>under-fetching</strong> (you make several calls to assemble one screen). No enforced schema unless you add OpenAPI; versioning (<code class="inline">/v2/</code>) and evolving responses can get messy.</p>
+        <p><span class="tag choose">Choose</span> Public APIs, CRUD services, and anything valuing simplicity, broad tooling, and HTTP caching.</p>
+      </article>
+    </section>
+
+    <!-- ============ 3 · GRAPHQL ============ -->
+    <section id="graphql">
+      <h2><span class="pill">Style 2</span> &nbsp;GraphQL</h2>
+      <article class="svc">
+        <h3>GraphQL <span class="full">query language for APIs · one endpoint, typed schema</span></h3>
+        <p><span class="tag solve">Solves</span> Over- and under-fetching. The client sends a <strong>query</strong> to a single endpoint describing <em>exactly</em> the fields and nested relations it wants, and gets back that shape — in one request. A strongly-typed <strong>schema</strong> documents the whole API, and one graph can aggregate several backend sources.</p>
+        <p><span class="tag limit">Limits</span> More server complexity; HTTP <strong>caching is harder</strong> (one endpoint, usually POST). It's prone to the <strong>N+1</strong> query problem, and arbitrary client queries create <strong>cost/security</strong> concerns (deep or expensive queries need depth-limiting and rate control). File uploads and simple cases can feel heavyweight.</p>
+        <p><span class="tag choose">Choose</span> Rich, nested data; many clients with different needs (web + mobile); aggregating multiple services; when eliminating over/under-fetching matters.</p>
+      </article>
+    </section>
+
+    <!-- ============ 4 · GRPC ============ -->
+    <section id="grpc">
+      <h2><span class="pill">Style 3</span> &nbsp;gRPC</h2>
+      <article class="svc">
+        <h3>gRPC <span class="full">RPC framework · Protocol Buffers over HTTP/2</span></h3>
+        <p><span class="tag solve">Solves</span> Fast, strongly-typed service-to-service communication. You define the service <strong>contract-first</strong> in a <code class="inline">.proto</code> file; gRPC generates typed clients/servers in many languages, serializes with compact <strong>binary Protobuf</strong>, runs over <strong>HTTP/2</strong>, and supports <strong>streaming</strong> (client, server, and bidirectional) as a first-class feature.</p>
+        <p><span class="tag limit">Limits</span> Not natively callable from browsers (needs <strong>gRPC-Web</strong> + a proxy). The binary payloads aren't human-readable, tooling/debugging has a learning curve, and it's overkill for simple public CRUD APIs.</p>
+        <p><span class="tag choose">Choose</span> Internal microservices, low-latency / high-throughput links, streaming, and polyglot systems that want one typed contract.</p>
+      </article>
+    </section>
+
+    <!-- ============ 5 · CODE ============ -->
+    <section id="code">
+      <h2><span class="pill">Concretely</span> &nbsp;Same data, three styles</h2>
+      <p>Fetch a user and their orders. Switch tabs; hit <em>Copy</em>.</p>
+      <div class="code-wrap" data-tabs>
+        <div class="tabs" role="tablist" aria-label="REST vs GraphQL vs gRPC">
+          <button class="tab" role="tab" aria-selected="true" data-target="c-rest">rest.http</button>
+          <button class="tab" role="tab" aria-selected="false" data-target="c-gql">query.graphql</button>
+          <button class="tab" role="tab" aria-selected="false" data-target="c-grpc">service.proto</button>
+        </div>
+        <div class="code-head"><span class="label">get a user + their orders</span><button class="copy">Copy</button></div>
+<pre id="c-rest" role="tabpanel"><code><span class="cmt"># REST: one resource per endpoint — often several round trips.</span>
+GET /users/1              <span class="cmt"># → { id, name, email, address, ... } (may over-fetch)</span>
+GET /users/1/orders       <span class="cmt"># → [ { id, total, ... }, ... ]  (a second call)</span>
+
+<span class="cmt"># JSON, cacheable via standard HTTP caching. No enforced schema by default.</span></code></pre>
+<pre id="c-gql" role="tabpanel" hidden><code><span class="cmt"># GraphQL: one request to one endpoint, asking for EXACTLY these fields.</span>
+query {
+  user(id: 1) {
+    name
+    orders {
+      id
+      total
+    }
+  }
+}
+<span class="cmt"># → { "user": { "name": "...", "orders": [ { "id": 1, "total": 42 } ] } }</span></code></pre>
+<pre id="c-grpc" role="tabpanel" hidden><code><span class="cmt">// gRPC: define the contract first; codegen makes typed clients/servers.</span>
+service UserService {
+  rpc GetUser (UserRequest) returns (User);
+  rpc WatchOrders (UserRequest) returns (stream Order);   <span class="cmt">// server streaming</span>
+}
+
+message UserRequest { int32 id = 1; }
+message User  { int32 id = 1; string name = 2; }
+message Order { int32 id = 1; double total = 2; }</code></pre>
+      </div>
+    </section>
+
+    <!-- ============ 6 · COMPARE ============ -->
+    <section id="compare">
+      <h2>Side by side</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Aspect</th><th>REST</th><th>GraphQL</th><th>gRPC</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Model</strong></td><td>Resources + HTTP verbs</td><td>One endpoint, typed queries</td><td>Remote procedure calls</td></tr>
+            <tr><td><strong>Payload</strong></td><td>JSON (text)</td><td>JSON (text)</td><td>Protobuf (binary)</td></tr>
+            <tr><td><strong>Transport</strong></td><td>HTTP/1.1 (usually)</td><td>HTTP</td><td>HTTP/2</td></tr>
+            <tr><td><strong>Contract</strong></td><td>Optional (OpenAPI)</td><td>Required schema</td><td>Required <code class="inline">.proto</code></td></tr>
+            <tr><td><strong>Fetching</strong></td><td>Fixed per endpoint (over/under-fetch)</td><td>Client picks exact fields</td><td>Method call</td></tr>
+            <tr><td><strong>Streaming</strong></td><td>Bolt-on (SSE/WebSocket)</td><td>Subscriptions</td><td>First-class, bidirectional</td></tr>
+            <tr><td><strong>Performance</strong></td><td>Good</td><td>Good</td><td>Best (binary + HTTP/2)</td></tr>
+            <tr><td><strong>Browser</strong></td><td>Native</td><td>Native</td><td>Needs gRPC-Web + proxy</td></tr>
+            <tr><td><strong>Caching</strong></td><td>Easy (HTTP)</td><td>Harder</td><td>Custom</td></tr>
+            <tr><td><strong>Best for</strong></td><td>Public / CRUD APIs</td><td>Complex, nested, many clients</td><td>Internal microservices</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 7 · CHOOSE ============ -->
+    <section id="choose">
+      <h2>When to choose which</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>If you…</th><th>Reach for…</th></tr></thead>
+          <tbody>
+            <tr><td>Build a public API valuing simplicity &amp; caching</td><td><strong>REST</strong></td></tr>
+            <tr><td>Do straightforward CRUD with broad client support</td><td><strong>REST</strong></td></tr>
+            <tr><td>Serve many clients needing different slices of nested data</td><td><strong>GraphQL</strong></td></tr>
+            <tr><td>Want to kill over/under-fetching &amp; aggregate sources</td><td><strong>GraphQL</strong></td></tr>
+            <tr><td>Connect internal microservices with low latency</td><td><strong>gRPC</strong></td></tr>
+            <tr><td>Need streaming or a typed polyglot contract</td><td><strong>gRPC</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><strong>They coexist.</strong> A very common architecture: <strong>gRPC</strong> between internal services for speed, with a <strong>REST</strong> or <strong>GraphQL</strong> gateway at the edge for browsers and third parties. Pick per boundary, not once for everything.</div>
+    </section>
+
+    <!-- ============ CHEAT SHEET ============ -->
+    <section id="cheatsheet">
+      <h2>Cheat sheet</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Question</th><th>Short answer</th></tr></thead>
+          <tbody>
+            <tr><td>One-liner for each?</td><td>REST = resources over HTTP; GraphQL = ask for exact data; gRPC = fast typed RPC.</td></tr>
+            <tr><td>What problem did GraphQL fix in REST?</td><td>Over- and under-fetching (and multiple round trips).</td></tr>
+            <tr><td>Why is gRPC fast?</td><td>Binary Protobuf over HTTP/2, with streaming.</td></tr>
+            <tr><td>Which struggles in the browser?</td><td>gRPC — needs gRPC-Web + a proxy.</td></tr>
+            <tr><td>Which caches most easily?</td><td>REST, via standard HTTP caching.</td></tr>
+            <tr><td>Must I pick just one?</td><td>No — gRPC internally, REST/GraphQL at the edge is common.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ QUIZ ============ -->
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions on REST, GraphQL and gRPC. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="b">
+          <p>1. What problem does GraphQL primarily address in REST APIs?</p>
+          <label><input type="radio" name="q1" value="a"> Lack of encryption</label>
+          <label><input type="radio" name="q1" value="b"> Over- and under-fetching (and multiple round trips)</label>
+          <label><input type="radio" name="q1" value="c"> Inability to use JSON</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>2. Why is gRPC especially fast?</p>
+          <label><input type="radio" name="q2" value="a"> It skips the network</label>
+          <label><input type="radio" name="q2" value="b"> It uses plain text over HTTP/1.1</label>
+          <label><input type="radio" name="q2" value="c"> Binary Protocol Buffers over HTTP/2, with streaming</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>3. Which style gets HTTP caching most easily?</p>
+          <label><input type="radio" name="q3" value="a"> REST</label>
+          <label><input type="radio" name="q3" value="b"> GraphQL</label>
+          <label><input type="radio" name="q3" value="c"> gRPC</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>4. Which needs gRPC-Web and a proxy to work in browsers?</p>
+          <label><input type="radio" name="q4" value="a"> REST</label>
+          <label><input type="radio" name="q4" value="b"> gRPC</label>
+          <label><input type="radio" name="q4" value="c"> GraphQL</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>5. You have many clients (web + mobile) that each need different slices of nested data. Best fit?</p>
+          <label><input type="radio" name="q5" value="a"> gRPC</label>
+          <label><input type="radio" name="q5" value="b"> Plain REST with fixed endpoints</label>
+          <label><input type="radio" name="q5" value="c"> GraphQL</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. Fast internal microservice-to-microservice calls with streaming. Best fit?</p>
+          <label><input type="radio" name="q6" value="a"> GraphQL</label>
+          <label><input type="radio" name="q6" value="b"> gRPC</label>
+          <label><input type="radio" name="q6" value="c"> REST</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>🔌 APIs vs MCP</h4><p><a href="api-mcp.html">APIs meet AI</a> — how these API styles get exposed to agents via MCP.</p></div>
+        <div class="card"><h4>🔗 n8n automation</h4><p><a href="n8n.html">Call any API</a> — the HTTP node wires REST/GraphQL endpoints into workflows.</p></div>
+        <div class="card"><h4>☁️ AWS services</h4><p><a href="aws-services.html">API Gateway &amp; more</a> — where these APIs run in the cloud.</p></div>
+        <div class="card"><h4>📓 All tutorials</h4><p><a href="index.html">The hub</a> — LLMs, embeddings, agents, protocols &amp; more.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  REST vs GraphQL vs gRPC — the problem each solves, their limits, and when to choose which. Confirm specifics against current docs. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) { root.setAttribute("data-theme", t); tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 "; tLabel.textContent = t === "dark" ? "Light" : "Dark"; }
+  var saved = null;
+  try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () { var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark"; applyTheme(next); try { localStorage.setItem("theme", next); } catch (e) {} });
+  var menuBtn = document.getElementById("menuToggle");
+  var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () { var open = side.classList.toggle("open"); menuBtn.setAttribute("aria-expanded", String(open)); });
+  side.addEventListener("click", function (e) { if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); } });
+  var bar = document.getElementById("progress");
+  function onScroll() { var h = document.documentElement; var max = h.scrollHeight - h.clientHeight; bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%"; }
+  document.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a"));
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) { entries.forEach(function (en) { if (en.isIntersecting) { links.forEach(function (a) { a.classList.remove("active"); }); if (map[en.target.id]) map[en.target.id].classList.add("active"); } }); }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+  document.querySelectorAll("[data-tabs]").forEach(function (wrap) {
+    var tabs = wrap.querySelectorAll(".tab");
+    tabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        tabs.forEach(function (t) { t.setAttribute("aria-selected", "false"); var p = document.getElementById(t.dataset.target); if (p) p.hidden = true; });
+        tab.setAttribute("aria-selected", "true");
+        document.getElementById(tab.dataset.target).hidden = false;
+      });
+    });
+  });
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var wrap = btn.closest(".code-wrap");
+      var pre = wrap.querySelector("pre:not([hidden])");
+      var text = pre ? pre.innerText : "";
+      var done = function () { var o = btn.textContent; btn.textContent = "Copied!"; setTimeout(function () { btn.textContent = o; }, 1400); };
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, done); }
+      else { var ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch (e) {} document.body.removeChild(ta); done(); }
+    });
+  });
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q");
+    var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      var correctLabel = q.querySelector('input[value="' + answer + '"]').parentNode;
+      correctLabel.classList.add("correct");
+      if (chosen) { if (chosen.value === answer) { score++; } else { chosen.parentNode.classList.add("wrong"); } }
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length + (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>
