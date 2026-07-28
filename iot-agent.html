@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="How AWS IoT Core integrates with an Agent Development Kit — a real end-to-end example: a smart fridge that reasons about low stock and auto-purchases groceries via a Strands agent on Bedrock AgentCore.">
+<title>IoT × Agents — Smart-Fridge Auto-Purchasing on AWS</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f5f7fa;
+    --bg-code: #1e1b3a;      /* deep violet ink */
+    --text: #1a2130;
+    --text-soft: #55617a;
+    --border: #e2e8f0;
+    --accent: #6d28d9;       /* violet-700 (AA on white) */
+    --ink: #312e81;          /* indigo */
+    --solve: #15803d;
+    --limit: #b45309;
+    --choose: #1e40af;
+    --solve-bg: #dcfce7;
+    --limit-bg: #fef3c7;
+    --choose-bg: #dbeafe;
+    --radius: 12px;
+    --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #0f172a;
+    --bg-soft: #17233d;
+    --bg-code: #100e24;
+    --text: #e6ecf7;
+    --text-soft: #9fb0cc;
+    --border: #263450;
+    --accent: #c4b5fd;
+    --ink: #a5b4fc;
+    --solve: #86efac;
+    --limit: #fcd34d;
+    --choose: #93c5fd;
+    --solve-bg: #14351f;
+    --limit-bg: #3a2a0c;
+    --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: var(--font);
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  .skip-link {
+    position: absolute; left: -999px; top: 0;
+    background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100;
+  }
+  .skip-link:focus { left: 0; }
+
+  /* Progress bar */
+  #progress {
+    position: fixed; top: 0; left: 0; height: 4px; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--ink));
+    z-index: 60; transition: width .1s linear;
+  }
+
+  /* Header */
+  header.top {
+    position: sticky; top: 0; z-index: 50;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 1rem;
+    padding: .6rem 1rem;
+  }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; }
+  header.top .brand span { color: var(--accent); }
+  header.top .spacer { flex: 1; }
+  .btn {
+    font: inherit; cursor: pointer; border: 1px solid var(--border);
+    background: var(--bg-soft); color: var(--text);
+    border-radius: 999px; padding: .5rem .9rem; min-height: 44px;
+    display: inline-flex; align-items: center; gap: .4rem;
+  }
+  .btn:hover { border-color: var(--accent); }
+  #menuToggle { display: none; }
+
+  /* Layout */
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side {
+    position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px);
+    overflow-y: auto; padding: 1.25rem 0; font-size: .93rem;
+  }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a {
+    display: block; padding: .45rem .75rem; border-radius: 8px;
+    color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent;
+  }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); }
+  nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.15rem; margin: 1.75rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+
+  /* Cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; }
+  .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .card .count { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+
+  /* Callout */
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; }
+  .callout strong { color: var(--accent); }
+  .callout.warn { border-left-color: var(--limit); }
+  .callout.warn strong { color: var(--limit); }
+
+  /* Steps flow */
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 1.25rem 0; }
+  .flow .node { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: .5rem .8rem; font-size: .88rem; font-weight: 600; }
+  .flow .node.hot { border-color: var(--accent); color: var(--accent); }
+  .flow .arrow { color: var(--text-soft); font-weight: 700; }
+
+  /* Service / step block */
+  .svc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-soft); padding: 1rem 1.2rem; margin: 1.1rem 0; }
+  .svc h3 { margin: 0 0 .6rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
+  .svc h3 .full { font-size: .82rem; font-weight: 500; color: var(--text-soft); font-family: var(--mono); }
+  .svc p { margin: .4rem 0; font-size: .95rem; }
+  .tag { display: inline-block; min-width: 5.6rem; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .12rem .5rem; border-radius: 6px; margin-right: .5rem; text-align: center; }
+  .tag.solve  { background: var(--solve-bg);  color: var(--solve); }
+  .tag.limit  { background: var(--limit-bg);  color: var(--limit); }
+  .tag.choose { background: var(--choose-bg); color: var(--choose); }
+  .tag.step   { background: var(--accent); color: #fff; }
+
+  /* Code + tabs */
+  .code-wrap { margin: 1.1rem 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .tabs { display: flex; flex-wrap: wrap; gap: .25rem; background: var(--bg-soft); padding: .4rem .4rem 0; border-bottom: 1px solid var(--border); }
+  .tab { font: inherit; cursor: pointer; border: none; background: transparent; color: var(--text-soft); padding: .55rem .9rem; border-radius: 8px 8px 0 0; min-height: 40px; }
+  .tab[aria-selected="true"] { background: var(--bg-code); color: #e6ecf7; font-weight: 600; }
+  pre { margin: 0; background: var(--bg-code); color: #e6ecf7; padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .86rem; line-height: 1.6; }
+  pre code { font-family: inherit; }
+  .code-head { display: flex; align-items: center; justify-content: space-between; background: var(--bg-code); padding: .35rem .6rem .35rem 1rem; }
+  .code-head .label { color: #a5a1c8; font-size: .78rem; font-family: var(--mono); }
+  .copy { font: inherit; cursor: pointer; background: #3b3566; color: #e6ecf7; border: none; border-radius: 6px; padding: .35rem .7rem; min-height: 36px; font-size: .8rem; }
+  .copy:hover { background: #4c4680; }
+  .cmt { color: #928dc0; }
+  code.inline { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; }
+
+  /* Table */
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-soft); }
+
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); }
+  details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+
+  /* Quiz */
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; }
+  .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); }
+  .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; }
+  [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; }
+  #score { font-weight: 700; margin-left: 1rem; }
+
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; }
+    #menuToggle { display: inline-flex; }
+    main { padding-top: .5rem; }
+    .tag { min-width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <div class="brand">IoT <span>×</span> Agents</div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#halves">1 · Two halves: hub &amp; agent</a></li>
+      <li><a href="#iotcore">2 · What AWS IoT Core provides</a></li>
+      <li><a href="#pattern">3 · The integration pattern</a></li>
+      <li><a href="#fridge">4 · Smart-fridge walkthrough</a></li>
+      <li><a href="#code">5 · The code, end to end</a></li>
+      <li><a href="#guardrails">6 · Guardrails &amp; safety</a></li>
+      <li><a href="#recap">Who does what — recap</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>IoT × Agents — a fridge that restocks itself</h1>
+      <p class="lede">An IoT hub is great at getting <strong>signals</strong> off physical devices and into the cloud reliably and securely. An <strong>agent</strong> is great at <strong>deciding what to do</strong> about a signal. Wire them together and a device event can trigger reasoning and real-world action — like a fridge noticing it's low on milk and ordering more.</p>
+
+      <div class="callout">
+        <strong>The example we'll build.</strong> A smart fridge detects the milk shelf is nearly empty and publishes an event to <strong>AWS IoT Core</strong>. A rule routes it to a <strong>Strands agent</strong> running on <strong>Bedrock AgentCore</strong>, which checks inventory, price and budget, places the smallest sensible grocery order, and tells the fridge and the owner it's done — with spend limits and human approval as guardrails.
+      </div>
+
+      <div class="flow" aria-label="High-level flow">
+        <span class="node">🥛 sensor</span><span class="arrow">→</span>
+        <span class="node hot">AWS IoT Core</span><span class="arrow">→</span>
+        <span class="node">rule</span><span class="arrow">→</span>
+        <span class="node hot">agent reasons</span><span class="arrow">→</span>
+        <span class="node">order + notify</span>
+      </div>
+
+      <p>This is the "sense → decide → act" loop that underlies most useful IoT-plus-AI systems: predictive maintenance, energy optimization, and here, autonomous replenishment. The fridge is a friendly stand-in for any device that should trigger an intelligent response.</p>
+    </section>
+
+    <!-- ============ 1 · TWO HALVES ============ -->
+    <section id="halves">
+      <h2><span class="pill">Foundations</span> &nbsp;Two halves: the hub and the agent</h2>
+      <p>The integration works because each side does a job the other shouldn't. Keeping that split clean is the whole design.</p>
+
+      <div class="cards">
+        <div class="card"><span class="count">The nervous system</span><h4>IoT hub (AWS IoT Core)</h4><p>Securely connects millions of devices, ingests telemetry over MQTT, tracks each device's state, and routes events to the cloud. It moves signals; it doesn't reason.</p></div>
+        <div class="card"><span class="count">The brain</span><h4>Agent (Strands + AgentCore)</h4><p>Receives an event and decides: gather context via tools, weigh options, act, or ask a human. It reasons; it doesn't talk to devices directly.</p></div>
+      </div>
+
+      <div class="callout"><strong>Why not put the logic on the device?</strong> Devices are constrained, hard to update, and shouldn't hold cloud/grocery credentials. Keep the fridge dumb (sense &amp; report) and put the changing business logic — budgets, vendors, approval rules — in the agent, where it's easy to change and audit.</div>
+    </section>
+
+    <!-- ============ 2 · IOT CORE ============ -->
+    <section id="iotcore">
+      <h2><span class="pill">The hub</span> &nbsp;What AWS IoT Core provides</h2>
+      <p>Four primitives do almost all the work in this example:</p>
+
+      <article class="svc">
+        <h3>Device Gateway &amp; MQTT broker <span class="full">pub/sub messaging</span></h3>
+        <p><span class="tag solve">Solves</span> A managed, always-on broker devices publish to and subscribe from over MQTT (topics like <code class="inline">fridge/kitchen-01/inventory</code>) — scaling to huge fleets without you running a message broker.</p>
+      </article>
+
+      <article class="svc">
+        <h3>X.509 certificates &amp; IoT policies <span class="full">per-device identity</span></h3>
+        <p><span class="tag solve">Solves</span> Every device gets its own certificate and a scoped policy, so a fridge can only publish to <em>its own</em> topics. This is what makes device-triggered actions trustworthy.</p>
+      </article>
+
+      <article class="svc">
+        <h3>Device Shadow <span class="full">last-known state, even offline</span></h3>
+        <p><span class="tag solve">Solves</span> A JSON document of each device's <em>reported</em> and <em>desired</em> state. The cloud can read the fridge's last state when it's asleep, and set a <em>desired</em> value (e.g. "milk ordered") the device syncs on reconnect.</p>
+      </article>
+
+      <article class="svc">
+        <h3>Rules Engine <span class="full">SQL routing to AWS services</span></h3>
+        <p><span class="tag solve">Solves</span> A SQL-like rule evaluates every incoming message and routes matches to targets (Lambda, EventBridge, DynamoDB, SNS…). This is the bridge from "a message arrived" to "invoke the agent" — <em>with a condition</em>, so only genuinely low stock wakes the brain.</p>
+      </article>
+    </section>
+
+    <!-- ============ 3 · PATTERN ============ -->
+    <section id="pattern">
+      <h2><span class="pill">The bridge</span> &nbsp;The integration pattern</h2>
+      <p>Five stages connect the sensor to a placed order. The same shape works for any "device event → intelligent action" system.</p>
+
+      <div class="flow">
+        <span class="node"><strong>1</strong> Sense</span><span class="arrow">→</span>
+        <span class="node"><strong>2</strong> Ingest &amp; route</span><span class="arrow">→</span>
+        <span class="node"><strong>3</strong> Reason</span><span class="arrow">→</span>
+        <span class="node"><strong>4</strong> Act</span><span class="arrow">→</span>
+        <span class="node"><strong>5</strong> Close the loop</span>
+      </div>
+
+<pre aria-label="Architecture diagram"><code>   ┌──────────┐   MQTT     ┌─────────────────── AWS IoT Core ───────────────────┐
+   │  Fridge  │──publish──▶ │  Device Gateway → Rules Engine (SELECT … WHERE     │
+   │ (sensor) │  telemetry  │  level_pct &lt; 10)  →  Lambda / EventBridge target    │
+   └────▲─────┘             └───────────────────────────┬─────────────────────────┘
+        │ desired: "ordered"                            │ invoke
+        │ (Device Shadow)                               ▼
+   ┌────┴───────────────┐        ┌───────────── Bedrock AgentCore Runtime ────────┐
+   │  notify_user (SNS) │◀──act──│  Strands agent  +  Memory (budget, past buys)  │
+   └────────────────────┘        │  tools: inventory · price · budget · order     │
+                                 └───────────────────────┬────────────────────────┘
+                                                         ▼ place_order
+                                                 ┌───────────────┐
+                                                 │  Grocery API  │
+                                                 └───────────────┘</code></pre>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Stage</th><th>What happens</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td><strong>Sense</strong></td><td>A weight/vision sensor sees the milk shelf drop below threshold; the fridge publishes an MQTT event (and updates its Device Shadow).</td></tr>
+            <tr><td>2</td><td><strong>Ingest &amp; route</strong></td><td>IoT Core authenticates the device, and a Rules Engine rule with <code class="inline">WHERE level_pct &lt; 10</code> forwards only low-stock events to a Lambda that invokes the agent.</td></tr>
+            <tr><td>3</td><td><strong>Reason</strong></td><td>The Strands agent on AgentCore checks on-hand inventory, gets a live price, and confirms the purchase fits the monthly budget.</td></tr>
+            <tr><td>4</td><td><strong>Act</strong></td><td>It places the smallest sensible order via the grocery tool — or requests human approval if over the spend limit — and notifies the owner over SNS.</td></tr>
+            <tr><td>5</td><td><strong>Close the loop</strong></td><td>It writes the purchase to memory and sets the fridge's Device Shadow <em>desired</em> state to <code class="inline">"milk: ordered"</code> so the door display updates.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 4 · FRIDGE WALKTHROUGH ============ -->
+    <section id="fridge">
+      <h2><span class="pill">The example</span> &nbsp;Smart-fridge walkthrough</h2>
+      <p>Follow one carton of milk through the system.</p>
+
+      <article class="svc">
+        <h3><span class="tag step">Step 1</span> The fridge notices</h3>
+        <p>A load cell under the milk shelf reads 5% of a full carton. Rather than decide anything, the fridge just reports a fact to its own topic: <code class="inline">{ "item": "milk", "level_pct": 5 }</code>. Dumb device, single responsibility.</p>
+      </article>
+      <article class="svc">
+        <h3><span class="tag step">Step 2</span> IoT Core filters &amp; forwards</h3>
+        <p>Most messages are normal levels and are ignored. This one matches the rule's <code class="inline">level_pct &lt; 10</code> condition, so IoT Core hands it to the trigger Lambda — which turns the raw event into a natural-language task and invokes the agent.</p>
+      </article>
+      <article class="svc">
+        <h3><span class="tag step">Step 3</span> The agent reasons</h3>
+        <p>The agent calls <code class="inline">get_inventory("milk")</code> (none in the pantry), <code class="inline">check_price("milk")</code> ($3.49), then <code class="inline">within_budget(3.49)</code> (true). Small, in-budget, needed — it proceeds.</p>
+      </article>
+      <article class="svc">
+        <h3><span class="tag step">Step 4</span> It acts — safely</h3>
+        <p><code class="inline">place_order("milk", 1)</code> submits to the grocery partner; <code class="inline">notify_user(...)</code> pushes "Ordered 1× milk ($3.49) — arriving tomorrow." Had it been a $120 case of steaks, the agent would have called <code class="inline">request_approval</code> instead and waited.</p>
+      </article>
+      <article class="svc">
+        <h3><span class="tag step">Step 5</span> The loop closes</h3>
+        <p>The agent records the spend in AgentCore Memory (so next week's budget math is right) and sets the Device Shadow <em>desired</em> state to <code class="inline">milk: ordered</code>; the fridge's screen shows "milk on the way," and won't re-trigger for the same carton.</p>
+      </article>
+    </section>
+
+    <!-- ============ 5 · CODE ============ -->
+    <section id="code">
+      <h2><span class="pill">Hands-on</span> &nbsp;The code, end to end</h2>
+      <p>Five files, one per stage. Switch tabs; hit <em>Copy</em> to grab any snippet. (APIs evolve fast — treat these as a faithful sketch and confirm names against current docs.)</p>
+
+      <div class="code-wrap" data-tabs>
+        <div class="tabs" role="tablist" aria-label="Integration source files">
+          <button class="tab" role="tab" aria-selected="true" data-target="c-device">fridge_device.py</button>
+          <button class="tab" role="tab" aria-selected="false" data-target="c-rule">iot_rule.sql</button>
+          <button class="tab" role="tab" aria-selected="false" data-target="c-trigger">restock_trigger.py</button>
+          <button class="tab" role="tab" aria-selected="false" data-target="c-agent">agent.py</button>
+          <button class="tab" role="tab" aria-selected="false" data-target="c-app">app.py</button>
+        </div>
+        <div class="code-head"><span class="label">smart-fridge/</span><button class="copy">Copy</button></div>
+<pre id="c-device" role="tabpanel"><code><span class="cmt"># fridge_device.py — runs ON the fridge (AWS IoT Device SDK v2).</span>
+<span class="cmt"># Its ONLY job: sense and report. No business logic, no credentials to shops.</span>
+import json
+from awscrt import mqtt
+from awsiot import mqtt_connection_builder
+
+conn = mqtt_connection_builder.mtls_from_path(
+    endpoint="xxxx-ats.iot.us-east-1.amazonaws.com",
+    cert_filepath="fridge.cert.pem",          <span class="cmt"># this device's X.509 identity</span>
+    pri_key_filepath="fridge.private.key",
+    ca_filepath="AmazonRootCA1.pem",
+    client_id="fridge-kitchen-01",
+)
+conn.connect().result()
+
+<span class="cmt"># A load cell says the milk shelf is nearly empty — just report the fact.</span>
+event = {"deviceId": "fridge-kitchen-01", "item": "milk", "level_pct": 5}
+conn.publish(
+    topic="fridge/kitchen-01/inventory",
+    payload=json.dumps(event),
+    qos=mqtt.QoS.AT_LEAST_ONCE,
+)</code></pre>
+<pre id="c-rule" role="tabpanel" hidden><code>-- iot_rule.sql — AWS IoT Core Rules Engine.
+-- Evaluated on EVERY message to fridge/+/inventory, but only LOW stock
+-- passes the WHERE clause, so the agent is woken only when it matters.
+SELECT deviceId, item, level_pct
+FROM 'fridge/+/inventory'
+WHERE level_pct &lt; 10
+
+-- Rule action: invoke the Lambda `restock_trigger` (or send to an
+-- EventBridge bus). Configure via the console, CLI, or CDK, e.g.:
+--   aws iot create-topic-rule --rule-name restock_when_low \
+--     --topic-rule-payload file://rule.json
+-- where rule.json sets "sql" to the query above and "actions" to the Lambda.</code></pre>
+<pre id="c-trigger" role="tabpanel" hidden><code><span class="cmt"># restock_trigger.py — the Rule's Lambda target. Thin adapter: turn a raw</span>
+<span class="cmt"># device event into a task and hand it to the agent on AgentCore.</span>
+import json, os, boto3
+
+agentcore = boto3.client("bedrock-agentcore")
+
+def handler(event, _context):
+    prompt = (
+        f"The {event['item']} in fridge {event['deviceId']} is at "
+        f"{event['level_pct']}%. Restock it if that's the right call."
+    )
+    agentcore.invoke_agent_runtime(
+        agentRuntimeArn=os.environ["AGENT_RUNTIME_ARN"],
+        runtimeSessionId=event["deviceId"],   <span class="cmt"># per-fridge session → memory</span>
+        payload=json.dumps({"prompt": prompt, "deviceId": event["deviceId"]}),
+    )
+    return {"ok": True}</code></pre>
+<pre id="c-agent" role="tabpanel" hidden><code><span class="cmt"># agent.py — the brain (AWS Strands Agents). Tools are plain functions;</span>
+<span class="cmt"># the model plans and calls them in a loop until the task is done.</span>
+from strands import Agent, tool
+import inventory_db, grocery_api, budget, notifications
+
+@tool
+def get_inventory(item: str) -&gt; dict:
+    """On-hand quantity and reorder threshold for a grocery item."""
+    return inventory_db.lookup(item)
+
+@tool
+def check_price(item: str) -&gt; dict:
+    """Live price and availability from the grocery partner."""
+    return grocery_api.quote(item)
+
+@tool
+def within_budget(amount_usd: float) -&gt; bool:
+    """True if this purchase keeps the household under its monthly cap."""
+    return budget.remaining() &gt;= amount_usd
+
+@tool
+def place_order(item: str, qty: int) -&gt; dict:
+    """Order groceries. Call ONLY after price and budget checks pass."""
+    return grocery_api.order(item, qty)
+
+@tool
+def request_approval(item: str, qty: int, price_usd: float) -&gt; str:
+    """Ask the owner to approve a large or unusual purchase before ordering."""
+    return notifications.ask(f"Approve {qty}x {item} for ${price_usd}?")
+
+@tool
+def notify_user(message: str) -&gt; str:
+    """Send the household a push notification (via Amazon SNS)."""
+    return notifications.push(message)
+
+SYSTEM = (
+    "You restock a smart fridge. When an item is low: check on-hand inventory, "
+    "get the price, and confirm it fits the monthly budget. Then place the "
+    "SMALLEST sensible order and notify the user. If the order exceeds $50 or "
+    "the budget is tight, call request_approval instead of ordering. Never order "
+    "something already in stock."
+)
+
+fridge_agent = Agent(
+    system_prompt=SYSTEM,
+    tools=[get_inventory, check_price, within_budget,
+           place_order, request_approval, notify_user],
+)</code></pre>
+<pre id="c-app" role="tabpanel" hidden><code><span class="cmt"># app.py — host the Strands agent on Bedrock AgentCore Runtime.</span>
+<span class="cmt"># AgentCore adds serverless scaling, session isolation, memory and identity.</span>
+from bedrock_agentcore.runtime import BedrockAgentCoreApp
+from agent import fridge_agent
+
+app = BedrockAgentCoreApp()
+
+@app.entrypoint
+def invoke(payload):
+    <span class="cmt"># runtimeSessionId (the deviceId) keeps each fridge's memory separate</span>
+    return fridge_agent(payload["prompt"])
+
+app.run()   <span class="cmt"># deploy: agentcore configure &amp;&amp; agentcore launch</span></code></pre>
+      </div>
+
+      <div class="callout"><strong>Read it as the pipeline.</strong> <code class="inline">fridge_device.py</code> reports → <code class="inline">iot_rule.sql</code> filters → <code class="inline">restock_trigger.py</code> adapts → <code class="inline">agent.py</code> decides → <code class="inline">app.py</code> hosts it. Each file maps to exactly one stage from section 3.</div>
+    </section>
+
+    <!-- ============ 6 · GUARDRAILS ============ -->
+    <section id="guardrails">
+      <h2><span class="pill">Do not skip</span> &nbsp;Guardrails &amp; safety</h2>
+      <p>An agent that spends real money from a device trigger is exactly where things go wrong. Four guardrails are non-negotiable.</p>
+
+      <article class="svc">
+        <h3>🔁 Idempotency — don't order 20 milks</h3>
+        <p><span class="tag limit">Risk</span> A low sensor can fire every minute until the shelf is refilled, re-invoking the agent each time.</p>
+        <p><span class="tag choose">Fix</span> Dedupe on <code class="inline">(deviceId, item, day)</code> with a short-TTL record in DynamoDB or AgentCore Memory; if an open order exists for the item, the agent no-ops. Set the Shadow to <code class="inline">ordered</code> so the device stops re-alerting.</p>
+      </article>
+
+      <article class="svc">
+        <h3>💸 Spend limits &amp; human-in-the-loop</h3>
+        <p><span class="tag limit">Risk</span> A bad price feed or hallucinated quantity drains the grocery budget.</p>
+        <p><span class="tag choose">Fix</span> Hard budget cap in <code class="inline">within_budget</code>; anything over a threshold routes to <code class="inline">request_approval</code> and waits for the owner. The agent can suggest, but a human confirms big spends.</p>
+      </article>
+
+      <article class="svc">
+        <h3>🔐 Least privilege &amp; scoped credentials</h3>
+        <p><span class="tag limit">Risk</span> A compromised fridge could publish as other devices or reach systems it shouldn't.</p>
+        <p><span class="tag choose">Fix</span> The device's IoT policy is scoped to its own topics (e.g. <code class="inline">fridge/${iot:Connection.Thing.ThingName}/*</code>). The <em>agent</em> — not the device — holds the grocery credential, via AgentCore Identity, so device compromise can't place orders directly.</p>
+      </article>
+
+      <article class="svc">
+        <h3>🧯 Fail safe, not fail open</h3>
+        <p><span class="tag limit">Risk</span> The price API is down, so the agent guesses and orders blindly.</p>
+        <p><span class="tag choose">Fix</span> If a required tool fails, the agent notifies the user and stops — it never orders on missing data. Every action is traced (AgentCore observability) for audit.</p>
+      </article>
+
+      <div class="callout warn"><strong>Rule of thumb.</strong> Device triggers are <em>untrusted input</em>. Validate them, make actions idempotent, cap the blast radius (spend limits), and keep a human in the loop for anything expensive or irreversible.</div>
+    </section>
+
+    <!-- ============ RECAP ============ -->
+    <section id="recap">
+      <h2>Who does what — recap</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Stage</th><th>AWS piece</th><th>Role in the fridge example</th></tr></thead>
+          <tbody>
+            <tr><td>Sense</td><td>Device + IoT Device SDK (MQTT)</td><td>Fridge publishes <code class="inline">level_pct</code>; updates its Shadow</td></tr>
+            <tr><td>Authenticate</td><td>X.509 cert + IoT policy</td><td>Per-fridge identity, scoped to its own topics</td></tr>
+            <tr><td>Ingest &amp; route</td><td>IoT Core Rules Engine</td><td><code class="inline">WHERE level_pct &lt; 10</code> → invoke trigger</td></tr>
+            <tr><td>Adapt</td><td>Lambda (or EventBridge)</td><td>Turns the raw event into a task, invokes the agent</td></tr>
+            <tr><td>Reason</td><td>Strands agent on AgentCore</td><td>Check inventory · price · budget · decide</td></tr>
+            <tr><td>Remember</td><td>AgentCore Memory</td><td>Monthly spend, open orders, preferences</td></tr>
+            <tr><td>Act</td><td>Tools → Grocery API, SNS</td><td>Place order (or ask approval), notify owner</td></tr>
+            <tr><td>Close loop</td><td>Device Shadow (desired)</td><td>Sets <code class="inline">milk: ordered</code>; fridge display updates</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><strong>Portable pattern.</strong> Swap the fridge for an HVAC unit and "order milk" for "schedule maintenance," or the Strands+AgentCore agent for a <a href="adk.html">Google ADK</a> agent — the IoT-hub-to-agent bridge is unchanged. The hub moves signals; the agent makes decisions.</div>
+    </section>
+
+    <!-- ============ QUIZ ============ -->
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions on the integration. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="b">
+          <p>1. What decides — based on a condition — that a low-milk message should wake the agent?</p>
+          <label><input type="radio" name="q1" value="a"> The fridge's firmware</label>
+          <label><input type="radio" name="q1" value="b"> The AWS IoT Core Rules Engine (a SQL rule with a WHERE clause)</label>
+          <label><input type="radio" name="q1" value="c"> Amazon SNS</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>2. What holds the fridge's last-known state and a "desired" value even while it's offline?</p>
+          <label><input type="radio" name="q2" value="a"> A DynamoDB table the device writes directly</label>
+          <label><input type="radio" name="q2" value="b"> The MQTT broker's message backlog</label>
+          <label><input type="radio" name="q2" value="c"> The Device Shadow</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>3. Why should business logic (budgets, vendors, approvals) live in the agent, not on the fridge?</p>
+          <label><input type="radio" name="q3" value="a"> Devices are constrained, hard to update, and shouldn't hold cloud/shop credentials</label>
+          <label><input type="radio" name="q3" value="b"> Fridges can't run any code at all</label>
+          <label><input type="radio" name="q3" value="c"> IoT Core forbids logic in the cloud</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>4. A low sensor fires every minute until refilled. Which guardrail prevents 20 duplicate orders?</p>
+          <label><input type="radio" name="q4" value="a"> A bigger language model</label>
+          <label><input type="radio" name="q4" value="b"> Idempotency — dedupe on (deviceId, item, day) and check for an open order</label>
+          <label><input type="radio" name="q4" value="c"> Publishing to more MQTT topics</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>5. The order would exceed the spend limit. What should the agent do?</p>
+          <label><input type="radio" name="q5" value="a"> Order anyway — the sensor is authoritative</label>
+          <label><input type="radio" name="q5" value="b"> Silently skip and forget it</label>
+          <label><input type="radio" name="q5" value="c"> Call request_approval and wait for a human to confirm</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. Where does the Strands agent run so it gets scaling, session isolation and memory without extra plumbing?</p>
+          <label><input type="radio" name="q6" value="a"> On the fridge's microcontroller</label>
+          <label><input type="radio" name="q6" value="b"> Bedrock AgentCore Runtime</label>
+          <label><input type="radio" name="q6" value="c"> Inside the IoT Rules Engine</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>📡 AWS IoT Core</h4><p><a href="https://docs.aws.amazon.com/iot/latest/developerguide/what-is-aws-iot.html" target="_blank" rel="noopener">Developer guide</a> — MQTT, Device Shadow, and the Rules Engine.</p></div>
+        <div class="card"><h4>🟠 Strands Agents</h4><p><a href="https://strandsagents.com/" target="_blank" rel="noopener">The SDK</a> used for the fridge brain — tools and the model-driven loop.</p></div>
+        <div class="card"><h4>🏗️ Bedrock AgentCore</h4><p><a href="https://aws.amazon.com/bedrock/agentcore/" target="_blank" rel="noopener">Runtime, Memory, Identity</a> — where the agent is hosted safely.</p></div>
+        <div class="card"><h4>🧰 ADK comparison</h4><p><a href="adk.html">Agent Development Kits</a> — pick a different brain (Google ADK, LangGraph) for the same bridge.</p></div>
+        <div class="card"><h4>☁️ AWS services guide</h4><p><a href="aws-services.html">The field guide</a> — Lambda, SNS, DynamoDB and the rest, in context.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  An end-to-end example of wiring AWS IoT Core to an agent (Strands + Bedrock AgentCore). Device and cloud APIs evolve quickly — confirm exact names against the current official docs. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  // Theme toggle (persisted)
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) {
+    root.setAttribute("data-theme", t);
+    tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 ";
+    tLabel.textContent = t === "dark" ? "Light" : "Dark";
+  }
+  var saved = null;
+  try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () {
+    var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    applyTheme(next);
+    try { localStorage.setItem("theme", next); } catch (e) {}
+  });
+
+  // Mobile menu
+  var menuBtn = document.getElementById("menuToggle");
+  var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () {
+    var open = side.classList.toggle("open");
+    menuBtn.setAttribute("aria-expanded", String(open));
+  });
+  side.addEventListener("click", function (e) {
+    if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); }
+  });
+
+  // Reading progress
+  var bar = document.getElementById("progress");
+  function onScroll() {
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%";
+  }
+  document.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
+  // Active section highlighting
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a"));
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (en.isIntersecting) {
+        links.forEach(function (a) { a.classList.remove("active"); });
+        if (map[en.target.id]) map[en.target.id].classList.add("active");
+      }
+    });
+  }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+
+  // Tabs
+  document.querySelectorAll("[data-tabs]").forEach(function (wrap) {
+    var tabs = wrap.querySelectorAll(".tab");
+    tabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        tabs.forEach(function (t) {
+          t.setAttribute("aria-selected", "false");
+          var p = document.getElementById(t.dataset.target);
+          if (p) p.hidden = true;
+        });
+        tab.setAttribute("aria-selected", "true");
+        document.getElementById(tab.dataset.target).hidden = false;
+      });
+    });
+  });
+
+  // Copy buttons — copy the visible <pre> in the same code-wrap
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var wrap = btn.closest(".code-wrap");
+      var pre = wrap.querySelector("pre:not([hidden])");
+      var text = pre ? pre.innerText : "";
+      var done = function () { var o = btn.textContent; btn.textContent = "Copied!"; setTimeout(function () { btn.textContent = o; }, 1400); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, done);
+      } else {
+        var ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); } catch (e) {}
+        document.body.removeChild(ta); done();
+      }
+    });
+  });
+
+  // Quiz
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q");
+    var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      var correctLabel = q.querySelector('input[value="' + answer + '"]').parentNode;
+      correctLabel.classList.add("correct");
+      if (chosen) {
+        if (chosen.value === answer) { score++; }
+        else { chosen.parentNode.classList.add("wrong"); }
+      }
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length +
+      (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>
