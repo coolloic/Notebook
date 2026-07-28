@@ -127,6 +127,25 @@
   .flow .node.hot { border-color: var(--accent); color: var(--accent); }
   .flow .arrow { color: var(--text-soft); font-weight: 700; }
 
+  /* Decision diagram (inline SVG, themeable via CSS vars) */
+  .diagram-wrap { overflow-x: auto; margin: 1.4rem 0; }
+  .diagram { width: 100%; min-width: 660px; max-width: 860px; height: auto; display: block; margin: 0 auto; font-family: var(--font); }
+  .dg-box { fill: var(--bg-soft); stroke: var(--border); stroke-width: 1.5; }
+  .dg-q { fill: var(--bg); stroke: var(--accent); stroke-width: 1.5; }
+  .dg-start { fill: var(--accent); stroke: var(--accent); }
+  .dg-cag   { fill: var(--choose-bg); stroke: var(--choose); stroke-width: 1.5; }
+  .dg-rag   { fill: var(--solve-bg);  stroke: var(--solve);  stroke-width: 1.5; }
+  .dg-graph { fill: var(--limit-bg);  stroke: var(--limit);  stroke-width: 1.5; }
+  .dg-mix   { fill: var(--bg-soft); stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 6 4; }
+  .dg-line { fill: none; stroke: var(--text-soft); stroke-width: 1.5; }
+  .dg-arrowhead { fill: var(--text-soft); }
+  .dg-t     { fill: var(--text); font-size: 13px; font-weight: 700; }
+  .dg-sub   { fill: var(--text-soft); font-size: 11px; font-weight: 500; }
+  .dg-edge  { fill: var(--text-soft); font-size: 11.5px; font-weight: 700; }
+  .dg-startt { fill: #ffffff; font-size: 13px; font-weight: 700; }
+  [data-theme="dark"] .dg-startt { fill: #23091a; }
+  .dg-mixt  { fill: var(--text); font-size: 12.5px; font-weight: 600; }
+
   /* Technique block */
   .svc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-soft); padding: 1rem 1.2rem; margin: 1.1rem 0; }
   .svc h3 { margin: 0 0 .6rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
@@ -188,6 +207,7 @@
 
 <header class="top">
   <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <a class="btn home" href="index.html" aria-label="Back to all tutorials">← All tutorials</a>
   <div class="brand">RAG <span>vs</span> CAG</div>
   <div class="spacer"></div>
   <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
@@ -197,6 +217,7 @@
   <nav class="side" id="sidenav" aria-label="Table of contents">
     <ol>
       <li><a href="#overview">Overview</a></li>
+      <li><a href="#compare">At a glance — decision map</a></li>
       <li><a href="#problem">1 · The grounding problem</a></li>
       <li><a href="#rag">2 · RAG</a></li>
       <li><a href="#cag">3 · CAG</a></li>
@@ -223,6 +244,82 @@
       </div>
 
       <div class="callout"><strong>One sentence each.</strong> RAG <em>searches</em> a library and hands you the right pages; CAG hands the model the <em>whole</em> (small) book and remembers it; GraphRAG first <em>maps how everything connects</em>, then answers.</div>
+    </section>
+
+    <!-- ============ VISUAL COMPARISON ============ -->
+    <section id="compare">
+      <h2><span class="pill">At a glance</span> &nbsp;Which technique? A decision map</h2>
+      <p>Three questions — <em>does it fit in context?</em>, <em>does it change often?</em>, <em>are questions relational?</em> — route you to the right method. Follow the branches:</p>
+
+      <div class="diagram-wrap">
+        <svg class="diagram" viewBox="0 0 860 580" role="img" aria-labelledby="dg-title dg-desc">
+          <title id="dg-title">Decision map for choosing a grounding technique</title>
+          <desc id="dg-desc">If the whole corpus fits in the context window: choose CAG if it rarely changes, or RAG if it changes frequently. If it does not fit: choose GraphRAG for multi-hop or whole-corpus questions, otherwise RAG. A stable core plus a volatile long tail means mixing CAG and RAG.</desc>
+          <defs>
+            <marker id="dg-arrow" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" class="dg-arrowhead"/></marker>
+          </defs>
+
+          <!-- connectors (drawn first, under the boxes) -->
+          <path class="dg-line" d="M430,68 L430,118" marker-end="url(#dg-arrow)"/>
+          <path class="dg-line" d="M430,176 L430,213 L220,213 L220,250" marker-end="url(#dg-arrow)"/>
+          <path class="dg-line" d="M430,176 L430,213 L645,213 L645,250" marker-end="url(#dg-arrow)"/>
+          <path class="dg-line" d="M220,308 L220,352 L145,352 L145,395" marker-end="url(#dg-arrow)"/>
+          <path class="dg-line" d="M220,308 L220,352 L325,352 L325,395" marker-end="url(#dg-arrow)"/>
+          <path class="dg-line" d="M645,308 L645,352 L545,352 L545,395" marker-end="url(#dg-arrow)"/>
+          <path class="dg-line" d="M645,308 L645,352 L730,352 L730,395" marker-end="url(#dg-arrow)"/>
+
+          <!-- edge labels -->
+          <text class="dg-edge" x="322" y="207" text-anchor="middle">fits ✓</text>
+          <text class="dg-edge" x="548" y="207" text-anchor="middle">too big ✕</text>
+          <text class="dg-edge" x="176" y="346" text-anchor="middle">stable</text>
+          <text class="dg-edge" x="300" y="346" text-anchor="middle">changes</text>
+          <text class="dg-edge" x="568" y="346" text-anchor="middle">simple</text>
+          <text class="dg-edge" x="712" y="346" text-anchor="middle">relational</text>
+
+          <!-- start -->
+          <rect class="dg-start" x="330" y="18" width="200" height="50" rx="25"/>
+          <text class="dg-startt" x="430" y="48" text-anchor="middle">Your knowledge base</text>
+
+          <!-- Q1 -->
+          <rect class="dg-q" x="330" y="118" width="200" height="58" rx="10"/>
+          <text class="dg-t" x="430" y="142" text-anchor="middle">Fits in the</text>
+          <text class="dg-t" x="430" y="160" text-anchor="middle">context window?</text>
+
+          <!-- Q2 -->
+          <rect class="dg-q" x="120" y="250" width="200" height="58" rx="10"/>
+          <text class="dg-t" x="220" y="274" text-anchor="middle">Changes</text>
+          <text class="dg-t" x="220" y="292" text-anchor="middle">frequently?</text>
+
+          <!-- Q3 -->
+          <rect class="dg-q" x="530" y="250" width="230" height="58" rx="10"/>
+          <text class="dg-t" x="645" y="274" text-anchor="middle">Multi-hop or</text>
+          <text class="dg-t" x="645" y="292" text-anchor="middle">whole-corpus?</text>
+
+          <!-- leaves -->
+          <rect class="dg-cag" x="70" y="395" width="150" height="54" rx="10"/>
+          <text class="dg-t"   x="145" y="418" text-anchor="middle">CAG</text>
+          <text class="dg-sub" x="145" y="436" text-anchor="middle">small · stable</text>
+
+          <rect class="dg-rag" x="250" y="395" width="150" height="54" rx="10"/>
+          <text class="dg-t"   x="325" y="418" text-anchor="middle">RAG</text>
+          <text class="dg-sub" x="325" y="436" text-anchor="middle">fits, but changing</text>
+
+          <rect class="dg-rag" x="470" y="395" width="150" height="54" rx="10"/>
+          <text class="dg-t"   x="545" y="418" text-anchor="middle">RAG</text>
+          <text class="dg-sub" x="545" y="436" text-anchor="middle">big · lookups</text>
+
+          <rect class="dg-graph" x="645" y="395" width="170" height="54" rx="10"/>
+          <text class="dg-t"   x="730" y="418" text-anchor="middle">GraphRAG</text>
+          <text class="dg-sub" x="730" y="436" text-anchor="middle">multi-hop · global</text>
+
+          <!-- mix band -->
+          <rect class="dg-mix" x="150" y="500" width="560" height="58" rx="12"/>
+          <text class="dg-mixt" x="430" y="524" text-anchor="middle">Stable core AND a big / volatile long tail?</text>
+          <text class="dg-mixt" x="430" y="544" text-anchor="middle">→ Mix: CAG the core + RAG the rest</text>
+        </svg>
+      </div>
+
+      <div class="callout"><strong>Reading it:</strong> the two <strong>RAG</strong> leaves aren't a mistake — RAG is the default workhorse whenever CAG (small &amp; stable) and GraphRAG (relational / global) don't apply. The dashed band is the common production reality: most real systems <em>mix</em>.</div>
     </section>
 
     <!-- ============ 1 · THE PROBLEM ============ -->
