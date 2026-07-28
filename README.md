@@ -515,6 +515,7 @@ Runnable scaffolds for each agentic AI design pattern (from Google Cloud's *Choo
 - **[RAG vs CAG vs GraphRAG](rag-cag.html)** — the grounding problem each technique solves, when to use each, when to mix them, and the wider family (hybrid search, reranking, HyDE, Agentic/Corrective/Self-RAG, Contextual Retrieval).
 - **[APIs vs MCP](api-mcp.html)** — how agents connect to tools: the M×N problem MCP solves, how it works, a direct comparison, and when to use each.
 - **[WebMCP &amp; A2A](webmcp-a2a.html)** — emerging protocols for the agentic web: MCP-style tools in the browser (WebMCP) and agent-to-agent delegation (A2A).
+- **[n8n — Workflow Automation](n8n.html)** — the automation problem n8n solves, how node-based workflows work, its limitations (fair-code licence, self-hosting, scale), and how it compares to Zapier, Make, Node-RED and Airflow.
 - **[AWS Services Field Guide](aws-services.html)** — an architect's tour of 40 core AWS services: the problem each one solves, its real limits and quotas, and when to choose it (pairs with Bedrock for LLM apps).
 - **[Agent Development Kits Compared](adk.html)** — Google ADK vs AWS Strands + Bedrock AgentCore vs LangGraph: what problem each solves, its limits, and when to choose it.
 - **[IoT × Agents: a self-restocking fridge](iot-agent.html)** — an end-to-end example wiring AWS IoT Core to a Strands agent on Bedrock AgentCore, with architecture, code, and the guardrails auto-purchasing needs.

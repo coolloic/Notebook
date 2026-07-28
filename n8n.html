@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔗</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="n8n explained — the workflow-automation problem it solves, how node-based workflows work, its limitations (fair-code license, self-hosting, scale), and how it compares to Zapier, Make, Node-RED, Activepieces, Airflow and Temporal.">
+<title>n8n — Workflow Automation: Problem, Limits &amp; Alternatives</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f5f7fa;
+    --bg-code: #2b0f0f;      /* deep red ink */
+    --text: #1a2130;
+    --text-soft: #55617a;
+    --border: #e2e8f0;
+    --accent: #dc2626;       /* red-600 */
+    --ink: #991b1b;          /* red-800 */
+    --solve: #15803d;
+    --limit: #b45309;
+    --choose: #1e40af;
+    --solve-bg: #dcfce7;
+    --limit-bg: #fef3c7;
+    --choose-bg: #dbeafe;
+    --radius: 12px;
+    --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #0f172a;
+    --bg-soft: #17233d;
+    --bg-code: #240a0a;
+    --text: #e6ecf7;
+    --text-soft: #9fb0cc;
+    --border: #263450;
+    --accent: #f87171;
+    --ink: #fca5a5;
+    --solve: #86efac;
+    --limit: #fcd34d;
+    --choose: #93c5fd;
+    --solve-bg: #14351f;
+    --limit-bg: #3a2a0c;
+    --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: var(--font);
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  .skip-link {
+    position: absolute; left: -999px; top: 0;
+    background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100;
+  }
+  .skip-link:focus { left: 0; }
+
+  #progress {
+    position: fixed; top: 0; left: 0; height: 4px; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--ink));
+    z-index: 60; transition: width .1s linear;
+  }
+
+  header.top {
+    position: sticky; top: 0; z-index: 50;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 1rem;
+    padding: .6rem 1rem;
+  }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; }
+  header.top .brand span { color: var(--accent); }
+  header.top .spacer { flex: 1; }
+  .btn {
+    font: inherit; cursor: pointer; border: 1px solid var(--border);
+    background: var(--bg-soft); color: var(--text);
+    border-radius: 999px; padding: .5rem .9rem; min-height: 44px;
+    display: inline-flex; align-items: center; gap: .4rem;
+  }
+  .btn:hover { border-color: var(--accent); }
+  #menuToggle { display: none; }
+
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side {
+    position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px);
+    overflow-y: auto; padding: 1.25rem 0; font-size: .93rem;
+  }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a {
+    display: block; padding: .45rem .75rem; border-radius: 8px;
+    color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent;
+  }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); }
+  nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.15rem; margin: 1.75rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; }
+  .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .card .count { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; }
+  .callout strong { color: var(--accent); }
+
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 1.25rem 0; }
+  .flow .node { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: .5rem .8rem; font-size: .88rem; font-weight: 600; }
+  .flow .node.hot { border-color: var(--accent); color: var(--accent); }
+  .flow .arrow { color: var(--text-soft); font-weight: 700; }
+
+  .svc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-soft); padding: 1rem 1.2rem; margin: 1.1rem 0; }
+  .svc h3 { margin: 0 0 .6rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
+  .svc h3 .full { font-size: .82rem; font-weight: 500; color: var(--text-soft); font-family: var(--mono); }
+  .svc p { margin: .4rem 0; font-size: .95rem; }
+  .tag { display: inline-block; min-width: 5.6rem; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .12rem .5rem; border-radius: 6px; margin-right: .5rem; text-align: center; }
+  .tag.solve  { background: var(--solve-bg);  color: var(--solve); }
+  .tag.limit  { background: var(--limit-bg);  color: var(--limit); }
+  .tag.choose { background: var(--choose-bg); color: var(--choose); }
+
+  .code-wrap { margin: 1.1rem 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  pre { margin: 0; background: var(--bg-code); color: #fbeaea; padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .86rem; line-height: 1.6; }
+  pre code { font-family: inherit; }
+  .code-head { display: flex; align-items: center; justify-content: space-between; background: var(--bg-code); padding: .35rem .6rem .35rem 1rem; }
+  .code-head .label { color: #d69b9b; font-size: .78rem; font-family: var(--mono); }
+  .copy { font: inherit; cursor: pointer; background: #5a2020; color: #fbeaea; border: none; border-radius: 6px; padding: .35rem .7rem; min-height: 36px; font-size: .8rem; }
+  .copy:hover { background: #742a2a; }
+  .cmt { color: #b98a8a; }
+  code.inline { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; }
+
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-soft); }
+
+  /* Workflow diagram */
+  .wf-wrap { overflow-x: auto; margin: 1.3rem 0; }
+  .wf { width: 100%; min-width: 600px; max-width: 690px; height: auto; display: block; margin: 0 auto; font-family: var(--font); }
+  .wf-box { fill: var(--bg-soft); stroke: var(--border); stroke-width: 1.5; }
+  .wf-trig { fill: var(--bg-soft); stroke: var(--accent); stroke-width: 2; }
+  .wf-line { fill: none; stroke: var(--text-soft); stroke-width: 1.6; }
+  .wf-arrowhead { fill: var(--text-soft); }
+  .wf-t { fill: var(--text); font-size: 12.5px; font-weight: 600; }
+  .wf-lbl { fill: var(--text-soft); font-size: 11px; font-weight: 700; }
+
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); }
+  details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; }
+  .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); }
+  .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; }
+  [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; }
+  #score { font-weight: 700; margin-left: 1rem; }
+
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; }
+    #menuToggle { display: inline-flex; }
+    main { padding-top: .5rem; }
+    .tag { min-width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <a class="btn home" href="index.html" aria-label="Back to all tutorials">← All tutorials</a>
+  <div class="brand"><span>n8n</span> — workflow automation</div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#problem">1 · The problem it solves</a></li>
+      <li><a href="#how">2 · How n8n works</a></li>
+      <li><a href="#distinct">3 · What makes it distinct</a></li>
+      <li><a href="#limits">4 · Limitations</a></li>
+      <li><a href="#similar">5 · Similar tools</a></li>
+      <li><a href="#choose">6 · When to choose which</a></li>
+      <li><a href="#cheatsheet">Cheat sheet</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>n8n — automate the glue between your apps</h1>
+      <p class="lede">n8n is a <strong>workflow-automation</strong> tool: you wire together triggers and actions on a visual canvas to connect apps, APIs and databases — automating the repetitive "when X happens, do Y and Z" work that would otherwise be manual or bespoke scripts. It's source-available and <strong>self-hostable</strong>, with an escape hatch to real code when the no-code nodes aren't enough.</p>
+
+      <div class="flow">
+        <span class="node">a trigger fires</span><span class="arrow">→</span>
+        <span class="node hot">nodes transform &amp; route data</span><span class="arrow">→</span>
+        <span class="node">actions happen</span>
+      </div>
+
+      <div class="callout"><strong>One line.</strong> n8n turns "I keep manually copying data between these five tools" into a workflow that runs itself — visually built, code-extensible, and running on <em>your</em> infrastructure if you want it.</div>
+    </section>
+
+    <!-- ============ 1 · PROBLEM ============ -->
+    <section id="problem">
+      <h2><span class="pill">Why</span> &nbsp;The problem it solves</h2>
+      <p>Modern work is spread across dozens of SaaS apps that don't talk to each other. Bridging them means either <strong>manual busywork</strong> (copy a lead from a form into the CRM, ping Slack, add a row to a sheet…) or <strong>custom glue scripts</strong> you have to write, host, monitor and maintain forever. Both scale badly.</p>
+      <p>n8n collapses that into <strong>declarative workflows</strong>: connect a <em>trigger</em> to a chain of <em>actions</em>, and it handles the scheduling, the API auth, the retries and the data plumbing. It targets three pains at once:</p>
+      <div class="cards">
+        <div class="card"><h4>🔁 Repetitive tasks</h4><p>Anything you do the same way every time — notifications, data entry, syncing, reports — runs automatically.</p></div>
+        <div class="card"><h4>🧩 App integration</h4><p>400+ pre-built integrations (plus a generic HTTP node) so any two services can exchange data without custom clients.</p></div>
+        <div class="card"><h4>🛠️ Glue-code sprawl</h4><p>Replace scattered cron scripts and Lambda one-offs with one visible, maintainable, centrally-run place.</p></div>
+      </div>
+    </section>
+
+    <!-- ============ 2 · HOW ============ -->
+    <section id="how">
+      <h2><span class="pill">Mechanics</span> &nbsp;How n8n works</h2>
+      <p>A <strong>workflow</strong> is a graph of <strong>nodes</strong>. A <em>trigger node</em> starts it (a schedule, an incoming webhook, or an app event), then data flows node-to-node as JSON <em>items</em>, each node transforming or routing them until <em>action nodes</em> do something in the outside world.</p>
+
+      <div class="wf-wrap">
+        <svg class="wf" viewBox="0 0 690 260" role="img" aria-labelledby="wf-title wf-desc">
+          <title id="wf-title">A simple n8n workflow</title>
+          <desc id="wf-desc">A schedule trigger runs an HTTP request, an IF node branches: if true, send a Slack message; if false, append a row to Google Sheets.</desc>
+          <defs>
+            <marker id="wf-ar" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" class="wf-arrowhead"/></marker>
+          </defs>
+          <!-- connectors -->
+          <path class="wf-line" d="M148,141 L188,141" marker-end="url(#wf-ar)"/>
+          <path class="wf-line" d="M320,141 L360,141" marker-end="url(#wf-ar)"/>
+          <path class="wf-line" d="M440,141 C474,141 474,74 500,74" marker-end="url(#wf-ar)"/>
+          <path class="wf-line" d="M440,141 C474,141 474,208 500,208" marker-end="url(#wf-ar)"/>
+          <text class="wf-lbl" x="470" y="104" text-anchor="middle">true</text>
+          <text class="wf-lbl" x="470" y="188" text-anchor="middle">false</text>
+          <!-- nodes -->
+          <rect class="wf-trig" x="24" y="115" width="124" height="52" rx="10"/><text class="wf-t" x="86" y="146" text-anchor="middle">⏱ Schedule</text>
+          <rect class="wf-box" x="188" y="115" width="132" height="52" rx="10"/><text class="wf-t" x="254" y="146" text-anchor="middle">HTTP Request</text>
+          <rect class="wf-box" x="360" y="115" width="80" height="52" rx="10"/><text class="wf-t" x="400" y="146" text-anchor="middle">IF</text>
+          <rect class="wf-box" x="500" y="48" width="150" height="52" rx="10"/><text class="wf-t" x="575" y="79" text-anchor="middle">Send Slack</text>
+          <rect class="wf-box" x="500" y="182" width="150" height="52" rx="10"/><text class="wf-t" x="575" y="213" text-anchor="middle">Google Sheets</text>
+        </svg>
+      </div>
+
+      <p>When a pre-built node doesn't exist, two escape hatches keep you unblocked: the <strong>HTTP Request</strong> node calls any REST API, and the <strong>Code</strong> node runs JavaScript (or Python) over the items — so a low-code workflow can drop into real code exactly where it needs to.</p>
+
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">a Code node</span><button class="copy">Copy</button></div>
+<pre><code><span class="cmt">// n8n "Code" node — runs over the items flowing through the workflow.</span>
+<span class="cmt">// Enrich each item, then hand them to the next node.</span>
+for (const item of $input.all()) {
+  item.json.fullName    = `${item.json.first} ${item.json.last}`;
+  item.json.processedAt = $now.toISO();     <span class="cmt">// n8n built-ins: $input, $now, $json…</span>
+}
+return $input.all();</code></pre>
+      </div>
+    </section>
+
+    <!-- ============ 3 · DISTINCT ============ -->
+    <section id="distinct">
+      <h2><span class="pill">Character</span> &nbsp;What makes n8n distinct</h2>
+      <div class="cards">
+        <div class="card"><h4>🏠 Self-hostable</h4><p>Run it on your own server (Docker/npm) so data never leaves your infrastructure — key for privacy, compliance and cost control.</p></div>
+        <div class="card"><h4>🧑‍💻 Code when needed</h4><p>Low-code by default, but the Code and HTTP nodes mean you're never boxed in like a pure no-code tool.</p></div>
+        <div class="card"><h4>🤖 AI / agent nodes</h4><p>Built-in LangChain-based nodes let you build LLM chains and tool-using agents inside a workflow.</p></div>
+        <div class="card"><h4>💸 Predictable cost</h4><p>Self-hosted is flat-cost rather than per-task — a big saver versus per-operation SaaS pricing at volume.</p></div>
+      </div>
+    </section>
+
+    <!-- ============ 4 · LIMITS ============ -->
+    <section id="limits">
+      <h2><span class="pill">The trade-offs</span> &nbsp;Limitations</h2>
+      <article class="svc">
+        <h3>What to weigh before committing</h3>
+        <p><span class="tag limit">License</span> n8n is <strong>fair-code</strong>, not OSI open-source — distributed under the Sustainable Use License. Self-hosting for your own internal use is free, but offering n8n <em>itself</em> as a hosted service or embedding/white-labeling it commercially needs a licence. Read the terms if you plan to resell.</p>
+        <p><span class="tag limit">Ops</span> <strong>Self-hosting has a cost of its own.</strong> Beyond a hobby instance you manage upgrades, a database (Postgres), and — to scale — "queue mode" with Redis and worker processes. That's real DevOps.</p>
+        <p><span class="tag limit">Scale</span> <strong>Not a big-data engine.</strong> Items are processed largely in memory, so huge payloads or very high-throughput streaming can strain it. For heavy ETL or event streams, a dedicated pipeline (Airflow, Spark, Kafka) fits better.</p>
+        <p><span class="tag limit">Maintainability</span> Large workflows get visually <strong>unwieldy</strong>; deep branching is hard to debug, testing is limited, and workflows are stored as JSON — versionable in git but not a first-class code-review/merge experience.</p>
+        <p><span class="tag limit">Integrations</span> Some connectors are <strong>less deep or polished</strong> than a mature SaaS like Zapier's; you'll sometimes fall back to the raw HTTP node and wire auth yourself.</p>
+      </article>
+      <div class="callout"><strong>Net:</strong> n8n trades the turnkey polish (and cost) of hosted SaaS for flexibility, data control and code access. Great for technical teams; more setup than a point-and-click cloud tool.</div>
+    </section>
+
+    <!-- ============ 5 · SIMILAR ============ -->
+    <section id="similar">
+      <h2><span class="pill">Alternatives</span> &nbsp;Similar tools</h2>
+      <p>The automation/integration landscape splits along a few axes: <strong>no-code vs code-first</strong>, <strong>cloud-only vs self-hostable</strong>, and <strong>app-glue vs data-orchestration</strong>.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Tool</th><th>Type</th><th>Hosting</th><th>Style</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><strong>n8n</strong></td><td>Workflow automation</td><td>Self-host or cloud</td><td>Low-code + code</td><td>Flexible, source-available, AI nodes</td></tr>
+            <tr><td><strong>Zapier</strong></td><td>App automation</td><td>Cloud only</td><td>No-code</td><td>Biggest app catalog, easiest; pricey at scale</td></tr>
+            <tr><td><strong>Make</strong> (Integromat)</td><td>App automation</td><td>Cloud only</td><td>Low-code, visual</td><td>Powerful visual builder, cheaper than Zapier</td></tr>
+            <tr><td><strong>Activepieces</strong></td><td>Workflow automation</td><td>Self-host or cloud</td><td>Low-code + code</td><td>MIT-licensed n8n-style alternative</td></tr>
+            <tr><td><strong>Node-RED</strong></td><td>Flow-based (events/IoT)</td><td>Self-host</td><td>Low-code + JS</td><td>Open source; great for hardware/IoT/event flows</td></tr>
+            <tr><td><strong>Pipedream</strong></td><td>Dev automation</td><td>Cloud (mostly)</td><td>Code-first</td><td>Developer-centric, code steps between apps</td></tr>
+            <tr><td><strong>Workato · Tray.io</strong></td><td>Enterprise iPaaS</td><td>Cloud</td><td>Low-code</td><td>Governance, SLAs, enterprise scale; $$$</td></tr>
+            <tr><td><strong>Apache Airflow</strong></td><td>Data orchestration</td><td>Self-host / managed</td><td>Code-first (Python)</td><td>DAGs for data pipelines — not app-glue</td></tr>
+            <tr><td><strong>Temporal</strong></td><td>Durable workflows</td><td>Self-host / cloud</td><td>Code-first</td><td>Reliable long-running orchestration <em>as code</em></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><strong>Family resemblance:</strong> Zapier/Make/Activepieces are n8n's closest cousins (app automation). Node-RED shares the visual-flow idea for events/IoT. Airflow and Temporal solve a <em>different</em> problem — code-first orchestration for data and reliability engineers.</div>
+    </section>
+
+    <!-- ============ 6 · CHOOSE ============ -->
+    <section id="choose">
+      <h2>When to choose which</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>If you…</th><th>Reach for…</th></tr></thead>
+          <tbody>
+            <tr><td>Want self-hosting, data control, and code when needed</td><td><strong>n8n</strong></td></tr>
+            <tr><td>Are non-technical and want the fastest, cloud-only setup</td><td><strong>Zapier</strong></td></tr>
+            <tr><td>Want a powerful visual builder that's cheaper than Zapier</td><td><strong>Make</strong></td></tr>
+            <tr><td>Need a fully OSI-open-source, self-hosted option</td><td><strong>Activepieces</strong> or <strong>Node-RED</strong></td></tr>
+            <tr><td>Automate hardware / IoT / event streams</td><td><strong>Node-RED</strong></td></tr>
+            <tr><td>Build data pipelines / DAGs in Python</td><td><strong>Apache Airflow</strong></td></tr>
+            <tr><td>Need mission-critical, long-running durable workflows in code</td><td><strong>Temporal</strong></td></tr>
+            <tr><td>Are an enterprise needing governance &amp; SLAs</td><td><strong>Workato / Tray.io</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><strong>Rule of thumb.</strong> Non-technical + cloud → Zapier/Make. Technical team wanting control, flexibility and cost efficiency → <strong>n8n</strong>. Data engineering or reliability-critical orchestration → Airflow/Temporal (different tool for a different job).</div>
+    </section>
+
+    <!-- ============ CHEAT SHEET ============ -->
+    <section id="cheatsheet">
+      <h2>Cheat sheet</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Question</th><th>Short answer</th></tr></thead>
+          <tbody>
+            <tr><td>What is n8n?</td><td>A source-available, self-hostable workflow-automation tool (node-based).</td></tr>
+            <tr><td>What problem does it solve?</td><td>Automating repetitive multi-app tasks without bespoke, hard-to-maintain glue code.</td></tr>
+            <tr><td>How is a workflow built?</td><td>A trigger node feeds action/logic nodes; data flows as JSON items.</td></tr>
+            <tr><td>Escape hatch from no-code?</td><td>The HTTP Request node (any API) and the Code node (JS/Python).</td></tr>
+            <tr><td>Biggest caveats?</td><td>Fair-code licence, self-hosting ops, and not built for big-data scale.</td></tr>
+            <tr><td>Closest alternatives?</td><td>Zapier &amp; Make (cloud), Activepieces &amp; Node-RED (open-source).</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ QUIZ ============ -->
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions on n8n. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="b">
+          <p>1. What is n8n primarily for?</p>
+          <label><input type="radio" name="q1" value="a"> Training language models</label>
+          <label><input type="radio" name="q1" value="b"> Automating multi-step workflows that connect apps &amp; APIs</label>
+          <label><input type="radio" name="q1" value="c"> Storing vector embeddings</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>2. How is an n8n workflow structured?</p>
+          <label><input type="radio" name="q2" value="a"> As a single Python script</label>
+          <label><input type="radio" name="q2" value="b"> As a spreadsheet of rules</label>
+          <label><input type="radio" name="q2" value="c"> As nodes connected on a canvas, with data flowing between them</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>3. When no pre-built integration exists, what keeps you unblocked?</p>
+          <label><input type="radio" name="q3" value="a"> The HTTP Request node and the Code node</label>
+          <label><input type="radio" name="q3" value="b"> Nothing — you're stuck</label>
+          <label><input type="radio" name="q3" value="c"> You must fork the project</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>4. Which is a real limitation of n8n?</p>
+          <label><input type="radio" name="q4" value="a"> It can't run on your own server</label>
+          <label><input type="radio" name="q4" value="b"> It's fair-code (not OSI-open), and self-hosting/scale is your responsibility</label>
+          <label><input type="radio" name="q4" value="c"> It has no integrations at all</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>5. A non-technical team wants the fastest cloud-only setup with the biggest app catalog. Best fit?</p>
+          <label><input type="radio" name="q5" value="a"> Apache Airflow</label>
+          <label><input type="radio" name="q5" value="b"> Temporal</label>
+          <label><input type="radio" name="q5" value="c"> Zapier</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. You need code-first DAGs for a data-engineering pipeline. Which tool is designed for that?</p>
+          <label><input type="radio" name="q6" value="a"> n8n</label>
+          <label><input type="radio" name="q6" value="b"> Apache Airflow</label>
+          <label><input type="radio" name="q6" value="c"> Zapier</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>🔌 APIs vs MCP</h4><p><a href="api-mcp.html">How tools connect to AI</a> — n8n glues apps; MCP standardizes tools for agents.</p></div>
+        <div class="card"><h4>🧰 Agent Development Kits</h4><p><a href="adk.html">Build agents in code</a> — the code-first counterpart to n8n's visual AI nodes.</p></div>
+        <div class="card"><h4>📡 IoT × Agents</h4><p><a href="iot-agent.html">Event-driven automation</a> — an agent triggered by a device, the AWS way.</p></div>
+        <div class="card"><h4>📓 All tutorials</h4><p><a href="index.html">The hub</a> — LLM apps, embeddings, retrieval, agents, protocols, AWS &amp; IoT.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  n8n — the workflow-automation problem it solves, its limits, and how it compares. Products and licences change; confirm current details at n8n.io. · MIT Licensed (this page)
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) {
+    root.setAttribute("data-theme", t);
+    tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 ";
+    tLabel.textContent = t === "dark" ? "Light" : "Dark";
+  }
+  var saved = null;
+  try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () {
+    var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    applyTheme(next);
+    try { localStorage.setItem("theme", next); } catch (e) {}
+  });
+
+  var menuBtn = document.getElementById("menuToggle");
+  var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () {
+    var open = side.classList.toggle("open");
+    menuBtn.setAttribute("aria-expanded", String(open));
+  });
+  side.addEventListener("click", function (e) {
+    if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); }
+  });
+
+  var bar = document.getElementById("progress");
+  function onScroll() {
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%";
+  }
+  document.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a"));
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (en.isIntersecting) {
+        links.forEach(function (a) { a.classList.remove("active"); });
+        if (map[en.target.id]) map[en.target.id].classList.add("active");
+      }
+    });
+  }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var wrap = btn.closest(".code-wrap");
+      var pre = wrap.querySelector("pre");
+      var text = pre ? pre.innerText : "";
+      var done = function () { var o = btn.textContent; btn.textContent = "Copied!"; setTimeout(function () { btn.textContent = o; }, 1400); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, done);
+      } else {
+        var ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); } catch (e) {}
+        document.body.removeChild(ta); done();
+      }
+    });
+  });
+
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q");
+    var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      var correctLabel = q.querySelector('input[value="' + answer + '"]').parentNode;
+      correctLabel.classList.add("correct");
+      if (chosen) {
+        if (chosen.value === answer) { score++; }
+        else { chosen.parentNode.classList.add("wrong"); }
+      }
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length +
+      (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>

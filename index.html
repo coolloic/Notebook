@@ -24,6 +24,7 @@
     --adk: #0f766e;   /* teal    */
     --api: #0369a1;   /* sky     */
     --web: #a21caf;   /* fuchsia */
+    --n8n: #dc2626;   /* red     */
     --aws: #d9701a;   /* orange  */
     --iot: #6d28d9;   /* violet  */
     --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -43,6 +44,7 @@
     --adk: #5eead4;
     --api: #7dd3fc;
     --web: #f0abfc;
+    --n8n: #f87171;
     --aws: #f0a35e;
     --iot: #c4b5fd;
   }
@@ -111,6 +113,7 @@
   .tile.adk { --tile: var(--adk); }
   .tile.api { --tile: var(--api); }
   .tile.web { --tile: var(--web); }
+  .tile.n8n { --tile: var(--n8n); }
   .tile.aws { --tile: var(--aws); }
   .tile.iot { --tile: var(--iot); }
   .tile .top { display: flex; align-items: center; gap: .6rem; }
@@ -136,6 +139,7 @@
   .path li.adk { --step: var(--adk); }
   .path li.api { --step: var(--api); }
   .path li.web { --step: var(--web); }
+  .path li.n8n { --step: var(--n8n); }
   .path li.aws { --step: var(--aws); }
   .path li.iot { --step: var(--iot); }
   .path li:last-child { padding-bottom: .2rem; }
@@ -178,7 +182,7 @@
   <div class="hero">
     <p class="eyebrow">Interactive tutorials</p>
     <h1>Build with LLMs, agents &amp; AWS</h1>
-    <p>Eight self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
+    <p>Nine self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
   </div>
 
   <div class="search" role="search">
@@ -232,6 +236,13 @@
         <span class="go">Look ahead</span>
       </a>
 
+      <a class="tile n8n" href="n8n.html">
+        <div class="top"><span class="ico">🔗</span><span class="kicker">Automation</span></div>
+        <h3>n8n — Workflow Automation</h3>
+        <p>Automate the glue between apps: what problem node-based workflows solve, how they work, n8n's limitations (fair-code licence, self-hosting, scale), and how it compares to Zapier, Make, Node-RED and more.</p>
+        <span class="go">Automate it</span>
+      </a>
+
       <a class="tile aws" href="aws-services.html">
         <div class="top"><span class="ico">☁️</span><span class="kicker">Cloud</span></div>
         <h3>AWS Services Field Guide</h3>
@@ -281,6 +292,10 @@
         <h3><a href="webmcp-a2a.html">WebMCP &amp; A2A</a></h3>
         <p>Where it's heading: tools in the browser, and agents that discover and delegate to each other.</p>
       </li>
+      <li class="n8n">
+        <h3><a href="n8n.html">n8n — Workflow Automation</a></h3>
+        <p>Zoom out to the practical: wire apps and APIs into automated workflows — low-code, self-hosted, with code when you need it.</p>
+      </li>
       <li class="aws">
         <h3><a href="aws-services.html">AWS Services Field Guide</a></h3>
         <p>Learn the cloud building blocks — compute, storage, messaging, Bedrock — that agents and apps actually run on.</p>
@@ -294,7 +309,7 @@
 </main>
 
 <footer>
-  Eight interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
+  Nine interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
 </footer>
 
 <script>
