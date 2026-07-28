@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚖️</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="LangChain vs LlamaIndex — the problem each framework is built for, their strengths and limits, the same RAG pipeline in both, a direct comparison, and when to choose which (or use them together).">
+<title>LangChain vs LlamaIndex — Which LLM Framework?</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f5f7fa;
+    --bg-code: #2a1f06;      /* deep amber ink */
+    --text: #1a2130;
+    --text-soft: #55617a;
+    --border: #e2e8f0;
+    --accent: #a16207;       /* amber/gold-700 (AA on white) */
+    --ink: #854d0e;          /* amber-800 */
+    --solve: #15803d;
+    --limit: #b45309;
+    --choose: #1e40af;
+    --solve-bg: #dcfce7;
+    --limit-bg: #fef3c7;
+    --choose-bg: #dbeafe;
+    --radius: 12px;
+    --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #0f172a;
+    --bg-soft: #17233d;
+    --bg-code: #211803;
+    --text: #e6ecf7;
+    --text-soft: #9fb0cc;
+    --border: #263450;
+    --accent: #fbbf24;
+    --ink: #fcd34d;
+    --solve: #86efac;
+    --limit: #fcd34d;
+    --choose: #93c5fd;
+    --solve-bg: #14351f;
+    --limit-bg: #3a2a0c;
+    --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: var(--font);
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  .skip-link {
+    position: absolute; left: -999px; top: 0;
+    background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100;
+  }
+  .skip-link:focus { left: 0; }
+
+  #progress {
+    position: fixed; top: 0; left: 0; height: 4px; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--ink));
+    z-index: 60; transition: width .1s linear;
+  }
+
+  header.top {
+    position: sticky; top: 0; z-index: 50;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 1rem;
+    padding: .6rem 1rem;
+  }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; }
+  header.top .brand span { color: var(--accent); }
+  header.top .spacer { flex: 1; }
+  .btn {
+    font: inherit; cursor: pointer; border: 1px solid var(--border);
+    background: var(--bg-soft); color: var(--text);
+    border-radius: 999px; padding: .5rem .9rem; min-height: 44px;
+    display: inline-flex; align-items: center; gap: .4rem;
+  }
+  .btn:hover { border-color: var(--accent); }
+  #menuToggle { display: none; }
+
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side {
+    position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px);
+    overflow-y: auto; padding: 1.25rem 0; font-size: .93rem;
+  }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a {
+    display: block; padding: .45rem .75rem; border-radius: 8px;
+    color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent;
+  }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); }
+  nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.15rem; margin: 1.75rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; }
+  .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .card .count { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; }
+  .callout strong { color: var(--accent); }
+
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 1.25rem 0; }
+  .flow .node { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: .5rem .8rem; font-size: .88rem; font-weight: 600; }
+  .flow .node.hot { border-color: var(--accent); color: var(--accent); }
+  .flow .arrow { color: var(--text-soft); font-weight: 700; }
+
+  .svc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-soft); padding: 1rem 1.2rem; margin: 1.1rem 0; }
+  .svc h3 { margin: 0 0 .6rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
+  .svc h3 .full { font-size: .82rem; font-weight: 500; color: var(--text-soft); font-family: var(--mono); }
+  .svc p { margin: .4rem 0; font-size: .95rem; }
+  .tag { display: inline-block; min-width: 5.6rem; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .12rem .5rem; border-radius: 6px; margin-right: .5rem; text-align: center; }
+  .tag.solve  { background: var(--solve-bg);  color: var(--solve); }
+  .tag.limit  { background: var(--limit-bg);  color: var(--limit); }
+  .tag.choose { background: var(--choose-bg); color: var(--choose); }
+
+  /* Code + tabs */
+  .code-wrap { margin: 1.1rem 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .tabs { display: flex; flex-wrap: wrap; gap: .25rem; background: var(--bg-soft); padding: .4rem .4rem 0; border-bottom: 1px solid var(--border); }
+  .tab { font: inherit; cursor: pointer; border: none; background: transparent; color: var(--text-soft); padding: .55rem .9rem; border-radius: 8px 8px 0 0; min-height: 40px; }
+  .tab[aria-selected="true"] { background: var(--bg-code); color: #fbf0d5; font-weight: 600; }
+  pre { margin: 0; background: var(--bg-code); color: #fbf0d5; padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .86rem; line-height: 1.6; }
+  pre code { font-family: inherit; }
+  .code-head { display: flex; align-items: center; justify-content: space-between; background: var(--bg-code); padding: .35rem .6rem .35rem 1rem; }
+  .code-head .label { color: #cbab6f; font-size: .78rem; font-family: var(--mono); }
+  .copy { font: inherit; cursor: pointer; background: #4d3a12; color: #fbf0d5; border: none; border-radius: 6px; padding: .35rem .7rem; min-height: 36px; font-size: .8rem; }
+  .copy:hover { background: #634c19; }
+  .cmt { color: #b39a63; }
+  code.inline { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; }
+
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-soft); }
+
+  /* Venn diagram */
+  .venn-wrap { overflow-x: auto; margin: 1.3rem 0; }
+  .venn { width: 100%; min-width: 600px; max-width: 720px; height: auto; display: block; margin: 0 auto; font-family: var(--font); }
+  .v-lc { fill: var(--choose); fill-opacity: .12; stroke: var(--choose); stroke-width: 2; }
+  .v-li { fill: var(--accent); fill-opacity: .14; stroke: var(--accent); stroke-width: 2; }
+  .v-title-lc { fill: var(--choose); font-size: 15px; font-weight: 800; }
+  .v-title-li { fill: var(--accent); font-size: 15px; font-weight: 800; }
+  .v-t { fill: var(--text); font-size: 12px; }
+  .v-center { fill: var(--text); font-size: 12.5px; font-weight: 700; }
+  .v-sub { fill: var(--text-soft); font-size: 11px; }
+
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); }
+  details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; }
+  .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); }
+  .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; }
+  [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; }
+  #score { font-weight: 700; margin-left: 1rem; }
+
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; }
+    #menuToggle { display: inline-flex; }
+    main { padding-top: .5rem; }
+    .tag { min-width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <a class="btn home" href="index.html" aria-label="Back to all tutorials">← All tutorials</a>
+  <div class="brand">LangChain <span>vs</span> LlamaIndex</div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#twoframeworks">1 · Two frameworks, one Venn</a></li>
+      <li><a href="#langchain">2 · LangChain</a></li>
+      <li><a href="#llamaindex">3 · LlamaIndex</a></li>
+      <li><a href="#code">4 · Same RAG, both ways</a></li>
+      <li><a href="#compare">5 · Side by side</a></li>
+      <li><a href="#choose">6 · When to choose which</a></li>
+      <li><a href="#cheatsheet">Cheat sheet</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>LangChain vs LlamaIndex — which framework?</h1>
+      <p class="lede">Both are popular open-source frameworks for building LLM applications, and both do RAG — so which do you pick? The short version: <strong>LangChain</strong> is a broad toolkit for <em>orchestration and agents</em>; <strong>LlamaIndex</strong> is a focused toolkit for <em>connecting LLMs to your data</em>. They overlap on RAG and can even be used together.</p>
+
+      <div class="cards">
+        <div class="card"><span class="count">Breadth</span><h4>🔗 LangChain</h4><p>Chains, agents, tools, memory, and orchestration (LangGraph) across a huge integration ecosystem.</p></div>
+        <div class="card"><span class="count">Depth (on data)</span><h4>🦙 LlamaIndex</h4><p>Best-in-class ingestion, indexing, retrieval and query engines — a data framework for RAG.</p></div>
+      </div>
+
+      <div class="callout"><strong>One line each.</strong> LangChain: "give me building blocks to orchestrate LLMs and agents." LlamaIndex: "give me the best pipeline to search and answer over my documents."</div>
+    </section>
+
+    <!-- ============ 1 · VENN ============ -->
+    <section id="twoframeworks">
+      <h2><span class="pill">At a glance</span> &nbsp;Two frameworks, one overlap</h2>
+      <p>Each has a home turf, and they meet in the middle at RAG:</p>
+
+      <div class="venn-wrap">
+        <svg class="venn" viewBox="0 0 720 360" role="img" aria-labelledby="v-title v-desc">
+          <title id="v-title">LangChain and LlamaIndex overlap on RAG</title>
+          <desc id="v-desc">LangChain's strengths are agents, tools, chains and orchestration. LlamaIndex's strengths are data loaders, indexes, retrievers and query engines. They overlap on retrieval-augmented generation (RAG).</desc>
+          <text class="v-title-lc" x="215" y="34" text-anchor="middle">LangChain</text>
+          <text class="v-title-li" x="505" y="34" text-anchor="middle">LlamaIndex</text>
+          <circle class="v-lc" cx="290" cy="195" r="150"/>
+          <circle class="v-li" cx="430" cy="195" r="150"/>
+
+          <!-- LangChain-only -->
+          <text class="v-t" x="195" y="150" text-anchor="middle">Agents &amp; tools</text>
+          <text class="v-t" x="195" y="172" text-anchor="middle">Chains / LCEL</text>
+          <text class="v-t" x="195" y="194" text-anchor="middle">LangGraph</text>
+          <text class="v-t" x="195" y="216" text-anchor="middle">LangSmith</text>
+          <text class="v-t" x="195" y="238" text-anchor="middle">broad ecosystem</text>
+
+          <!-- overlap -->
+          <text class="v-center" x="360" y="178" text-anchor="middle">RAG</text>
+          <text class="v-sub" x="360" y="197" text-anchor="middle">retrieval</text>
+          <text class="v-sub" x="360" y="213" text-anchor="middle">+ answer</text>
+
+          <!-- LlamaIndex-only -->
+          <text class="v-t" x="527" y="150" text-anchor="middle">Data loaders</text>
+          <text class="v-t" x="527" y="172" text-anchor="middle">Indexes</text>
+          <text class="v-t" x="527" y="194" text-anchor="middle">Retrievers</text>
+          <text class="v-t" x="527" y="216" text-anchor="middle">Query engines</text>
+          <text class="v-t" x="527" y="238" text-anchor="middle">LlamaParse / Hub</text>
+        </svg>
+      </div>
+      <p>The overlap is why the "which should I use?" question is confusing — for a basic "chat with my docs," <em>either</em> works. The differences show at the edges: complex agents pull you toward LangChain; sophisticated retrieval over lots of data pulls you toward LlamaIndex.</p>
+    </section>
+
+    <!-- ============ 2 · LANGCHAIN ============ -->
+    <section id="langchain">
+      <h2><span class="pill">Framework 1</span> &nbsp;LangChain</h2>
+      <article class="svc">
+        <h3>LangChain <span class="full">general LLM-app framework · Python &amp; JS</span></h3>
+        <p><span class="tag solve">Solves</span> The "too much glue code" of building LLM apps in general. It provides composable building blocks — prompt templates, output parsers, tool-calling, memory, retrievers — wired together with <strong>LCEL</strong>, plus <strong>LangGraph</strong> for stateful multi-step/agent orchestration and <strong>LangSmith</strong> for tracing &amp; evaluation. Huge ecosystem of provider and tool integrations.</p>
+        <p><span class="tag limit">Limits</span> Breadth brings sprawl — many abstractions and layers, fast-moving APIs, and a steeper path for a <em>simple</em> "chat with my docs" than a focused tool. Its default RAG is more manual (you assemble loaders, splitters, stores, retrievers) than LlamaIndex's out-of-the-box indexing.</p>
+        <p><span class="tag choose">Choose</span> Agents and tool use, complex multi-step or multi-agent workflows, orchestration with branching/loops, and when you want the widest integration + observability ecosystem.</p>
+      </article>
+      <div class="callout"><strong>Already in this repo:</strong> the <a href="llm-apps.html">LLM apps tutorial</a> builds LangChain chains, a LangGraph agent, and LangSmith tracing end to end.</div>
+    </section>
+
+    <!-- ============ 3 · LLAMAINDEX ============ -->
+    <section id="llamaindex">
+      <h2><span class="pill">Framework 2</span> &nbsp;LlamaIndex</h2>
+      <article class="svc">
+        <h3>LlamaIndex <span class="full">data framework for LLMs · Python &amp; TS</span></h3>
+        <p><span class="tag solve">Solves</span> Connecting LLMs to <em>your</em> data, exceptionally well. It's built around the RAG pipeline: <strong>ingest</strong> (100+ data loaders via LlamaHub, plus LlamaParse for messy PDFs), <strong>index</strong> (vector, summary, tree, keyword, knowledge-graph indexes), <strong>retrieve</strong> (advanced strategies — auto-merging, recursive, hybrid), and <strong>query engines</strong> that retrieve and synthesize an answer in a few lines.</p>
+        <p><span class="tag limit">Limits</span> Narrower by design — it's optimized for search/retrieval over data, so building complex, branching multi-agent <em>orchestration</em> is less its strength (it has agents/workflows, but they're not the center of gravity like LangGraph). Fewer non-data integrations than LangChain.</p>
+        <p><span class="tag choose">Choose</span> RAG is the heart of your app: "chat with documents," knowledge-base Q&amp;A, search over large or messy corpora, or when you want strong retrieval quality with minimal assembly.</p>
+      </article>
+    </section>
+
+    <!-- ============ 4 · CODE ============ -->
+    <section id="code">
+      <h2><span class="pill">Hands-on</span> &nbsp;The same RAG, both ways</h2>
+      <p>Index a folder of docs and answer a question. Notice how LlamaIndex's opinionated defaults compress the pipeline, while LangChain exposes each step. Switch tabs; hit <em>Copy</em>.</p>
+
+      <div class="code-wrap" data-tabs>
+        <div class="tabs" role="tablist" aria-label="LlamaIndex vs LangChain">
+          <button class="tab" role="tab" aria-selected="true" data-target="c-li">llamaindex_rag.py</button>
+          <button class="tab" role="tab" aria-selected="false" data-target="c-lc">langchain_rag.py</button>
+        </div>
+        <div class="code-head"><span class="label">RAG over ./data</span><button class="copy">Copy</button></div>
+<pre id="c-li" role="tabpanel"><code><span class="cmt"># pip install llama-index</span>
+<span class="cmt"># Opinionated defaults: load → chunk → embed → index → query, in ~4 lines.</span>
+from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
+
+docs   = SimpleDirectoryReader("data").load_data()   <span class="cmt"># ingest a folder</span>
+index  = VectorStoreIndex.from_documents(docs)        <span class="cmt"># chunk + embed + index</span>
+engine = index.as_query_engine()                      <span class="cmt"># retrieve + synthesize</span>
+
+print(engine.query("What is our refund policy?"))</code></pre>
+<pre id="c-lc" role="tabpanel" hidden><code><span class="cmt"># pip install langchain langchain-community langchain-openai faiss-cpu</span>
+<span class="cmt"># Explicit &amp; composable: you assemble each stage yourself.</span>
+from langchain_community.document_loaders import DirectoryLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import FAISS
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnablePassthrough
+from langchain_core.output_parsers import StrOutputParser
+
+docs   = DirectoryLoader("data").load()
+chunks = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50).split_documents(docs)
+store  = FAISS.from_documents(chunks, OpenAIEmbeddings())
+retriever = store.as_retriever()
+
+prompt = ChatPromptTemplate.from_template(
+    "Answer using ONLY this context:\n{context}\n\nQuestion: {question}")
+chain = ({"context": retriever, "question": RunnablePassthrough()}
+         | prompt | ChatOpenAI() | StrOutputParser())
+
+print(chain.invoke("What is our refund policy?"))</code></pre>
+      </div>
+      <div class="callout"><strong>Read the trade-off.</strong> LlamaIndex is faster to a working RAG answer because it decides the pipeline for you. LangChain shows every seam — more to write, but more control over each step (and the same objects slot into agents/graphs).</div>
+    </section>
+
+    <!-- ============ 5 · COMPARE ============ -->
+    <section id="compare">
+      <h2>Side by side</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Aspect</th><th>LangChain</th><th>LlamaIndex</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Center of gravity</strong></td><td>Orchestration &amp; agents</td><td>Data ingestion &amp; retrieval</td></tr>
+            <tr><td><strong>Core abstractions</strong></td><td>Runnables/LCEL, chains, agents, tools</td><td>Documents/Nodes, Indexes, Retrievers, Query Engines</td></tr>
+            <tr><td><strong>RAG out of the box</strong></td><td>Manual assembly, very flexible</td><td>Opinionated, minimal-code, advanced retrieval</td></tr>
+            <tr><td><strong>Agents &amp; workflows</strong></td><td>Strong — LangGraph for complex graphs</td><td>Present, but not the focus</td></tr>
+            <tr><td><strong>Ingestion / parsing</strong></td><td>Many loaders</td><td>LlamaHub (100+) + LlamaParse for hard docs</td></tr>
+            <tr><td><strong>Observability</strong></td><td>LangSmith (first-party)</td><td>Callbacks + integrations</td></tr>
+            <tr><td><strong>Ecosystem</strong></td><td>Very broad (tools, providers)</td><td>Deep on data/RAG</td></tr>
+            <tr><td><strong>Best for</strong></td><td>Agentic, multi-step apps</td><td>Search/Q&amp;A over your data</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><strong>They're not mutually exclusive.</strong> A common pattern: use <em>LlamaIndex</em> for top-notch ingestion + retrieval, and expose its retriever/query engine as a <em>tool</em> inside a <em>LangChain/LangGraph</em> agent. Best of both.</div>
+    </section>
+
+    <!-- ============ 6 · CHOOSE ============ -->
+    <section id="choose">
+      <h2>When to choose which</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>If your app is mostly…</th><th>Lean toward…</th></tr></thead>
+          <tbody>
+            <tr><td>Search / Q&amp;A over documents ("chat with my data")</td><td><strong>LlamaIndex</strong></td></tr>
+            <tr><td>Sophisticated retrieval over large or messy corpora</td><td><strong>LlamaIndex</strong></td></tr>
+            <tr><td>Agents, tools, and multi-step orchestration</td><td><strong>LangChain</strong> (+ LangGraph)</td></tr>
+            <tr><td>Complex branching/looping workflows &amp; multi-agent</td><td><strong>LangChain</strong> (LangGraph)</td></tr>
+            <tr><td>Needs deep tracing &amp; evaluation tooling</td><td><strong>LangChain</strong> (LangSmith)</td></tr>
+            <tr><td>Great retrieval <em>and</em> rich agent orchestration</td><td><strong>Both</strong> — LlamaIndex retrieval as a LangGraph tool</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><strong>Rule of thumb.</strong> If the hard part is <em>the data</em> (parsing, indexing, retrieval quality), start with <strong>LlamaIndex</strong>. If the hard part is <em>the control flow</em> (agents, tools, orchestration), start with <strong>LangChain</strong>. When both are hard, combine them.</div>
+    </section>
+
+    <!-- ============ CHEAT SHEET ============ -->
+    <section id="cheatsheet">
+      <h2>Cheat sheet</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Question</th><th>Short answer</th></tr></thead>
+          <tbody>
+            <tr><td>One-line difference?</td><td>LangChain = orchestration/agents; LlamaIndex = data/RAG.</td></tr>
+            <tr><td>Which is faster to a basic RAG answer?</td><td>LlamaIndex — opinionated defaults, ~4 lines.</td></tr>
+            <tr><td>Which for complex agents &amp; workflows?</td><td>LangChain, with LangGraph.</td></tr>
+            <tr><td>Which for the best ingestion/retrieval?</td><td>LlamaIndex (LlamaHub loaders, LlamaParse, rich indexes).</td></tr>
+            <tr><td>Do I have to pick one?</td><td>No — use LlamaIndex retrieval as a tool inside a LangChain agent.</td></tr>
+            <tr><td>Both moving fast?</td><td>Yes — verify APIs against current docs.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ QUIZ ============ -->
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions on LangChain vs LlamaIndex. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="b">
+          <p>1. In one line, how do they differ in focus?</p>
+          <label><input type="radio" name="q1" value="a"> LangChain is for data, LlamaIndex is for agents</label>
+          <label><input type="radio" name="q1" value="b"> LangChain is for orchestration/agents, LlamaIndex is for data/RAG</label>
+          <label><input type="radio" name="q1" value="c"> They are identical</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>2. Where do the two frameworks clearly overlap?</p>
+          <label><input type="radio" name="q2" value="a"> GPU training</label>
+          <label><input type="radio" name="q2" value="b"> Operating systems</label>
+          <label><input type="radio" name="q2" value="c"> RAG (retrieval-augmented generation)</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>3. You need best-in-class ingestion and retrieval over lots of messy PDFs. Lean toward…</p>
+          <label><input type="radio" name="q3" value="a"> LlamaIndex</label>
+          <label><input type="radio" name="q3" value="b"> LangChain</label>
+          <label><input type="radio" name="q3" value="c"> Neither can do RAG</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>4. Your app is a complex multi-agent workflow with branching and loops. Lean toward…</p>
+          <label><input type="radio" name="q4" value="a"> LlamaIndex</label>
+          <label><input type="radio" name="q4" value="b"> LangChain (with LangGraph)</label>
+          <label><input type="radio" name="q4" value="c"> A spreadsheet</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>5. Why is LlamaIndex often fewer lines for a basic RAG app?</p>
+          <label><input type="radio" name="q5" value="a"> It skips embeddings</label>
+          <label><input type="radio" name="q5" value="b"> It doesn't actually retrieve</label>
+          <label><input type="radio" name="q5" value="c"> Its opinionated defaults bundle load→chunk→embed→index→query</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. You want great retrieval AND rich agent orchestration. Best approach?</p>
+          <label><input type="radio" name="q6" value="a"> Rewrite everything from scratch</label>
+          <label><input type="radio" name="q6" value="b"> Use both — LlamaIndex retrieval as a tool inside a LangChain/LangGraph agent</label>
+          <label><input type="radio" name="q6" value="c"> Pick one and give up the other need</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>🤖 LLM apps (LangChain)</h4><p><a href="llm-apps.html">Build with LangChain</a> — chains, a LangGraph agent, and LangSmith tracing.</p></div>
+        <div class="card"><h4>🔎 RAG vs CAG vs GraphRAG</h4><p><a href="rag-cag.html">Grounding strategies</a> — the retrieval techniques both frameworks implement.</p></div>
+        <div class="card"><h4>🧬 Embedding models</h4><p><a href="embeddings.html">The vectors underneath</a> — what powers retrieval in either framework.</p></div>
+        <div class="card"><h4>📓 All tutorials</h4><p><a href="index.html">The hub</a> — LLM apps, embeddings, retrieval, agents, protocols &amp; more.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  LangChain vs LlamaIndex — focus, strengths, limits and when to use each. Both frameworks evolve quickly; confirm APIs against their current docs. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) {
+    root.setAttribute("data-theme", t);
+    tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 ";
+    tLabel.textContent = t === "dark" ? "Light" : "Dark";
+  }
+  var saved = null;
+  try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () {
+    var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    applyTheme(next);
+    try { localStorage.setItem("theme", next); } catch (e) {}
+  });
+
+  var menuBtn = document.getElementById("menuToggle");
+  var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () {
+    var open = side.classList.toggle("open");
+    menuBtn.setAttribute("aria-expanded", String(open));
+  });
+  side.addEventListener("click", function (e) {
+    if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); }
+  });
+
+  var bar = document.getElementById("progress");
+  function onScroll() {
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%";
+  }
+  document.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a"));
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (en.isIntersecting) {
+        links.forEach(function (a) { a.classList.remove("active"); });
+        if (map[en.target.id]) map[en.target.id].classList.add("active");
+      }
+    });
+  }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+
+  document.querySelectorAll("[data-tabs]").forEach(function (wrap) {
+    var tabs = wrap.querySelectorAll(".tab");
+    tabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        tabs.forEach(function (t) {
+          t.setAttribute("aria-selected", "false");
+          var p = document.getElementById(t.dataset.target);
+          if (p) p.hidden = true;
+        });
+        tab.setAttribute("aria-selected", "true");
+        document.getElementById(tab.dataset.target).hidden = false;
+      });
+    });
+  });
+
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var wrap = btn.closest(".code-wrap");
+      var pre = wrap.querySelector("pre:not([hidden])");
+      var text = pre ? pre.innerText : "";
+      var done = function () { var o = btn.textContent; btn.textContent = "Copied!"; setTimeout(function () { btn.textContent = o; }, 1400); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, done);
+      } else {
+        var ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); } catch (e) {}
+        document.body.removeChild(ta); done();
+      }
+    });
+  });
+
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q");
+    var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      var correctLabel = q.querySelector('input[value="' + answer + '"]').parentNode;
+      correctLabel.classList.add("correct");
+      if (chosen) {
+        if (chosen.value === answer) { score++; }
+        else { chosen.parentNode.classList.add("wrong"); }
+      }
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length +
+      (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>

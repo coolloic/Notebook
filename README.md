@@ -512,7 +512,10 @@ Runnable scaffolds for each agentic AI design pattern (from Google Cloud's *Choo
 - **[📓 Interactive tutorial hub](index.html)** — the landing page linking all four browser-based tutorials (LLM apps, agent kits, AWS services, IoT × agents) with a suggested reading order.
 - **[Building LLM Applications](llm-apps.html)** — the interactive version of this guide: LangChain, LangGraph &amp; LangSmith with RAG, a full agent, and a support-agent capstone.
 - **[How Embedding Models Work](embeddings.html)** — turning text into vectors: what an embedding is, how models learn the space, similarity metrics, and how to choose &amp; use one well.
+- **[TensorFlow](tensorflow.html)** — Google's end-to-end ML platform: the problem it solves, how it works (tensors, Keras, autodiff), its deployment reach, limits, and vs PyTorch/JAX.
+- **[PyTorch](pytorch.html)** — the research-favorite deep-learning framework: dynamic graphs, autograd, training loops, ecosystem, limits, and when to pick it over TensorFlow.
 - **[RAG vs CAG vs GraphRAG](rag-cag.html)** — the grounding problem each technique solves, when to use each, when to mix them, and the wider family (hybrid search, reranking, HyDE, Agentic/Corrective/Self-RAG, Contextual Retrieval).
+- **[LangChain vs LlamaIndex](langchain-vs-llamaindex.html)** — the framework-choice question: LangChain's orchestration/agent breadth vs LlamaIndex's data/RAG depth, the same RAG both ways, and when to use each or both.
 - **[APIs vs MCP](api-mcp.html)** — how agents connect to tools: the M×N problem MCP solves, how it works, a direct comparison, and when to use each.
 - **[WebMCP &amp; A2A](webmcp-a2a.html)** — emerging protocols for the agentic web: MCP-style tools in the browser (WebMCP) and agent-to-agent delegation (A2A).
 - **[n8n — Workflow Automation](n8n.html)** — the automation problem n8n solves, how node-based workflows work, its limitations (fair-code licence, self-hosting, scale), and how it compares to Zapier, Make, Node-RED and Airflow.
