@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Interactive tutorial for building LLM applications with LangChain, LangGraph, LangSmith, vector databases, and the create-llm-app CLI.">
+<title>Build LLM Apps — An Interactive Tutorial</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f5f7fa;
+    --bg-code: #1e293b;
+    --text: #1a2130;
+    --text-soft: #55617a;
+    --border: #e2e8f0;
+    --accent: #4f46e5;
+    --chain: #15803d;   /* LangChain green */
+    --graph: #1e40af;   /* LangGraph blue */
+    --smith: #b45309;   /* LangSmith amber */
+    --chain-bg: #dcfce7;
+    --graph-bg: #dbeafe;
+    --smith-bg: #fef3c7;
+    --radius: 12px;
+    --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #0f172a;
+    --bg-soft: #17233d;
+    --bg-code: #0b1220;
+    --text: #e6ecf7;
+    --text-soft: #9fb0cc;
+    --border: #263450;
+    --accent: #a5b4fc;
+    --chain-bg: #14351f;
+    --graph-bg: #16233f;
+    --smith-bg: #3a2a0c;
+    --chain: #86efac;
+    --graph: #93c5fd;
+    --smith: #fcd34d;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: var(--font);
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  .skip-link {
+    position: absolute; left: -999px; top: 0;
+    background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100;
+  }
+  .skip-link:focus { left: 0; }
+
+  /* Progress bar */
+  #progress {
+    position: fixed; top: 0; left: 0; height: 4px; width: 0%;
+    background: linear-gradient(90deg, var(--chain), var(--graph), var(--smith));
+    z-index: 60; transition: width .1s linear;
+  }
+
+  /* Header */
+  header.top {
+    position: sticky; top: 0; z-index: 50;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 1rem;
+    padding: .6rem 1rem;
+  }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; }
+  header.top .brand span { color: var(--accent); }
+  header.top .spacer { flex: 1; }
+  .btn {
+    font: inherit; cursor: pointer; border: 1px solid var(--border);
+    background: var(--bg-soft); color: var(--text);
+    border-radius: 999px; padding: .5rem .9rem; min-height: 44px;
+    display: inline-flex; align-items: center; gap: .4rem;
+  }
+  .btn:hover { border-color: var(--accent); }
+  #menuToggle { display: none; }
+
+  /* Layout */
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side {
+    position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px);
+    overflow-y: auto; padding: 1.25rem 0; font-size: .93rem;
+  }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a {
+    display: block; padding: .45rem .75rem; border-radius: 8px;
+    color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent;
+  }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); }
+  nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.15rem; margin: 1.75rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; }
+  .pill.chain { background: var(--chain-bg); color: var(--chain); }
+  .pill.graph { background: var(--graph-bg); color: var(--graph); }
+  .pill.smith { background: var(--smith-bg); color: var(--smith); }
+
+  /* Cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; }
+  .card.chain { border-top: 4px solid var(--chain); }
+  .card.graph { border-top: 4px solid var(--graph); }
+  .card.smith { border-top: 4px solid var(--smith); }
+  .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+
+  /* Callout */
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; }
+  .callout strong { color: var(--accent); }
+
+  /* Steps flow */
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 1.25rem 0; }
+  .flow .node { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: .5rem .8rem; font-size: .88rem; font-weight: 600; }
+  .flow .arrow { color: var(--text-soft); font-weight: 700; }
+
+  /* Code + tabs */
+  .code-wrap { margin: 1.1rem 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .tabs { display: flex; flex-wrap: wrap; gap: .25rem; background: var(--bg-soft); padding: .4rem .4rem 0; border-bottom: 1px solid var(--border); }
+  .tab { font: inherit; cursor: pointer; border: none; background: transparent; color: var(--text-soft); padding: .55rem .9rem; border-radius: 8px 8px 0 0; min-height: 40px; }
+  .tab[aria-selected="true"] { background: var(--bg-code); color: #e6ecf7; font-weight: 600; }
+  pre { margin: 0; background: var(--bg-code); color: #e6ecf7; padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .86rem; line-height: 1.6; }
+  pre code { font-family: inherit; }
+  .code-head { display: flex; align-items: center; justify-content: space-between; background: var(--bg-code); padding: .35rem .6rem .35rem 1rem; }
+  .code-head .label { color: #94a3b8; font-size: .78rem; font-family: var(--mono); }
+  .copy { font: inherit; cursor: pointer; background: #334155; color: #e6ecf7; border: none; border-radius: 6px; padding: .35rem .7rem; min-height: 36px; font-size: .8rem; }
+  .copy:hover { background: #475569; }
+  .code-actions { display: inline-flex; gap: .4rem; }
+  .copyall { font: inherit; cursor: pointer; background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: .35rem .7rem; min-height: 36px; font-size: .8rem; }
+  .copyall:hover { filter: brightness(1.12); }
+  .cmt { color: #7c8aa5; }
+
+  /* Table */
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--border); }
+  th { background: var(--bg-soft); }
+
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); }
+  details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+
+  /* Quiz */
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; }
+  .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); }
+  .q label.correct { border-color: var(--chain); background: var(--chain-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; }
+  [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; }
+  #score { font-weight: 700; margin-left: 1rem; }
+
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; }
+    #menuToggle { display: inline-flex; }
+    main { padding-top: .5rem; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <div class="brand">Build <span>LLM Apps</span></div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#langchain">1 · LangChain</a></li>
+      <li><a href="#rag">2 · RAG in practice</a></li>
+      <li><a href="#langgraph">3 · LangGraph</a></li>
+      <li><a href="#langsmith">4 · LangSmith</a></li>
+      <li><a href="#vectordb">5 · Vector databases</a></li>
+      <li><a href="#cli">6 · create-llm-app</a></li>
+      <li><a href="#experiments">7 · Agentic patterns</a></li>
+      <li><a href="#capstone">8 · Full-stack example</a></li>
+      <li><a href="#quiz">9 · Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>Building LLM Applications</h1>
+      <p class="lede">A hands-on tour of the tools you use to turn a raw language model into a real application — organized around the <strong>three problems</strong> you hit as your app grows up.</p>
+
+      <div class="cards">
+        <div class="card chain"><span class="pill chain">Problem 1</span><h4>Too much glue code</h4><p>Prompts, parsing, tools, retrieval — <strong>LangChain</strong> gives you reusable building blocks.</p></div>
+        <div class="card graph"><span class="pill graph">Problem 2</span><h4>Logic isn't a straight line</h4><p>Loops, branches, multiple agents — <strong>LangGraph</strong> gives you stateful orchestration.</p></div>
+        <div class="card smith"><span class="pill smith">Problem 3</span><h4>It's a black box</h4><p>Can't see or measure it — <strong>LangSmith</strong> gives you tracing &amp; evaluation.</p></div>
+      </div>
+
+      <div class="callout">
+        <strong>How to use this page.</strong> Read top to bottom — each section builds on the last. Code blocks with tabs let you compare options; hit <em>Copy</em> to grab any snippet. There's a short quiz at the end to check what stuck.
+      </div>
+    </section>
+
+    <section id="langchain">
+      <h2><span class="pill chain">Problem 1</span> &nbsp;LangChain — building blocks</h2>
+      <p>Calling a model directly is easy for one prompt. A real feature needs prompt templating, output parsing, tool-calling, memory, and — to ground answers in your own data — document loading, chunking, embedding, and retrieval. LangChain provides <strong>standard, composable pieces</strong> so you write that glue once and swap providers with a one-line change.</p>
+
+      <div class="flow">
+        <span class="node">input</span><span class="arrow">→</span>
+        <span class="node">retrieve</span><span class="arrow">→</span>
+        <span class="node">prompt</span><span class="arrow">→</span>
+        <span class="node">model</span><span class="arrow">→</span>
+        <span class="node">parse</span>
+      </div>
+
+      <p>The <strong>LCEL</strong> pipe (<code>|</code>) composes these into a chain with streaming, batching, and async for free. Here's the same minimal chain across two providers:</p>
+
+      <div class="code-wrap" data-tabs>
+        <div class="tabs" role="tablist" aria-label="Provider">
+          <button class="tab" role="tab" aria-selected="true" data-target="lc-anthropic">Anthropic</button>
+          <button class="tab" role="tab" aria-selected="false" data-target="lc-openai">OpenAI</button>
+        </div>
+        <div class="code-head"><span class="label">chain.py</span><button class="copy">Copy</button></div>
+<pre id="lc-anthropic" role="tabpanel"><code><span class="cmt"># pip install langchain-anthropic</span>
+from langchain_anthropic import ChatAnthropic
+from langchain_core.prompts import ChatPromptTemplate
+
+model  = ChatAnthropic(model="claude-opus-4-8")
+prompt = ChatPromptTemplate.from_template("Summarize in one sentence: {text}")
+chain  = prompt | model
+
+print(chain.invoke({"text": "..."}).content)</code></pre>
+<pre id="lc-openai" role="tabpanel" hidden><code><span class="cmt"># pip install langchain-openai</span>
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+
+model  = ChatOpenAI(model="gpt-4o")
+prompt = ChatPromptTemplate.from_template("Summarize in one sentence: {text}")
+chain  = prompt | model
+
+print(chain.invoke({"text": "..."}).content)</code></pre>
+      </div>
+
+      <p>Notice only the import and class name changed — the chain is identical. That provider-agnostic interface is LangChain's core value.</p>
+    </section>
+
+    <section id="rag">
+      <h2>2 · RAG — grounding answers in your data</h2>
+      <p><strong>Retrieval-Augmented Generation</strong> feeds the model only the chunks of your documents relevant to a question, so it answers from your data instead of guessing. The pipeline is a straight line — no loops — which makes it a perfect LangChain chain.</p>
+
+      <div class="flow">
+        <span class="node">documents</span><span class="arrow">→</span>
+        <span class="node">split</span><span class="arrow">→</span>
+        <span class="node">embed</span><span class="arrow">→</span>
+        <span class="node">store</span><span class="arrow">→</span>
+        <span class="node">retrieve</span><span class="arrow">→</span>
+        <span class="node">answer</span>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">rag.py</span><button class="copy">Copy</button></div>
+<pre><code><span class="cmt"># load → split → embed → store → retrieve → grounded answer</span>
+from langchain_community.document_loaders import TextLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import FAISS
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_anthropic import ChatAnthropic
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnablePassthrough
+from langchain_core.output_parsers import StrOutputParser
+
+docs   = TextLoader("kb.txt").load()
+chunks = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50).split_documents(docs)
+store  = FAISS.from_documents(chunks, HuggingFaceEmbeddings(
+             model_name="sentence-transformers/all-MiniLM-L6-v2"))
+retriever = store.as_retriever(search_kwargs={"k": 4})
+
+prompt = ChatPromptTemplate.from_template(
+    "Answer using ONLY this context:\n{context}\n\nQuestion: {question}")
+model  = ChatAnthropic(model="claude-opus-4-8", temperature=0)
+
+chain = ({"context": retriever, "question": RunnablePassthrough()}
+         | prompt | model | StrOutputParser())
+
+print(chain.invoke("What is our refund policy?"))</code></pre>
+      </div>
+
+      <div class="callout"><strong>Where do the chunks live?</strong> In a <em>vector database</em>. This example uses an in-memory FAISS index; section 5 covers the real storage options.</div>
+    </section>
+
+    <section id="langgraph">
+      <h2><span class="pill graph">Problem 2</span> &nbsp;LangGraph — stateful orchestration</h2>
+      <p>A chain is a one-way pipe. The moment your app must <strong>loop</strong> ("keep using tools until you can answer"), <strong>branch</strong> ("refund vs. escalate"), coordinate <strong>multiple agents</strong>, or <strong>pause for a human</strong>, you need a graph. LangGraph models your app as <strong>nodes</strong> (steps) connected by <strong>edges</strong> (control flow) that share a <strong>state</strong> object — and edges may form cycles.</p>
+
+      <div class="flow">
+        <span class="node">START</span><span class="arrow">→</span>
+        <span class="node">agent</span><span class="arrow">⇄</span>
+        <span class="node">tools</span><span class="arrow">→</span>
+        <span class="node">END</span>
+      </div>
+      <p>The <code>agent ⇄ tools</code> cycle is the reason→act→observe loop a chain can't express.</p>
+
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">agent.py</span><button class="copy">Copy</button></div>
+<pre><code>from typing import Annotated, TypedDict
+from langgraph.graph import StateGraph, START
+from langgraph.graph.message import add_messages
+from langgraph.prebuilt import ToolNode, tools_condition
+from langchain_anthropic import ChatAnthropic
+from langchain_core.tools import tool
+from langchain_core.messages import HumanMessage
+
+@tool
+def calculator(expression: str) -&gt; str:
+    """Evaluate arithmetic, e.g. '15 * 0.2'."""
+    return str(eval(expression, {"__builtins__": {}}))
+
+model = ChatAnthropic(model="claude-opus-4-8").bind_tools([calculator])
+
+class State(TypedDict):
+    messages: Annotated[list, add_messages]
+
+def call_model(state): return {"messages": [model.invoke(state["messages"])]}
+
+g = StateGraph(State)
+g.add_node("agent", call_model)
+g.add_node("tools", ToolNode([calculator]))
+g.add_edge(START, "agent")
+g.add_conditional_edges("agent", tools_condition)  <span class="cmt"># branch: tool or done?</span>
+g.add_edge("tools", "agent")                        <span class="cmt"># loop back</span>
+graph = g.compile()
+
+out = graph.invoke({"messages": [HumanMessage("What's 15% of 240?")]})
+print(out["messages"][-1].content)</code></pre>
+      </div>
+
+      <details>
+        <summary>What does the graph buy you over a chain?</summary>
+        <p><strong>The loop</strong> lets the model call several tools in sequence, reacting to each result. <strong>The conditional edge</strong> decides at runtime whether to act or answer. Add a <em>checkpointer</em> and the run becomes durable, resumable, and human-in-the-loop-ready (pause before a tool, wait for approval, resume).</p>
+      </details>
+    </section>
+
+    <section id="langsmith">
+      <h2><span class="pill smith">Problem 3</span> &nbsp;LangSmith — see &amp; measure it</h2>
+      <p>LLMs are non-deterministic. When an answer is wrong, was it bad retrieval, a weak prompt, or the model? LangSmith gives you a <strong>trace</strong> — a nested tree of every step with latency, tokens, and cost — plus <strong>evaluation</strong> to catch regressions before shipping. It auto-instruments LangChain &amp; LangGraph with zero code change:</p>
+
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">terminal</span><button class="copy">Copy</button></div>
+<pre><code><span class="cmt"># the RAG chain and agent above are now fully traced</span>
+export LANGSMITH_TRACING=true
+export LANGSMITH_API_KEY="..."</code></pre>
+      </div>
+
+      <h3>What a trace looks like</h3>
+      <p>Running the agent on <em>"What's 15% of 240?"</em> produces a run tree — the three LLM calls are the reason→act→observe loop made visible:</p>
+<pre><code>▸ LangGraph run · agent            3.1s · 1,240 tok · $0.021 ✅
+   ├─ agent · LLM call #1          0.9s · 320 tok · calls calculator('240*0.15')
+   ├─ tools · calculator          0.02s · returns '36'
+   └─ agent · LLM call #2          0.8s · 360 tok · final answer ✅</code></pre>
+
+      <h3>Evaluation — did my change help?</h3>
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">eval.py</span><button class="copy">Copy</button></div>
+<pre><code>from langsmith import Client, evaluate
+
+client = Client()
+client.create_dataset("qa")  <span class="cmt"># add {question → reference answer} examples</span>
+
+def target(inputs):  <span class="cmt"># the system under test (your RAG chain)</span>
+    return {"answer": rag_chain.invoke(inputs["question"])}
+
+def correct(outputs, reference_outputs):  <span class="cmt"># a grader</span>
+    return reference_outputs["answer"].lower() in outputs["answer"].lower()
+
+evaluate(target, data="qa", evaluators=[correct], experiment_prefix="rag-v1")
+<span class="cmt"># change a prompt → run "rag-v2" → compare scores side by side</span></code></pre>
+      </div>
+    </section>
+
+    <section id="vectordb">
+      <h2>5 · Vector databases — where chunks live</h2>
+      <p>An <strong>embedding</strong> turns text into a vector positioned so similar meanings sit close together. A vector database stores those vectors + metadata and finds the nearest ones to a query — fast, over millions of items. That "semantic search" is the retrieval engine behind RAG.</p>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Database</th><th>Type</th><th>Best for</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Chroma</strong></td><td>OSS, embedded/server</td><td>Prototyping, local RAG</td></tr>
+            <tr><td><strong>FAISS</strong></td><td>OSS library, in-process</td><td>Static, read-heavy, research</td></tr>
+            <tr><td><strong>Qdrant</strong></td><td>OSS server (Rust)</td><td>Balanced prod, rich filters</td></tr>
+            <tr><td><strong>Pinecone</strong></td><td>Managed cloud</td><td>Hands-off production</td></tr>
+            <tr><td><strong>pgvector</strong></td><td>Postgres extension</td><td>Already on Postgres</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>The storage flow never changes — only the client does. Compare storing the same chunks in two backends:</p>
+
+      <div class="code-wrap" data-tabs>
+        <div class="tabs" role="tablist" aria-label="Vector store">
+          <button class="tab" role="tab" aria-selected="true" data-target="vs-chroma">Chroma</button>
+          <button class="tab" role="tab" aria-selected="false" data-target="vs-qdrant">Qdrant</button>
+        </div>
+        <div class="code-head"><span class="label">store_chunks.py</span><button class="copy">Copy</button></div>
+<pre id="vs-chroma" role="tabpanel"><code><span class="cmt"># pip install chromadb</span>
+import chromadb
+from chromadb.utils import embedding_functions
+
+client = chromadb.PersistentClient(path="./chroma_db")
+ef = embedding_functions.SentenceTransformerEmbeddingFunction("all-MiniLM-L6-v2")
+col = client.get_or_create_collection("policies", embedding_function=ef)
+
+col.add(                       <span class="cmt"># store: Chroma embeds for you</span>
+    ids=[f"chunk-{i}" for i in range(len(chunks))],
+    documents=chunks,
+    metadatas=[{"source": "policy.txt"} for _ in chunks])
+
+print(col.query(query_texts=["Can I get money back?"], n_results=2)["documents"])</code></pre>
+<pre id="vs-qdrant" role="tabpanel" hidden><code><span class="cmt"># pip install qdrant-client sentence-transformers</span>
+from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, VectorParams, PointStruct
+from sentence_transformers import SentenceTransformer
+
+m = SentenceTransformer("all-MiniLM-L6-v2")
+c = QdrantClient(":memory:")
+c.recreate_collection("policies",
+    vectors_config=VectorParams(size=384, distance=Distance.COSINE))
+
+vecs = m.encode(chunks, normalize_embeddings=True)
+c.upsert("policies", [                        <span class="cmt"># store: id + vector + payload</span>
+    PointStruct(id=i, vector=v.tolist(), payload={"text": chunks[i]})
+    for i, v in enumerate(vecs)])
+
+q = m.encode(["Can I get money back?"], normalize_embeddings=True)[0].tolist()
+print([h.payload["text"] for h in c.search("policies", q, limit=2)])</code></pre>
+      </div>
+
+      <div class="callout"><strong>Rule of thumb:</strong> start local with Chroma/FAISS to build the pipeline, then swap in a server (Qdrant/Pinecone/pgvector) when you need scale — the chunk → embed → upsert → query flow is identical.</div>
+    </section>
+
+    <section id="cli">
+      <h2>6 · create-llm-app — scaffold it all</h2>
+      <p>Everything above is wired together by <strong>create-llm-app</strong>, a CLI that generates a runnable project. You pick a provider, an app type (chat / RAG / agent), and whether to enable LangSmith tracing — it emits <code>main.py</code>, <code>requirements.txt</code>, <code>.env.example</code> (loaded via python-dotenv), and more.</p>
+
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">terminal</span><button class="copy">Copy</button></div>
+<pre><code><span class="cmt"># install</span>
+pip install -e .
+
+<span class="cmt"># interactive — prompts for provider, app type, tracing</span>
+create-llm-app new my-assistant
+
+<span class="cmt"># or non-interactive with flags</span>
+create-llm-app new my-rag --provider anthropic --type rag --no-tracing
+
+cd my-rag
+pip install -r requirements.txt
+cp .env.example .env     <span class="cmt"># add your API key(s)</span>
+python main.py</code></pre>
+      </div>
+
+      <div class="flow">
+        <span class="node">pick provider</span><span class="arrow">→</span>
+        <span class="node">pick app type</span><span class="arrow">→</span>
+        <span class="node">tracing on/off</span><span class="arrow">→</span>
+        <span class="node">runnable project</span>
+      </div>
+      <p>Under the hood it maps your choices to a <em>provider registry</em> and renders Jinja2 templates — the same chat / RAG / agent code you saw in sections 1–3.</p>
+    </section>
+
+    <section id="experiments">
+      <h2>7 · Agentic patterns &amp; techniques</h2>
+      <p>Once a single agent isn't enough, you compose <strong>multiple</strong> — and there's a small catalogue of proven shapes for doing so. This repo has a <strong>runnable scaffold for each</strong>, following Google Cloud's <a href="https://docs.cloud.google.com/architecture/choose-design-pattern-agentic-ai-system" target="_blank" rel="noopener">Choose a design pattern for your agentic AI system</a>, built on the same LangChain / LangGraph / LangSmith stack from this tutorial.</p>
+
+      <p>The doc's key axis is <strong>who decides the route</strong>:</p>
+      <div class="flow">
+        <span class="node">predetermined route</span>
+        <span class="arrow">— code decides —</span>
+        <span class="node">sequential · parallel · loop</span>
+        <span class="arrow">vs</span>
+        <span class="node">AI decides</span>
+        <span class="arrow">— model routes —</span>
+        <span class="node">coordinator · hierarchical · swarm</span>
+      </div>
+
+      <h3>Design patterns (Google Cloud)</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Pattern</th><th>When to use</th><th>Stack</th></tr></thead>
+          <tbody>
+            <tr><td>01</td><td><strong>Single-Agent</strong></td><td>Moderate multi-step tasks, no delegation</td><td>LangGraph (prebuilt ReAct)</td></tr>
+            <tr><td>02</td><td><strong>Sequential</strong></td><td>Structured, repeatable pipelines</td><td>LangChain (LCEL)</td></tr>
+            <tr><td>03</td><td><strong>Parallel</strong></td><td>Independent sub-tasks; diverse perspectives at once</td><td>LangChain (RunnableParallel)</td></tr>
+            <tr><td>04</td><td><strong>Loop</strong></td><td>Iterative refinement with an exit condition</td><td>LangGraph (cycle)</td></tr>
+            <tr><td>05</td><td><strong>Review &amp; Critique</strong></td><td>High accuracy / compliance validation</td><td>LangGraph (generator + critic)</td></tr>
+            <tr><td>06</td><td><strong>Iterative Refinement</strong></td><td>Output hard to nail in one shot; quality gate</td><td>LangGraph (self-score loop)</td></tr>
+            <tr><td>07</td><td><strong>Coordinator</strong></td><td>Adaptive routing of varied inputs</td><td>LangGraph (router)</td></tr>
+            <tr><td>08</td><td><strong>Hierarchical</strong></td><td>Ambiguous, open-ended problems</td><td>LangGraph (orchestrator–worker)</td></tr>
+            <tr><td>09</td><td><strong>Swarm</strong></td><td>Complex problems that benefit from debate</td><td>LangChain (multi-persona)</td></tr>
+            <tr><td>10</td><td><strong>ReAct</strong></td><td>Dynamic tasks needing tools + adaptation</td><td>LangChain (manual loop)</td></tr>
+            <tr><td>11</td><td><strong>Human-in-the-Loop</strong></td><td>High-stakes / safety / compliance approvals</td><td>LangGraph (interrupt)</td></tr>
+            <tr><td>12</td><td><strong>Custom Logic</strong></td><td>Mixed-pattern, bespoke branching</td><td>LangChain (plain Python)</td></tr>
+            <tr><td>13</td><td><strong>RAG</strong></td><td>Ground answers in your own data</td><td>LangChain + FAISS</td></tr>
+            <tr><td>14</td><td><strong>RAG + CAG</strong></td><td>Stable facts cached + volatile corpus retrieved</td><td>LangChain + FAISS + prompt caching</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Reasoning &amp; agentic techniques</h3>
+      <p>Prompting, reasoning, and retrieval techniques that make an <em>individual</em> agent smarter — complementary to the orchestration patterns above.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Technique</th><th>What it adds</th><th>Stack</th></tr></thead>
+          <tbody>
+            <tr><td>15</td><td><strong>Chain-of-Thought</strong></td><td>Reason step by step before answering</td><td>LangChain</td></tr>
+            <tr><td>16</td><td><strong>Self-Consistency</strong></td><td>Sample many CoT paths, majority-vote</td><td>LangChain</td></tr>
+            <tr><td>17</td><td><strong>Tree of Thoughts</strong></td><td>Branch, score, expand the best (search)</td><td>LangChain</td></tr>
+            <tr><td>18</td><td><strong>Reflexion</strong></td><td>Retry with accumulated self-feedback</td><td>LangGraph</td></tr>
+            <tr><td>19</td><td><strong>Plan-and-Execute</strong></td><td>Plan up front, then run each step</td><td>LangGraph</td></tr>
+            <tr><td>20</td><td><strong>ReWOO</strong></td><td>Plan all tool calls once, then solve</td><td>LangChain</td></tr>
+            <tr><td>21</td><td><strong>Chain-of-Verification</strong></td><td>Draft → verify → revise (anti-hallucination)</td><td>LangChain</td></tr>
+            <tr><td>22</td><td><strong>Agentic RAG</strong></td><td>Retrieve on demand as a tool</td><td>LangGraph + FAISS</td></tr>
+            <tr><td>23</td><td><strong>Corrective RAG</strong></td><td>Grade retrieval, fall back if weak</td><td>LangChain + FAISS</td></tr>
+            <tr><td>24</td><td><strong>Self-RAG</strong></td><td>Model gates its own retrieval + grounding</td><td>LangChain + FAISS</td></tr>
+            <tr><td>25</td><td><strong>Memory Agent</strong></td><td>Recall earlier turns (checkpointer)</td><td>LangGraph</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout"><strong>All 25 are syntax-verified in CI</strong> (<code>py_compile</code> on Python 3.11–3.13). Each folder has a README, a runnable <code>main.py</code>, <code>requirements.txt</code>, and <code>.env.example</code>. Browse them: <a href="https://github.com/coolloic/Notebook/tree/main/experiments" target="_blank" rel="noopener">experiments/ on GitHub</a>.</div>
+    </section>
+
+    <section id="capstone">
+      <h2>8 · Full-stack example: a support agent</h2>
+      <p>Everything in this tutorial, wired into one runnable app: a <strong>customer-support agent</strong> that answers questions grounded in a knowledge base and escalates to a human when it can't help. It combines all six pieces:</p>
+
+      <div class="cards">
+        <div class="card graph"><h4>LangGraph</h4><p>The <code>agent ⇄ tools</code> loop + memory across turns.</p></div>
+        <div class="card"><h4>OpenAI</h4><p><code>gpt-4o</code> reasoning + <code>text-embedding-3-small</code> embeddings.</p></div>
+        <div class="card chain"><h4>Chroma</h4><p>Persistent <strong>vector database</strong> for the knowledge base.</p></div>
+        <div class="card chain"><h4>RAG</h4><p><code>search_kb</code> retrieves grounding context on demand.</p></div>
+        <div class="card smith"><h4>LangSmith</h4><p>Traces every model + tool + retrieval step.</p></div>
+      </div>
+
+      <div class="flow">
+        <span class="node">user</span><span class="arrow">→</span>
+        <span class="node">agent · gpt-4o</span><span class="arrow">⇄</span>
+        <span class="node">tools · search_kb / escalate</span><span class="arrow">→</span>
+        <span class="node">grounded reply</span>
+      </div>
+      <p>Retrieval is a <em>tool the agent chooses to call</em> (agentic RAG), and a sensitive request routes to <code>escalate_to_human</code> instead of a guess.</p>
+
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">agent.py (trimmed)</span><button class="copy">Copy</button></div>
+<pre><code>@tool
+def search_kb(query: str) -&gt; str:
+    """Search the support KB — RAG over the Chroma vector store."""
+    docs = store.similarity_search(query, k=4)
+    return "\n\n".join(d.page_content for d in docs)
+
+model = ChatOpenAI(model="gpt-4o", temperature=0).bind_tools([search_kb, escalate_to_human])
+
+builder = StateGraph(State)
+builder.add_node("agent", agent)                      <span class="cmt"># gpt-4o reasons</span>
+builder.add_node("tools", ToolNode(TOOLS))            <span class="cmt"># search_kb (RAG) + escalate</span>
+builder.add_edge(START, "agent")
+builder.add_conditional_edges("agent", tools_condition)  <span class="cmt"># call a tool, or answer?</span>
+builder.add_edge("tools", "agent")                    <span class="cmt"># loop back with the result</span>
+graph = builder.compile(checkpointer=MemorySaver())   <span class="cmt"># memory across turns</span></code></pre>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">run it</span><button class="copy">Copy</button></div>
+<pre><code>pip install -r requirements.txt
+cp .env.example .env      <span class="cmt"># add your OPENAI_API_KEY</span>
+python ingest.py          <span class="cmt"># load KB -&gt; embed -&gt; store in Chroma (once)</span>
+python agent.py           <span class="cmt"># grounded answer, then an escalation</span></code></pre>
+      </div>
+
+      <h3>Complete source — copy each file</h3>
+      <p>The whole example, ready to build. Hit <strong>Copy setup script</strong> and paste it into a terminal — it writes every file into a new <code>support-agent/</code> folder. Or switch tabs and <em>Copy file</em> one at a time.</p>
+      <div class="code-wrap" data-tabs>
+        <div class="tabs" role="tablist" aria-label="Support agent source files">
+          <button class="tab" role="tab" aria-selected="true" data-target="cap-src-0">requirements.txt</button>
+          <button class="tab" role="tab" aria-selected="false" data-target="cap-src-1">.env.example</button>
+          <button class="tab" role="tab" aria-selected="false" data-target="cap-src-2">config.py</button>
+          <button class="tab" role="tab" aria-selected="false" data-target="cap-src-3">ingest.py</button>
+          <button class="tab" role="tab" aria-selected="false" data-target="cap-src-4">agent.py</button>
+          <button class="tab" role="tab" aria-selected="false" data-target="cap-src-5">data/knowledge_base.md</button>
+        </div>
+        <div class="code-head"><span class="label">examples/support-agent/</span><span class="code-actions"><button class="copyall">Copy setup script</button><button class="copy">Copy file</button></span></div>
+<pre id="cap-src-0" role="tabpanel"><code>python-dotenv
+langchain
+langchain-core
+langchain-openai
+langchain-chroma
+langchain-text-splitters
+chromadb
+langgraph
+langsmith</code></pre>
+<pre id="cap-src-1" role="tabpanel" hidden><code># Required — OpenAI powers both the chat model and the embeddings
+OPENAI_API_KEY=sk-...
+
+# Optional — enable LangSmith tracing to see every step of the agent loop
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=your-langsmith-key
+
+# Optional overrides (defaults shown)
+CHAT_MODEL=gpt-4o
+EMBED_MODEL=text-embedding-3-small
+CHROMA_DIR=./chroma_db</code></pre>
+<pre id="cap-src-2" role="tabpanel" hidden><code>"""Shared settings for the support agent (overridable via environment variables)."""
+import os
+
+# Where the Chroma vector store persists on disk.
+CHROMA_DIR = os.getenv("CHROMA_DIR", "./chroma_db")
+COLLECTION = os.getenv("CHROMA_COLLECTION", "support_kb")
+
+# OpenAI models.
+CHAT_MODEL = os.getenv("CHAT_MODEL", "gpt-4o")
+EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-3-small")
+
+# Source knowledge base (relative to this folder).
+KB_PATH = os.getenv("KB_PATH", "data/knowledge_base.md")</code></pre>
+<pre id="cap-src-3" role="tabpanel" hidden><code>"""Ingest step — load the knowledge base, chunk it, embed with OpenAI, and store
+the vectors in a persistent Chroma database.
+
+Run this ONCE before the agent (re-run to rebuild the index):
+
+    python ingest.py
+"""
+from pathlib import Path
+
+from dotenv import load_dotenv
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_openai import OpenAIEmbeddings
+from langchain_chroma import Chroma
+
+from config import CHROMA_DIR, COLLECTION, EMBED_MODEL, KB_PATH
+
+load_dotenv()  # OPENAI_API_KEY from .env
+
+
+def build_index() -&gt; int:
+    text = Path(KB_PATH).read_text(encoding="utf-8")
+
+    # Split into overlapping chunks so retrieval returns focused, self-contained
+    # passages while preserving context across boundaries.
+    splitter = RecursiveCharacterTextSplitter(chunk_size=600, chunk_overlap=80)
+    chunks = splitter.create_documents([text], metadatas=[{"source": KB_PATH}])
+
+    # Embed with OpenAI and persist to Chroma on disk.
+    store = Chroma(
+        collection_name=COLLECTION,
+        embedding_function=OpenAIEmbeddings(model=EMBED_MODEL),
+        persist_directory=CHROMA_DIR,
+    )
+    store.add_documents(chunks)
+    return len(chunks)
+
+
+if __name__ == "__main__":
+    n = build_index()
+    print(f"Ingested {n} chunks into Chroma collection '{COLLECTION}' at {CHROMA_DIR}")</code></pre>
+<pre id="cap-src-4" role="tabpanel" hidden><code>"""Customer-support agent.
+
+Ties together the whole stack:
+  - LangGraph  — the stateful agent loop (agent ⇄ tools) with conversation memory
+  - OpenAI     — gpt-4o for reasoning, text-embedding-3-small for retrieval
+  - Chroma     — the persistent vector database holding the knowledge base
+  - RAG        — the `search_kb` tool retrieves grounding context on demand
+  - LangSmith  — automatic tracing when LANGSMITH_TRACING=true
+
+Run `python ingest.py` first to build the vector store, then `python agent.py`.
+"""
+from typing import Annotated, TypedDict
+
+from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_chroma import Chroma
+from langchain_core.tools import tool
+from langchain_core.messages import HumanMessage, SystemMessage
+from langgraph.graph import StateGraph, START
+from langgraph.graph.message import add_messages
+from langgraph.prebuilt import ToolNode, tools_condition
+from langgraph.checkpoint.memory import MemorySaver
+
+from config import CHROMA_DIR, COLLECTION, CHAT_MODEL, EMBED_MODEL
+
+load_dotenv()  # OPENAI_API_KEY, LANGSMITH_TRACING, LANGSMITH_API_KEY
+
+# Connect to the vector store built by ingest.py.
+_store = Chroma(
+    collection_name=COLLECTION,
+    embedding_function=OpenAIEmbeddings(model=EMBED_MODEL),
+    persist_directory=CHROMA_DIR,
+)
+
+
+@tool
+def search_kb(query: str) -&gt; str:
+    """Search the customer-support knowledge base for relevant policy/help text."""
+    docs = _store.similarity_search(query, k=4)  # RAG retrieval over Chroma
+    return "\n\n".join(d.page_content for d in docs) or "No relevant policy found."
+
+
+@tool
+def escalate_to_human(reason: str) -&gt; str:
+    """Escalate to a human agent when the KB can't answer or the issue is sensitive."""
+    return f"Escalated to a human specialist. Reason: {reason}"
+
+
+TOOLS = [search_kb, escalate_to_human]
+model = ChatOpenAI(model=CHAT_MODEL, temperature=0).bind_tools(TOOLS)
+
+SYSTEM = SystemMessage(
+    "You are Acme's support assistant. Ground every policy answer by calling search_kb first. "
+    "If the knowledge base lacks the answer, or the request is sensitive (refunds over $500, "
+    "legal, account security), call escalate_to_human instead of guessing. "
+    "Cite the policy you relied on and keep replies concise."
+)
+
+
+class State(TypedDict):
+    messages: Annotated[list, add_messages]
+
+
+def agent(state: State) -&gt; State:
+    # The model reasons over the conversation and decides: answer, or call a tool.
+    return {"messages": [model.invoke([SYSTEM] + state["messages"])]}
+
+
+builder = StateGraph(State)
+builder.add_node("agent", agent)
+builder.add_node("tools", ToolNode(TOOLS))
+builder.add_edge(START, "agent")
+builder.add_conditional_edges("agent", tools_condition)  # agent -&gt; tools, or -&gt; END
+builder.add_edge("tools", "agent")                        # loop back after a tool runs
+# The checkpointer gives the agent short-term memory across turns of a thread.
+graph = builder.compile(checkpointer=MemorySaver())
+
+
+def ask(question: str, thread_id: str = "demo") -&gt; str:
+    cfg = {"configurable": {"thread_id": thread_id}}
+    out = graph.invoke({"messages": [HumanMessage(question)]}, cfg)
+    return out["messages"][-1].content
+
+
+if __name__ == "__main__":
+    # A grounded policy question (agent should call search_kb):
+    print("Q1:", ask("How many days do I have to return an item, and who pays return shipping?"))
+    print("-" * 60)
+    # A sensitive request on the same thread (agent should escalate):
+    print("Q2:", ask("I want a $2000 refund for a laptop that arrived damaged."))</code></pre>
+<pre id="cap-src-5" role="tabpanel" hidden><code># Acme Support Knowledge Base
+
+## Returns &amp; Refunds
+- Items may be returned within **30 days** of delivery for a full refund.
+- The **customer pays return shipping** unless the item arrived damaged or incorrect.
+- Refunds are issued to the original payment method within **5–7 business days** of us receiving the return.
+- **Shipping fees are non-refundable** except for damaged or incorrect items.
+- Digital goods are **non-refundable** once downloaded.
+- Refund requests over **$500** require manual review by a specialist.
+
+## Shipping
+- Standard shipping takes **3–5 business days**; express takes **1–2 business days**.
+- Free standard shipping on orders over **$50**.
+- We ship to the US, Canada, the UK, and the EU.
+- Tracking numbers are emailed once an order ships.
+
+## Orders
+- Orders can be **modified or cancelled within 1 hour** of being placed.
+- After 1 hour, an order enters fulfillment and can no longer be changed.
+- To check order status, sign in and visit **Account → Orders**.
+
+## Accounts &amp; Security
+- Reset your password from the sign-in page via **"Forgot password"**.
+- We never ask for your password by email. Report suspicious messages to security@acme.example.
+- Account deletion requests are handled by a specialist and require identity verification.
+
+## Payments
+- We accept Visa, Mastercard, American Express, and PayPal.
+- Prices are in **USD**.
+- Promo codes apply to the item subtotal only, not taxes or shipping.</code></pre>
+      </div>
+
+      <div class="callout">Full multi-file source (config · ingest · agent · sample KB) with an architecture diagram: <a href="https://github.com/coolloic/Notebook/tree/main/examples/support-agent" target="_blank" rel="noopener">examples/support-agent on GitHub</a>. It's syntax-checked in the same CI as the experiments.</div>
+    </section>
+
+    <section id="quiz">
+      <h2>9 · Knowledge check</h2>
+      <p>Five quick questions. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="b">
+          <p>1. Your app needs to loop — call tools repeatedly until it can answer. Which tool fits?</p>
+          <label><input type="radio" name="q1" value="a"> LangChain (a single chain)</label>
+          <label><input type="radio" name="q1" value="b"> LangGraph (stateful graph with a cycle)</label>
+          <label><input type="radio" name="q1" value="c"> LangSmith</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>2. An answer came back wrong and you want to see exactly which step failed. You reach for…</p>
+          <label><input type="radio" name="q2" value="a"> A bigger model</label>
+          <label><input type="radio" name="q2" value="b"> A vector database</label>
+          <label><input type="radio" name="q2" value="c"> LangSmith tracing</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>3. In RAG, why do we split documents into overlapping chunks before embedding?</p>
+          <label><input type="radio" name="q3" value="a"> To make the model faster</label>
+          <label><input type="radio" name="q3" value="b"> So retrieval returns only the relevant pieces, with context preserved across boundaries</label>
+          <label><input type="radio" name="q3" value="c"> Because embeddings require exactly 500 characters</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>4. You're prototyping RAG locally with no infrastructure. Best first vector store?</p>
+          <label><input type="radio" name="q4" value="a"> Chroma or FAISS (local, zero-setup)</label>
+          <label><input type="radio" name="q4" value="b"> A distributed Milvus cluster</label>
+          <label><input type="radio" name="q4" value="c"> None — vectors aren't needed for RAG</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>5. A human must approve a refund before the agent sends it. Which agentic pattern?</p>
+          <label><input type="radio" name="q5" value="a"> Swarm</label>
+          <label><input type="radio" name="q5" value="b"> Human-in-the-Loop</label>
+          <label><input type="radio" name="q5" value="c"> Sequential</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>📘 LangChain guide</h4><p><a href="README.md">The full LangChain / LangGraph / LangSmith write-up</a> with diagrams and comparisons.</p></div>
+        <div class="card"><h4>🗄️ Vector databases</h4><p><a href="vector-databases.md">Deep dive on storing chunk data</a> across Chroma, FAISS, Qdrant, Pinecone, pgvector.</p></div>
+        <div class="card"><h4>🛠️ create-llm-app</h4><p><a href="https://github.com/coolloic/create-llm-app">The CLI on GitHub</a> — scaffold a runnable app in seconds.</p></div>
+        <div class="card"><h4>🧪 Agentic experiments</h4><p><a href="https://github.com/coolloic/Notebook/tree/main/experiments">25 runnable scaffolds</a> — agentic design patterns plus reasoning techniques.</p></div>
+        <div class="card"><h4>🤖 Support agent</h4><p><a href="https://github.com/coolloic/Notebook/tree/main/examples/support-agent">The full-stack example</a> — LangGraph + OpenAI + Chroma RAG + LangSmith.</p></div>
+        <div class="card"><h4>☁️ AWS services guide</h4><p><a href="aws-services.html">An architect's field guide</a> to 40 core AWS services — the problem each solves and its limits (pairs with Bedrock).</p></div>
+        <div class="card"><h4>🧰 Agent Development Kits</h4><p><a href="adk.html">Google ADK vs AWS Strands + Bedrock AgentCore vs LangGraph</a> — problem, solution &amp; limits for each.</p></div>
+        <div class="card"><h4>📡 IoT × Agents</h4><p><a href="iot-agent.html">A smart fridge that auto-orders groceries</a> — AWS IoT Core wired to a Strands agent on Bedrock AgentCore.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  Built as a learning companion to the <a href="README.md">LangChain guide</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  // Theme toggle (persisted)
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) {
+    root.setAttribute("data-theme", t);
+    tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 ";
+    tLabel.textContent = t === "dark" ? "Light" : "Dark";
+  }
+  var saved = null;
+  try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () {
+    var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    applyTheme(next);
+    try { localStorage.setItem("theme", next); } catch (e) {}
+  });
+
+  // Mobile menu
+  var menuBtn = document.getElementById("menuToggle");
+  var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () {
+    var open = side.classList.toggle("open");
+    menuBtn.setAttribute("aria-expanded", String(open));
+  });
+  side.addEventListener("click", function (e) {
+    if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); }
+  });
+
+  // Reading progress
+  var bar = document.getElementById("progress");
+  function onScroll() {
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%";
+  }
+  document.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
+  // Active section highlighting
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a"));
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (en.isIntersecting) {
+        links.forEach(function (a) { a.classList.remove("active"); });
+        if (map[en.target.id]) map[en.target.id].classList.add("active");
+      }
+    });
+  }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+
+  // Tabs
+  document.querySelectorAll("[data-tabs]").forEach(function (wrap) {
+    var tabs = wrap.querySelectorAll(".tab");
+    tabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        tabs.forEach(function (t) {
+          t.setAttribute("aria-selected", "false");
+          var p = document.getElementById(t.dataset.target);
+          if (p) p.hidden = true;
+        });
+        tab.setAttribute("aria-selected", "true");
+        document.getElementById(tab.dataset.target).hidden = false;
+      });
+    });
+  });
+
+  // Copy buttons — copy the visible <pre> in the same code-wrap
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var wrap = btn.closest(".code-wrap");
+      var pre = wrap.querySelector("pre:not([hidden])");
+      var text = pre ? pre.innerText : "";
+      var done = function () { var o = btn.textContent; btn.textContent = "Copied!"; setTimeout(function () { btn.textContent = o; }, 1400); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, done);
+      } else {
+        var ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); } catch (e) {}
+        document.body.removeChild(ta); done();
+      }
+    });
+  });
+
+  // Copy setup script — emit a runnable bash script that writes every file via
+  // heredocs, so one paste into a terminal builds the whole folder.
+  // Use textContent (not innerText) so hidden tab panels are included.
+  document.querySelectorAll(".copyall").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var wrap = btn.closest(".code-wrap");
+      var nameById = {};
+      wrap.querySelectorAll(".tab").forEach(function (t) { nameById[t.dataset.target] = t.textContent.trim(); });
+      var text = "#!/usr/bin/env bash\nset -e\nmkdir -p support-agent/data\n\n";
+      wrap.querySelectorAll("pre").forEach(function (pre) {
+        var name = nameById[pre.id] || pre.id;                 // e.g. agent.py, data/knowledge_base.md
+        var content = pre.textContent.replace(/\n+$/, "");     // trim trailing newlines
+        // single-quoted heredoc delimiter -> file content is written verbatim
+        text += 'cat > "support-agent/' + name + '" <<\'SA_EOF\'\n' + content + '\nSA_EOF\n\n';
+      });
+      text += 'echo "Created support-agent/. Next steps:"\n';
+      text += 'echo "  cd support-agent && pip install -r requirements.txt"\n';
+      text += 'echo "  cp .env.example .env   # add your OPENAI_API_KEY"\n';
+      text += 'echo "  python ingest.py && python agent.py"\n';
+      var done = function () { var o = btn.textContent; btn.textContent = "Copied script!"; setTimeout(function () { btn.textContent = o; }, 1500); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, done);
+      } else {
+        var ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); } catch (e) {}
+        document.body.removeChild(ta); done();
+      }
+    });
+  });
+
+  // Quiz
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q");
+    var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      var correctLabel = q.querySelector('input[value="' + answer + '"]').parentNode;
+      correctLabel.classList.add("correct");
+      if (chosen) {
+        if (chosen.value === answer) { score++; }
+        else { chosen.parentNode.classList.add("wrong"); }
+      }
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length +
+      (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>

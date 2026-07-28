@@ -509,6 +509,8 @@ Runnable scaffolds for each agentic AI design pattern (from Google Cloud's *Choo
 
 ## Further reading
 
+- **[📓 Interactive tutorial hub](index.html)** — the landing page linking all four browser-based tutorials (LLM apps, agent kits, AWS services, IoT × agents) with a suggested reading order.
+- **[Building LLM Applications](llm-apps.html)** — the interactive version of this guide: LangChain, LangGraph &amp; LangSmith with RAG, a full agent, and a support-agent capstone.
 - **[AWS Services Field Guide](aws-services.html)** — an architect's tour of 40 core AWS services: the problem each one solves, its real limits and quotas, and when to choose it (pairs with Bedrock for LLM apps).
 - **[Agent Development Kits Compared](adk.html)** — Google ADK vs AWS Strands + Bedrock AgentCore vs LangGraph: what problem each solves, its limits, and when to choose it.
 - **[IoT × Agents: a self-restocking fridge](iot-agent.html)** — an end-to-end example wiring AWS IoT Core to a Strands agent on Bedrock AgentCore, with architecture, code, and the guardrails auto-purchasing needs.
