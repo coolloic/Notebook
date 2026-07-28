@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧬</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="How embedding models work — turning text into vectors, how they're trained, text-to-vector pipeline, measuring similarity, and how to choose and use one well for search and RAG.">
+<title>How Embedding Models Work — Text into Vectors</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f5f7fa;
+    --bg-code: #04231b;      /* deep emerald ink */
+    --text: #1a2130;
+    --text-soft: #55617a;
+    --border: #e2e8f0;
+    --accent: #047857;       /* emerald-700 (AA on white) */
+    --ink: #065f46;          /* emerald-800 */
+    --solve: #15803d;
+    --limit: #b45309;
+    --choose: #1e40af;
+    --solve-bg: #dcfce7;
+    --limit-bg: #fef3c7;
+    --choose-bg: #dbeafe;
+    --radius: 12px;
+    --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #0f172a;
+    --bg-soft: #17233d;
+    --bg-code: #052018;
+    --text: #e6ecf7;
+    --text-soft: #9fb0cc;
+    --border: #263450;
+    --accent: #6ee7b7;
+    --ink: #34d399;
+    --solve: #86efac;
+    --limit: #fcd34d;
+    --choose: #93c5fd;
+    --solve-bg: #14351f;
+    --limit-bg: #3a2a0c;
+    --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: var(--font);
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  .skip-link {
+    position: absolute; left: -999px; top: 0;
+    background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100;
+  }
+  .skip-link:focus { left: 0; }
+
+  /* Progress bar */
+  #progress {
+    position: fixed; top: 0; left: 0; height: 4px; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--ink));
+    z-index: 60; transition: width .1s linear;
+  }
+
+  /* Header */
+  header.top {
+    position: sticky; top: 0; z-index: 50;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 1rem;
+    padding: .6rem 1rem;
+  }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; }
+  header.top .brand span { color: var(--accent); }
+  header.top .spacer { flex: 1; }
+  .btn {
+    font: inherit; cursor: pointer; border: 1px solid var(--border);
+    background: var(--bg-soft); color: var(--text);
+    border-radius: 999px; padding: .5rem .9rem; min-height: 44px;
+    display: inline-flex; align-items: center; gap: .4rem;
+  }
+  .btn:hover { border-color: var(--accent); }
+  #menuToggle { display: none; }
+
+  /* Layout */
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side {
+    position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px);
+    overflow-y: auto; padding: 1.25rem 0; font-size: .93rem;
+  }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a {
+    display: block; padding: .45rem .75rem; border-radius: 8px;
+    color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent;
+  }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); }
+  nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.15rem; margin: 1.75rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+
+  /* Cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; }
+  .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .card .count { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+
+  /* Callout */
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; }
+  .callout strong { color: var(--accent); }
+
+  /* Steps flow */
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 1.25rem 0; }
+  .flow .node { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: .5rem .8rem; font-size: .88rem; font-weight: 600; }
+  .flow .node.hot { border-color: var(--accent); color: var(--accent); }
+  .flow .arrow { color: var(--text-soft); font-weight: 700; }
+
+  /* Concept block */
+  .svc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-soft); padding: 1rem 1.2rem; margin: 1.1rem 0; }
+  .svc h3 { margin: 0 0 .6rem; }
+  .svc p { margin: .4rem 0; font-size: .95rem; }
+  .tag { display: inline-block; min-width: 5.6rem; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .12rem .5rem; border-radius: 6px; margin-right: .5rem; text-align: center; }
+  .tag.good { background: var(--solve-bg); color: var(--solve); }
+  .tag.bad  { background: var(--limit-bg); color: var(--limit); }
+
+  /* Code */
+  .code-wrap { margin: 1.1rem 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  pre { margin: 0; background: var(--bg-code); color: #e6f6ee; padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .86rem; line-height: 1.6; }
+  pre code { font-family: inherit; }
+  .code-head { display: flex; align-items: center; justify-content: space-between; background: var(--bg-code); padding: .35rem .6rem .35rem 1rem; }
+  .code-head .label { color: #8fc7b0; font-size: .78rem; font-family: var(--mono); }
+  .copy { font: inherit; cursor: pointer; background: #14503c; color: #e6f6ee; border: none; border-radius: 6px; padding: .35rem .7rem; min-height: 36px; font-size: .8rem; }
+  .copy:hover { background: #1d6a50; }
+  .cmt { color: #7fae9b; }
+  code.inline { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; }
+
+  /* Semantic-space diagram */
+  .sp-wrap { overflow-x: auto; margin: 1.3rem 0; }
+  .sp { width: 100%; min-width: 620px; max-width: 760px; height: auto; display: block; margin: 0 auto; font-family: var(--font); }
+  .sp-box { fill: var(--bg-soft); stroke: var(--border); stroke-width: 1.5; }
+  .sp-ring { fill: none; stroke: var(--border); stroke-width: 1.5; stroke-dasharray: 5 4; }
+  .sp-ringlabel { fill: var(--text-soft); font-size: 12px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
+  .sp-pt { fill: var(--text-soft); }
+  .sp-q  { fill: var(--accent); stroke: var(--accent); }
+  .sp-line { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 4 3; fill: none; }
+  .sp-label { fill: var(--text); font-size: 12px; }
+  .sp-qlabel { fill: var(--accent); font-size: 12px; font-weight: 700; }
+
+  /* Table */
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-soft); }
+
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); }
+  details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+
+  /* Quiz */
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; }
+  .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); }
+  .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; }
+  [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; }
+  #score { font-weight: 700; margin-left: 1rem; }
+
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; }
+    #menuToggle { display: inline-flex; }
+    main { padding-top: .5rem; }
+    .tag { min-width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <a class="btn home" href="index.html" aria-label="Back to all tutorials">← All tutorials</a>
+  <div class="brand">Embedding <span>Models</span></div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#what">1 · What is an embedding?</a></li>
+      <li><a href="#space">2 · The semantic space</a></li>
+      <li><a href="#learn">3 · How models learn them</a></li>
+      <li><a href="#pipeline">4 · Text → vector</a></li>
+      <li><a href="#similarity">5 · Measuring similarity</a></li>
+      <li><a href="#using">6 · Choosing &amp; using one</a></li>
+      <li><a href="#beyond">7 · Beyond text</a></li>
+      <li><a href="#cheatsheet">Cheat sheet</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>How embedding models work</h1>
+      <p class="lede">An embedding model turns a piece of text into a list of numbers — a <strong>vector</strong> — positioned so that things with <em>similar meaning</em> land close together. That single trick powers semantic search, RAG, recommendations, clustering and deduplication.</p>
+
+      <div class="flow">
+        <span class="node">"How do I get a refund?"</span><span class="arrow">→</span>
+        <span class="node hot">embedding model</span><span class="arrow">→</span>
+        <span class="node">[0.021, -0.44, 0.13, … ]</span>
+      </div>
+
+      <div class="callout"><strong>The one idea.</strong> Meaning becomes <em>geometry</em>. Once text is a point in space, "find related text" becomes "find nearby points" — something computers do fast, even over millions of items. Everything else in this guide is detail on how that mapping is built and used.</div>
+    </section>
+
+    <!-- ============ 1 · WHAT ============ -->
+    <section id="what">
+      <h2><span class="pill">Concept</span> &nbsp;What is an embedding?</h2>
+      <p>An <strong>embedding</strong> is a fixed-length vector of floating-point numbers — say 384 or 1536 of them — that represents a piece of content. The count is the model's <strong>dimensionality</strong>. Each dimension is a learned axis of meaning; you can't name them, but together the coordinates place the text in a high-dimensional "meaning space."</p>
+      <p>The defining property: <strong>semantic similarity becomes spatial proximity.</strong> "How do I get a refund?" and "What is your return policy?" embed to nearby vectors even though they share almost no words, while "The sky is blue" lands far away. Keyword search can't see that the first two mean the same thing; embeddings can.</p>
+      <div class="callout"><strong>Embedding vs generation.</strong> A chat model <em>produces text</em>; an embedding model <em>produces a vector</em> and generates nothing. They're different tools — you often use an embedding model to <em>find</em> the right context, then hand it to a chat model to answer (that's RAG).</div>
+    </section>
+
+    <!-- ============ 2 · SPACE ============ -->
+    <section id="space">
+      <h2><span class="pill">Intuition</span> &nbsp;The semantic space</h2>
+      <p>Real embeddings have hundreds of dimensions, but the idea is visible in 2-D: related concepts cluster, and a search is just "which points are nearest the query?"</p>
+
+      <div class="sp-wrap">
+        <svg class="sp" viewBox="0 0 760 410" role="img" aria-labelledby="sp-title sp-desc">
+          <title id="sp-title">A 2-D sketch of embedding space</title>
+          <desc id="sp-desc">Words with similar meanings cluster together — animals, fruits and vehicles form separate groups. A query "a small dog" lands inside the animals cluster, and its nearest neighbours (dog, puppy) are the search results.</desc>
+          <rect class="sp-box" x="8" y="8" width="744" height="394" rx="12"/>
+
+          <!-- rings -->
+          <ellipse class="sp-ring" cx="205" cy="150" rx="130" ry="105"/>
+          <text class="sp-ringlabel" x="205" y="40" text-anchor="middle">animals</text>
+          <ellipse class="sp-ring" cx="185" cy="320" rx="120" ry="62"/>
+          <text class="sp-ringlabel" x="185" y="392" text-anchor="middle">fruits</text>
+          <ellipse class="sp-ring" cx="600" cy="215" rx="120" ry="105"/>
+          <text class="sp-ringlabel" x="600" y="98" text-anchor="middle">vehicles</text>
+
+          <!-- query connectors (under points) -->
+          <path class="sp-line" d="M215,175 L150,140"/>
+          <path class="sp-line" d="M215,175 L175,225"/>
+
+          <!-- animal points -->
+          <circle class="sp-pt" cx="150" cy="140" r="6"/><text class="sp-label" x="150" y="128" text-anchor="middle">dog</text>
+          <circle class="sp-pt" cx="255" cy="120" r="6"/><text class="sp-label" x="255" y="108" text-anchor="middle">cat</text>
+          <circle class="sp-pt" cx="175" cy="225" r="6"/><text class="sp-label" x="175" y="245" text-anchor="middle">puppy</text>
+
+          <!-- query point -->
+          <circle class="sp-q" cx="215" cy="175" r="8"/>
+          <text class="sp-qlabel" x="230" y="179" text-anchor="start">query: “a small dog”</text>
+
+          <!-- fruit points -->
+          <circle class="sp-pt" cx="160" cy="305" r="6"/><text class="sp-label" x="160" y="293" text-anchor="middle">apple</text>
+          <circle class="sp-pt" cx="240" cy="335" r="6"/><text class="sp-label" x="240" y="355" text-anchor="middle">banana</text>
+          <circle class="sp-pt" cx="150" cy="345" r="6"/><text class="sp-label" x="120" y="349" text-anchor="middle">grape</text>
+
+          <!-- vehicle points -->
+          <circle class="sp-pt" cx="575" cy="185" r="6"/><text class="sp-label" x="575" y="173" text-anchor="middle">car</text>
+          <circle class="sp-pt" cx="650" cy="225" r="6"/><text class="sp-label" x="650" y="245" text-anchor="middle">bus</text>
+          <circle class="sp-pt" cx="560" cy="255" r="6"/><text class="sp-label" x="560" y="275" text-anchor="middle">bike</text>
+        </svg>
+      </div>
+      <p>The query <em>"a small dog"</em> never appears in the data, yet it lands next to <strong>dog</strong> and <strong>puppy</strong> — so a nearest-neighbour lookup returns them. That's semantic search in one picture.</p>
+
+      <details>
+        <summary>The famous "king − man + woman ≈ queen"</summary>
+        <p>Because directions in the space encode relationships, you can sometimes do arithmetic on meaning: the vector from <em>man</em> to <em>woman</em> is roughly parallel to the one from <em>king</em> to <em>queen</em>. Early word2vec embeddings made this vivid; modern sentence embeddings capture far richer, sentence-level meaning.</p>
+      </details>
+    </section>
+
+    <!-- ============ 3 · LEARN ============ -->
+    <section id="learn">
+      <h2><span class="pill">How</span> &nbsp;How models learn the space</h2>
+      <p>No one hand-places the points. The model <em>learns</em> where things go from data, and the dominant recipe today is <strong>contrastive learning</strong>: show the model pairs that should be close and pairs that should be far, and nudge the vectors accordingly.</p>
+      <div class="flow">
+        <span class="node">similar pair</span><span class="arrow">pull together</span>
+        <span class="node hot">adjust vectors</span><span class="arrow">push apart</span>
+        <span class="node">unrelated pair</span>
+      </div>
+      <p>Training pairs come from naturally-aligned data: a question and its accepted answer, a sentence and its paraphrase, a caption and its image, duplicate FAQ entries. Over millions of such <em>positive</em> pairs (and many <em>negatives</em>), the model tunes its weights until similar meanings reliably land near each other. The loss (e.g. <em>InfoNCE</em> / triplet loss) literally rewards small distances for positives and large ones for negatives.</p>
+      <details>
+        <summary>From word2vec to transformer sentence encoders</summary>
+        <p>Early models (word2vec, GloVe) gave each <em>word</em> one fixed vector — so "bank" had a single meaning. Modern embedding models are <strong>transformers</strong>: they read the whole input, so "river bank" and "savings bank" embed differently. Sentence-Transformers popularized fine-tuning transformers with contrastive objectives to produce strong <em>sentence</em>- and <em>document</em>-level vectors.</p>
+      </details>
+    </section>
+
+    <!-- ============ 4 · PIPELINE ============ -->
+    <section id="pipeline">
+      <h2><span class="pill">Mechanics</span> &nbsp;From text to a single vector</h2>
+      <p>Inside the model, one call runs this pipeline:</p>
+      <div class="flow">
+        <span class="node">text</span><span class="arrow">→</span>
+        <span class="node">tokenize</span><span class="arrow">→</span>
+        <span class="node">transformer layers</span><span class="arrow">→</span>
+        <span class="node">per-token vectors</span><span class="arrow">→</span>
+        <span class="node hot">pool</span><span class="arrow">→</span>
+        <span class="node">normalize</span><span class="arrow">→</span>
+        <span class="node">1 vector</span>
+      </div>
+      <ol>
+        <li><strong>Tokenize</strong> — split text into subword tokens the model knows.</li>
+        <li><strong>Transformer</strong> — attention layers produce a context-aware vector <em>per token</em> (so surrounding words shape each one).</li>
+        <li><strong>Pool</strong> — collapse the many token vectors into <em>one</em>, usually by mean-pooling (average them) or taking a special <code class="inline">[CLS]</code> token.</li>
+        <li><strong>Normalize</strong> — scale the vector to length 1, so only its <em>direction</em> (meaning) matters, not its magnitude.</li>
+      </ol>
+
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">embed.py — text to vectors, locally</span><button class="copy">Copy</button></div>
+<pre><code><span class="cmt"># pip install sentence-transformers</span>
+from sentence_transformers import SentenceTransformer
+
+model = SentenceTransformer("all-MiniLM-L6-v2")   <span class="cmt"># 384-dimensional vectors</span>
+
+texts = ["How do I get a refund?",
+         "What is your return policy?",
+         "The sky is blue today."]
+
+vecs = model.encode(texts, normalize_embeddings=True)   <span class="cmt"># pool + L2-normalize</span>
+print(vecs.shape)          <span class="cmt"># (3, 384) — one 384-dim vector per text</span></code></pre>
+      </div>
+    </section>
+
+    <!-- ============ 5 · SIMILARITY ============ -->
+    <section id="similarity">
+      <h2><span class="pill">Compare</span> &nbsp;Measuring similarity</h2>
+      <p>Two vectors are "similar" when they point the same way. The standard measure is <strong>cosine similarity</strong> — the cosine of the angle between them — which runs from <code class="inline">-1</code> (opposite) through <code class="inline">0</code> (unrelated) to <code class="inline">1</code> (identical direction).</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Metric</th><th>Measures</th><th>Note</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Cosine similarity</strong></td><td>Angle between vectors</td><td>The default for text; ignores length.</td></tr>
+            <tr><td><strong>Dot product</strong></td><td>Angle × magnitudes</td><td>Equals cosine <em>when vectors are normalized</em> — so it's the fast path.</td></tr>
+            <tr><td><strong>Euclidean (L2)</strong></td><td>Straight-line distance</td><td>Smaller = closer; equivalent to cosine on normalized vectors.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">similarity.py</span><button class="copy">Copy</button></div>
+<pre><code>from sentence_transformers import util
+
+<span class="cmt"># reuse `vecs` from the previous snippet (already normalized)</span>
+print(util.cos_sim(vecs[0], vecs[1]))   <span class="cmt"># ≈ 0.63  refund ↔ returns (related)</span>
+print(util.cos_sim(vecs[0], vecs[2]))   <span class="cmt"># ≈ 0.04  refund ↔ blue sky (unrelated)</span></code></pre>
+      </div>
+      <div class="callout"><strong>Why normalize?</strong> After L2-normalization every vector has length 1, so dot product == cosine similarity. Vector databases exploit this: normalize once, then use fast dot-product search. Just be consistent — normalize both what you store and what you query.</div>
+    </section>
+
+    <!-- ============ 6 · USING ============ -->
+    <section id="using">
+      <h2><span class="pill">Practice</span> &nbsp;Choosing &amp; using an embedding model</h2>
+      <p>Models differ in quality, size, speed, cost and language/domain coverage. A few rules keep you out of trouble.</p>
+
+      <div class="svc">
+        <h3>Picking a model</h3>
+        <p><span class="tag good">Do</span> Start from a benchmark like <strong>MTEB</strong> (the Massive Text Embedding Benchmark) and pick for <em>your</em> task — retrieval, similarity, or clustering are scored separately. Weigh <strong>dimensions</strong> (quality vs storage/compute), <strong>max input length</strong> (can it hold your chunk?), language/domain coverage, and local vs hosted.</p>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Model</th><th>Dims</th><th>Where</th><th>Good for</th></tr></thead>
+          <tbody>
+            <tr><td><strong>all-MiniLM-L6-v2</strong></td><td>384</td><td>Local (OSS)</td><td>Fast, cheap, strong baseline</td></tr>
+            <tr><td><strong>BGE / E5 / GTE</strong></td><td>384–1024</td><td>Local (OSS)</td><td>Top open retrieval; use query/passage prefixes</td></tr>
+            <tr><td><strong>OpenAI text-embedding-3-small</strong></td><td>1536*</td><td>Hosted API</td><td>Strong, inexpensive, no infra</td></tr>
+            <tr><td><strong>text-embedding-3-large</strong></td><td>3072*</td><td>Hosted API</td><td>Highest quality when it matters</td></tr>
+            <tr><td><strong>Voyage / Cohere</strong></td><td>varies</td><td>Hosted API</td><td>Retrieval- &amp; domain-tuned options</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:.85rem;color:var(--text-soft);margin-top:-.4rem;">* Some models support <em>Matryoshka</em> truncation — shorten the vector (e.g. 1536 → 256) to trade a little accuracy for big storage/speed savings.</p>
+
+      <div class="svc">
+        <h3>Using it well — the rules that bite</h3>
+        <p><span class="tag bad">Trap</span> <strong>Mixing models.</strong> Vectors from different models live in different spaces and are not comparable — you must embed your index <em>and</em> your queries with the <em>same</em> model. Change the model → re-embed everything.</p>
+        <p><span class="tag bad">Trap</span> <strong>Asymmetric tasks.</strong> Search matches a short <em>query</em> against long <em>documents</em>; use a retrieval-tuned model (often with <code class="inline">"query:"</code> / <code class="inline">"passage:"</code> prefixes), not a plain similarity model.</p>
+        <p><span class="tag bad">Trap</span> <strong>Chunks too big.</strong> One vector must summarize the whole input; embed an entire document and the meaning blurs. Chunk to focused passages (see RAG). Text past the model's max length is silently truncated.</p>
+        <p><span class="tag good">Do</span> <strong>Normalize, cache, and expect fuzziness.</strong> Normalize vectors; cache them (re-embedding is the cost); and remember embeddings capture <em>meaning</em>, not exact tokens — pair with keyword/hybrid search when exact IDs or rare terms matter.</p>
+      </div>
+    </section>
+
+    <!-- ============ 7 · BEYOND ============ -->
+    <section id="beyond">
+      <h2><span class="pill">Wider view</span> &nbsp;Beyond text</h2>
+      <p>The same idea generalizes to any content you can train alignment on:</p>
+      <div class="cards">
+        <div class="card"><h4>🖼️ Multimodal</h4><p>Models like CLIP embed images <em>and</em> text into one shared space — so you can search photos with a text query.</p></div>
+        <div class="card"><h4>💻 Code</h4><p>Code-specific embeddings map functions and docstrings together, powering semantic code search.</p></div>
+        <div class="card"><h4>🌐 Multilingual</h4><p>Multilingual models place the same meaning from different languages nearby, enabling cross-language search.</p></div>
+      </div>
+      <div class="callout"><strong>Same trick everywhere.</strong> Whether it's text, images, code or audio, an embedding model's job is identical: map inputs to vectors where distance means dissimilarity. Master it once and it transfers.</div>
+    </section>
+
+    <!-- ============ CHEAT SHEET ============ -->
+    <section id="cheatsheet">
+      <h2>Cheat sheet</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Question</th><th>Short answer</th></tr></thead>
+          <tbody>
+            <tr><td>What does it output?</td><td>A fixed-length vector (e.g. 384–3072 floats), not text.</td></tr>
+            <tr><td>What makes two texts "similar"?</td><td>A small angle between their vectors → high cosine similarity.</td></tr>
+            <tr><td>How is the space learned?</td><td>Contrastive training: pull similar pairs together, push others apart.</td></tr>
+            <tr><td>Which similarity metric?</td><td>Cosine — and dot product once vectors are normalized.</td></tr>
+            <tr><td>Biggest footgun?</td><td>Using different models for indexing vs querying.</td></tr>
+            <tr><td>When embeddings aren't enough?</td><td>Exact keywords/IDs — add hybrid (keyword + vector) search.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ QUIZ ============ -->
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions on how embeddings work. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="b">
+          <p>1. What does an embedding model output for a piece of text?</p>
+          <label><input type="radio" name="q1" value="a"> A summary sentence</label>
+          <label><input type="radio" name="q1" value="b"> A fixed-length vector of numbers</label>
+          <label><input type="radio" name="q1" value="c"> A list of keywords</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>2. Two texts are semantically similar when their vectors…</p>
+          <label><input type="radio" name="q2" value="a"> Have the same length in characters</label>
+          <label><input type="radio" name="q2" value="b"> Share the same first dimension</label>
+          <label><input type="radio" name="q2" value="c"> Point in nearly the same direction (high cosine similarity)</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>3. How do modern embedding models learn where to place things?</p>
+          <label><input type="radio" name="q3" value="a"> Contrastive learning — pull similar pairs together, push unrelated ones apart</label>
+          <label><input type="radio" name="q3" value="b"> By memorizing a dictionary of synonyms</label>
+          <label><input type="radio" name="q3" value="c"> By counting how often words appear</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>4. Why do we usually normalize embeddings to length 1?</p>
+          <label><input type="radio" name="q4" value="a"> To make them shorter to store</label>
+          <label><input type="radio" name="q4" value="b"> So dot product equals cosine similarity — a fast, consistent metric</label>
+          <label><input type="radio" name="q4" value="c"> To remove the need for a vector database</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>5. What's the classic mistake when building a search index?</p>
+          <label><input type="radio" name="q5" value="a"> Normalizing the vectors</label>
+          <label><input type="radio" name="q5" value="b"> Chunking documents</label>
+          <label><input type="radio" name="q5" value="c"> Embedding the index and the queries with different models</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. Your users search by exact product IDs and rare codes. Embeddings alone struggle — what helps?</p>
+          <label><input type="radio" name="q6" value="a"> A larger embedding dimension</label>
+          <label><input type="radio" name="q6" value="b"> Hybrid search — combine keyword (BM25) with vector search</label>
+          <label><input type="radio" name="q6" value="c"> Turning off normalization</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>🔎 RAG vs CAG vs GraphRAG</h4><p><a href="rag-cag.html">Retrieval in depth</a> — embeddings are the engine behind RAG; see when to retrieve vs cache.</p></div>
+        <div class="card"><h4>🗄️ Vector databases</h4><p><a href="vector-databases.md">Where vectors live</a> — Chroma, FAISS, Qdrant, Pinecone, pgvector and how they search.</p></div>
+        <div class="card"><h4>🤖 LLM apps tutorial</h4><p><a href="llm-apps.html#rag">Build a RAG chain</a> that embeds, stores and retrieves your documents.</p></div>
+        <div class="card"><h4>📓 All tutorials</h4><p><a href="index.html">The hub</a> — LLM apps, retrieval, agent kits, AWS services, and the IoT example.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  How embedding models turn text into vectors — the mechanism, the training, and how to choose and use one. Models and benchmarks move fast; confirm current options against the docs. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  // Theme toggle (persisted)
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) {
+    root.setAttribute("data-theme", t);
+    tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 ";
+    tLabel.textContent = t === "dark" ? "Light" : "Dark";
+  }
+  var saved = null;
+  try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () {
+    var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    applyTheme(next);
+    try { localStorage.setItem("theme", next); } catch (e) {}
+  });
+
+  // Mobile menu
+  var menuBtn = document.getElementById("menuToggle");
+  var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () {
+    var open = side.classList.toggle("open");
+    menuBtn.setAttribute("aria-expanded", String(open));
+  });
+  side.addEventListener("click", function (e) {
+    if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); }
+  });
+
+  // Reading progress
+  var bar = document.getElementById("progress");
+  function onScroll() {
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%";
+  }
+  document.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
+  // Active section highlighting
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a"));
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (en.isIntersecting) {
+        links.forEach(function (a) { a.classList.remove("active"); });
+        if (map[en.target.id]) map[en.target.id].classList.add("active");
+      }
+    });
+  }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+
+  // Copy buttons
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var wrap = btn.closest(".code-wrap");
+      var pre = wrap.querySelector("pre");
+      var text = pre ? pre.innerText : "";
+      var done = function () { var o = btn.textContent; btn.textContent = "Copied!"; setTimeout(function () { btn.textContent = o; }, 1400); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, done);
+      } else {
+        var ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); } catch (e) {}
+        document.body.removeChild(ta); done();
+      }
+    });
+  });
+
+  // Quiz
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q");
+    var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      var correctLabel = q.querySelector('input[value="' + answer + '"]').parentNode;
+      correctLabel.classList.add("correct");
+      if (chosen) {
+        if (chosen.value === answer) { score++; }
+        else { chosen.parentNode.classList.add("wrong"); }
+      }
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length +
+      (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>

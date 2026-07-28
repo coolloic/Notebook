@@ -18,11 +18,14 @@
     --radius: 14px;
     --maxw: 960px;
     /* per-tutorial accents */
-    --llm: #4f46e5;   /* indigo */
-    --rag: #be185d;   /* rose   */
-    --adk: #0f766e;   /* teal   */
-    --aws: #d9701a;   /* orange */
-    --iot: #6d28d9;   /* violet */
+    --llm: #4f46e5;   /* indigo  */
+    --emb: #047857;   /* emerald */
+    --rag: #be185d;   /* rose    */
+    --adk: #0f766e;   /* teal    */
+    --api: #0369a1;   /* sky     */
+    --web: #a21caf;   /* fuchsia */
+    --aws: #d9701a;   /* orange  */
+    --iot: #6d28d9;   /* violet  */
     --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   }
@@ -35,8 +38,11 @@
     --accent: #a5b4fc;
     --ink: #a5b4fc;
     --llm: #a5b4fc;
+    --emb: #6ee7b7;
     --rag: #f472b6;
     --adk: #5eead4;
+    --api: #7dd3fc;
+    --web: #f0abfc;
     --aws: #f0a35e;
     --iot: #c4b5fd;
   }
@@ -100,8 +106,11 @@
     outline: none;
   }
   .tile.llm { --tile: var(--llm); }
+  .tile.emb { --tile: var(--emb); }
   .tile.rag { --tile: var(--rag); }
   .tile.adk { --tile: var(--adk); }
+  .tile.api { --tile: var(--api); }
+  .tile.web { --tile: var(--web); }
   .tile.aws { --tile: var(--aws); }
   .tile.iot { --tile: var(--iot); }
   .tile .top { display: flex; align-items: center; gap: .6rem; }
@@ -122,8 +131,11 @@
     background: var(--step, var(--accent)); color: #fff;
   }
   .path li.llm { --step: var(--llm); }
+  .path li.emb { --step: var(--emb); }
   .path li.rag { --step: var(--rag); }
   .path li.adk { --step: var(--adk); }
+  .path li.api { --step: var(--api); }
+  .path li.web { --step: var(--web); }
   .path li.aws { --step: var(--aws); }
   .path li.iot { --step: var(--iot); }
   .path li:last-child { padding-bottom: .2rem; }
@@ -166,7 +178,7 @@
   <div class="hero">
     <p class="eyebrow">Interactive tutorials</p>
     <h1>Build with LLMs, agents &amp; AWS</h1>
-    <p>Five self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
+    <p>Eight self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
   </div>
 
   <div class="search" role="search">
@@ -185,6 +197,13 @@
         <span class="go">Start learning</span>
       </a>
 
+      <a class="tile emb" href="embeddings.html">
+        <div class="top"><span class="ico">🧬</span><span class="kicker">Under the hood</span></div>
+        <h3>How Embedding Models Work</h3>
+        <p>Turning text into vectors: what an embedding is, how models learn the space (contrastive training), similarity metrics, and how to choose &amp; use one well — the engine under semantic search.</p>
+        <span class="go">See the mechanism</span>
+      </a>
+
       <a class="tile rag" href="rag-cag.html">
         <div class="top"><span class="ico">🔎</span><span class="kicker">Retrieval deep-dive</span></div>
         <h3>RAG vs CAG vs GraphRAG</h3>
@@ -197,6 +216,20 @@
         <h3>Agent Development Kits</h3>
         <p>Google ADK vs AWS Strands + Bedrock AgentCore vs LangGraph — what problem each solves, its limits, and when to choose it, in a clear Problem → Solution → Limits format.</p>
         <span class="go">Compare kits</span>
+      </a>
+
+      <a class="tile api" href="api-mcp.html">
+        <div class="top"><span class="ico">🔌</span><span class="kicker">Integration</span></div>
+        <h3>APIs vs MCP</h3>
+        <p>How agents connect to tools: the M×N integration problem MCP solves, how it works (hosts, clients, servers, tools/resources/prompts), a direct API-vs-MCP comparison, and when to use which.</p>
+        <span class="go">Wire it up</span>
+      </a>
+
+      <a class="tile web" href="webmcp-a2a.html">
+        <div class="top"><span class="ico">🕸️</span><span class="kicker">Agentic web</span></div>
+        <h3>WebMCP &amp; A2A</h3>
+        <p>Two emerging protocols: WebMCP brings MCP-style tools into the browser, and A2A lets agents discover and delegate to each other — how they differ from MCP and fit together.</p>
+        <span class="go">Look ahead</span>
       </a>
 
       <a class="tile aws" href="aws-services.html">
@@ -222,11 +255,15 @@
 
   <section id="path" aria-label="Suggested reading order">
     <h2>Suggested reading order</h2>
-    <p style="color:var(--text-soft); margin-top:-.4rem;">New here? The four build on each other — foundations first, then a concrete system that ties them together.</p>
+    <p style="color:var(--text-soft); margin-top:-.4rem;">New here? They build on each other — foundations first, then the systems and protocols that tie them together.</p>
     <ol class="path">
       <li class="llm">
         <h3><a href="llm-apps.html">Building LLM Applications</a></h3>
         <p>Start with the fundamentals — chains, RAG, stateful agents, and tracing. Everything else assumes this vocabulary.</p>
+      </li>
+      <li class="emb">
+        <h3><a href="embeddings.html">How Embedding Models Work</a></h3>
+        <p>Understand the vectors under the hood — what retrieval and semantic search are actually built on.</p>
       </li>
       <li class="rag">
         <h3><a href="rag-cag.html">RAG vs CAG vs GraphRAG</a></h3>
@@ -235,6 +272,14 @@
       <li class="adk">
         <h3><a href="adk.html">Agent Development Kits</a></h3>
         <p>Now zoom out: how the frameworks for <em>building</em> agents differ, and how to pick one for the job.</p>
+      </li>
+      <li class="api">
+        <h3><a href="api-mcp.html">APIs vs MCP</a></h3>
+        <p>How those agents reach the outside world — and why MCP standardizes connecting them to tools.</p>
+      </li>
+      <li class="web">
+        <h3><a href="webmcp-a2a.html">WebMCP &amp; A2A</a></h3>
+        <p>Where it's heading: tools in the browser, and agents that discover and delegate to each other.</p>
       </li>
       <li class="aws">
         <h3><a href="aws-services.html">AWS Services Field Guide</a></h3>
@@ -249,7 +294,7 @@
 </main>
 
 <footer>
-  Five interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
+  Eight interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
 </footer>
 
 <script>

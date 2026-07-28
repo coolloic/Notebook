@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕸️</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="WebMCP and A2A — two emerging protocols extending the agent stack: WebMCP brings MCP-style tools into the browser, and A2A (Agent2Agent) lets agents discover and delegate to each other. How they differ from MCP and when to use each.">
+<title>WebMCP &amp; A2A — Tools in the Browser and Agent-to-Agent</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f5f7fa;
+    --bg-code: #2a0e2e;      /* deep fuchsia ink */
+    --text: #1a2130;
+    --text-soft: #55617a;
+    --border: #e2e8f0;
+    --accent: #a21caf;       /* fuchsia-700 (AA on white) */
+    --ink: #86198f;          /* fuchsia-800 */
+    --solve: #15803d;
+    --limit: #b45309;
+    --choose: #1e40af;
+    --solve-bg: #dcfce7;
+    --limit-bg: #fef3c7;
+    --choose-bg: #dbeafe;
+    --radius: 12px;
+    --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #0f172a;
+    --bg-soft: #17233d;
+    --bg-code: #26082a;
+    --text: #e6ecf7;
+    --text-soft: #9fb0cc;
+    --border: #263450;
+    --accent: #f0abfc;
+    --ink: #e879f9;
+    --solve: #86efac;
+    --limit: #fcd34d;
+    --choose: #93c5fd;
+    --solve-bg: #14351f;
+    --limit-bg: #3a2a0c;
+    --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: var(--font);
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  .skip-link {
+    position: absolute; left: -999px; top: 0;
+    background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100;
+  }
+  .skip-link:focus { left: 0; }
+
+  #progress {
+    position: fixed; top: 0; left: 0; height: 4px; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--ink));
+    z-index: 60; transition: width .1s linear;
+  }
+
+  header.top {
+    position: sticky; top: 0; z-index: 50;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 1rem;
+    padding: .6rem 1rem;
+  }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; }
+  header.top .brand span { color: var(--accent); }
+  header.top .spacer { flex: 1; }
+  .btn {
+    font: inherit; cursor: pointer; border: 1px solid var(--border);
+    background: var(--bg-soft); color: var(--text);
+    border-radius: 999px; padding: .5rem .9rem; min-height: 44px;
+    display: inline-flex; align-items: center; gap: .4rem;
+  }
+  .btn:hover { border-color: var(--accent); }
+  #menuToggle { display: none; }
+
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side {
+    position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px);
+    overflow-y: auto; padding: 1.25rem 0; font-size: .93rem;
+  }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a {
+    display: block; padding: .45rem .75rem; border-radius: 8px;
+    color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent;
+  }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); }
+  nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.15rem; margin: 1.75rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; }
+  .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .card .count { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; }
+  .callout strong { color: var(--accent); }
+  .callout.warn { border-left-color: var(--limit); }
+  .callout.warn strong { color: var(--limit); }
+
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 1.25rem 0; }
+  .flow .node { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: .5rem .8rem; font-size: .88rem; font-weight: 600; }
+  .flow .node.hot { border-color: var(--accent); color: var(--accent); }
+  .flow .arrow { color: var(--text-soft); font-weight: 700; }
+
+  .svc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-soft); padding: 1rem 1.2rem; margin: 1.1rem 0; }
+  .svc h3 { margin: 0 0 .6rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
+  .svc h3 .full { font-size: .82rem; font-weight: 500; color: var(--text-soft); font-family: var(--mono); }
+  .svc p { margin: .4rem 0; font-size: .95rem; }
+  .tag { display: inline-block; min-width: 5.6rem; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .12rem .5rem; border-radius: 6px; margin-right: .5rem; text-align: center; }
+  .tag.solve  { background: var(--solve-bg);  color: var(--solve); }
+  .tag.limit  { background: var(--limit-bg);  color: var(--limit); }
+  .tag.choose { background: var(--choose-bg); color: var(--choose); }
+
+  /* Code + tabs */
+  .code-wrap { margin: 1.1rem 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .tabs { display: flex; flex-wrap: wrap; gap: .25rem; background: var(--bg-soft); padding: .4rem .4rem 0; border-bottom: 1px solid var(--border); }
+  .tab { font: inherit; cursor: pointer; border: none; background: transparent; color: var(--text-soft); padding: .55rem .9rem; border-radius: 8px 8px 0 0; min-height: 40px; }
+  .tab[aria-selected="true"] { background: var(--bg-code); color: #f6e6f6; font-weight: 600; }
+  pre { margin: 0; background: var(--bg-code); color: #f6e6f6; padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .86rem; line-height: 1.6; }
+  pre code { font-family: inherit; }
+  .code-head { display: flex; align-items: center; justify-content: space-between; background: var(--bg-code); padding: .35rem .6rem .35rem 1rem; }
+  .code-head .label { color: #c79bc7; font-size: .78rem; font-family: var(--mono); }
+  .copy { font: inherit; cursor: pointer; background: #5a2456; color: #f6e6f6; border: none; border-radius: 6px; padding: .35rem .7rem; min-height: 36px; font-size: .8rem; }
+  .copy:hover { background: #74316f; }
+  .cmt { color: #b088ac; }
+  code.inline { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; }
+
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-soft); }
+
+  /* Connectivity map */
+  .ax-wrap { overflow-x: auto; margin: 1.3rem 0; }
+  .ax { width: 100%; min-width: 660px; max-width: 780px; height: auto; display: block; margin: 0 auto; font-family: var(--font); }
+  .ax-box { fill: var(--bg-soft); stroke: var(--border); stroke-width: 1.5; }
+  .ax-hub { fill: var(--accent); stroke: var(--accent); }
+  .ax-hubt { fill: #ffffff; font-size: 13px; font-weight: 700; }
+  [data-theme="dark"] .ax-hubt { fill: #26082a; }
+  .ax-t { fill: var(--text); font-size: 12px; font-weight: 600; }
+  .ax-mcp { stroke: var(--choose); stroke-width: 1.8; fill: none; }
+  .ax-web { stroke: var(--solve); stroke-width: 1.8; fill: none; }
+  .ax-a2a { stroke: var(--accent); stroke-width: 1.8; fill: none; }
+  .ax-lmcp { fill: var(--choose); font-size: 12px; font-weight: 700; }
+  .ax-lweb { fill: var(--solve); font-size: 12px; font-weight: 700; }
+  .ax-la2a { fill: var(--accent); font-size: 12px; font-weight: 700; }
+
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); }
+  details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; }
+  .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); }
+  .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; }
+  [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; }
+  #score { font-weight: 700; margin-left: 1rem; }
+
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; }
+    #menuToggle { display: inline-flex; }
+    main { padding-top: .5rem; }
+    .tag { min-width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <a class="btn home" href="index.html" aria-label="Back to all tutorials">← All tutorials</a>
+  <div class="brand">WebMCP <span>&amp;</span> A2A</div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#recap">1 · Recap: MCP</a></li>
+      <li><a href="#webmcp">2 · WebMCP</a></li>
+      <li><a href="#a2a">3 · A2A</a></li>
+      <li><a href="#map">4 · How they fit together</a></li>
+      <li><a href="#code">5 · What they look like</a></li>
+      <li><a href="#compare">6 · Side by side</a></li>
+      <li><a href="#cheatsheet">Cheat sheet</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>WebMCP &amp; A2A — the agent stack grows outward</h1>
+      <p class="lede">MCP connects an agent <em>downward</em> to tools and data. Two newer open protocols extend that in other directions: <strong>WebMCP</strong> brings MCP-style tools into the <em>browser</em>, and <strong>A2A</strong> connects agents <em>sideways</em> to other agents. Together they sketch an "agentic web."</p>
+
+      <div class="cards">
+        <div class="card"><span class="count">Agent → tools</span><h4>🔌 MCP</h4><p>The base layer: an agent uses external tools &amp; data through one standard protocol.</p></div>
+        <div class="card"><span class="count">Agent → web page</span><h4>🕸️ WebMCP</h4><p>Websites expose tools to the AI agent <em>in the browser</em>, so it acts through the page, not by scraping it.</p></div>
+        <div class="card"><span class="count">Agent → agent</span><h4>🤝 A2A</h4><p>Agents from different vendors discover each other and delegate tasks.</p></div>
+      </div>
+
+      <div class="callout warn"><strong>Moving target.</strong> Both are <em>emerging</em> 2024–2025 efforts (WebMCP is an early web-standards proposal; A2A was introduced by Google and moved to the Linux Foundation). Treat specifics here as the shape of the idea, not a frozen spec — check the current standards before building.</div>
+    </section>
+
+    <!-- ============ 1 · RECAP ============ -->
+    <section id="recap">
+      <h2><span class="pill">Base layer</span> &nbsp;Recap: where MCP sits</h2>
+      <p>MCP (the Model Context Protocol) standardizes how an AI app connects to tools and data: a <strong>server</strong> exposes tools/resources/prompts, and any MCP <strong>host</strong> can discover and call them — turning an M×N integration mess into M+N. It's <em>vertical</em>: it links an agent <em>down</em> to capabilities.</p>
+      <div class="flow">
+        <span class="node">agent</span><span class="arrow">↓ MCP</span>
+        <span class="node hot">tools · data · APIs</span>
+      </div>
+      <p>WebMCP and A2A keep that "one open protocol" philosophy but point it in new directions. If MCP is new to you, start with the <a href="api-mcp.html">APIs vs MCP</a> guide, then come back.</p>
+    </section>
+
+    <!-- ============ 2 · WEBMCP ============ -->
+    <section id="webmcp">
+      <h2><span class="pill">In the browser</span> &nbsp;WebMCP — tools on the page</h2>
+      <article class="svc">
+        <h3>WebMCP <span class="full">emerging web-standards proposal</span></h3>
+        <p><span class="tag solve">Solves</span> Brittle web automation. Today a browser agent "uses" a website by reading the DOM and clicking pixels — fragile, slow and blind to intent. WebMCP lets a <strong>website itself declare tools</strong> (via a browser JavaScript API) that an in-page AI agent can call directly, with structured inputs — e.g. <code class="inline">add_to_cart(sku)</code> or <code class="inline">search_flights(from, to, date)</code>. The site cooperates instead of being scraped.</p>
+        <p><span class="tag limit">Limits</span> Early proposal — the API surface, browser support and (crucially) the security/permission model are still being worked out. It needs <em>sites to adopt it</em>, and running page-provided tools raises trust, consent and abuse questions the standard must answer. Expect churn.</p>
+        <p><span class="tag choose">Choose</span> You're building a browser-based agent, or want your web app to be reliably usable by AI assistants — declaring intent-level tools beats hoping a scraper clicks the right button.</p>
+      </article>
+      <div class="callout"><strong>The mental model:</strong> WebMCP makes a <em>web page</em> behave like an MCP server whose client is the agent running in the browser. Same "declare tools, discover, call" idea — moved to the page.</div>
+    </section>
+
+    <!-- ============ 3 · A2A ============ -->
+    <section id="a2a">
+      <h2><span class="pill">Between agents</span> &nbsp;A2A — Agent2Agent</h2>
+      <article class="svc">
+        <h3>A2A <span class="full">Agent2Agent · introduced by Google, 2025 · now Linux Foundation</span></h3>
+        <p><span class="tag solve">Solves</span> Agent <em>interoperability</em>. Real work often needs a <em>specialist</em> agent built by another team, vendor or framework. A2A gives agents a common way to <strong>discover</strong> each other (a public <strong>Agent Card</strong> describing skills and endpoint), <strong>authenticate</strong>, and <strong>delegate tasks</strong> — exchanging messages, streamed progress and result <em>artifacts</em> — regardless of how each agent is built internally.</p>
+        <p><span class="tag limit">Limits</span> Young, with adoption and trust/security still maturing; opaque "black-box" agents are harder to reason about than a typed tool call; and it overlaps with other coordination approaches, so the ecosystem is still shaking out. Multi-agent systems also add latency and failure modes.</p>
+        <p><span class="tag choose">Choose</span> You're composing <em>multiple autonomous agents</em> — especially across teams or organizations — or exposing your agent so <em>others'</em> agents can call it.</p>
+      </article>
+      <div class="callout"><strong>MCP vs A2A in one line:</strong> MCP connects an agent to <em>tools</em> (vertical); A2A connects an agent to <em>other agents</em> (horizontal). An agent can be an A2A <em>peer</em> and an MCP <em>host</em> at the same time.</div>
+    </section>
+
+    <!-- ============ 4 · MAP ============ -->
+    <section id="map">
+      <h2><span class="pill">Big picture</span> &nbsp;How they fit together</h2>
+      <p>One agent can speak all three at once — down to tools (MCP), out to the page (WebMCP), and across to peers (A2A):</p>
+
+      <div class="ax-wrap">
+        <svg class="ax" viewBox="0 0 780 360" role="img" aria-labelledby="ax-title ax-desc">
+          <title id="ax-title">How MCP, WebMCP and A2A connect an agent</title>
+          <desc id="ax-desc">A central agent connects upward via WebMCP to a website, downward via MCP to tools and data, and sideways via A2A to other agents.</desc>
+          <defs>
+            <marker id="ax-ar" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" fill="currentColor"/></marker>
+          </defs>
+
+          <!-- WebMCP up -->
+          <path class="ax-web" d="M360,150 L360,86" marker-end="url(#ax-ar)" color="var(--solve)"/>
+          <text class="ax-lweb" x="372" y="120" text-anchor="start">WebMCP</text>
+          <!-- MCP down -->
+          <path class="ax-mcp" d="M330,214 L245,286" marker-end="url(#ax-ar)" color="var(--choose)"/>
+          <path class="ax-mcp" d="M360,214 L360,286" marker-end="url(#ax-ar)" color="var(--choose)"/>
+          <path class="ax-mcp" d="M390,214 L475,286" marker-end="url(#ax-ar)" color="var(--choose)"/>
+          <text class="ax-lmcp" x="300" y="258" text-anchor="middle">MCP</text>
+          <!-- A2A right -->
+          <path class="ax-a2a" d="M430,168 L560,120" marker-end="url(#ax-ar)" color="var(--accent)"/>
+          <path class="ax-a2a" d="M430,192 L560,244" marker-end="url(#ax-ar)" color="var(--accent)"/>
+          <text class="ax-la2a" x="512" y="150" text-anchor="middle">A2A</text>
+
+          <!-- hub -->
+          <rect class="ax-hub" x="290" y="152" width="140" height="56" rx="12"/>
+          <text class="ax-hubt" x="360" y="185" text-anchor="middle">Your agent</text>
+
+          <!-- website (top) -->
+          <rect class="ax-box" x="280" y="46" width="160" height="40" rx="8"/><text class="ax-t" x="360" y="70" text-anchor="middle">Website (in browser)</text>
+
+          <!-- tools (bottom) -->
+          <rect class="ax-box" x="185" y="286" width="120" height="38" rx="8"/><text class="ax-t" x="245" y="309" text-anchor="middle">database</text>
+          <rect class="ax-box" x="315" y="286" width="90" height="38" rx="8"/><text class="ax-t" x="360" y="309" text-anchor="middle">API</text>
+          <rect class="ax-box" x="415" y="286" width="120" height="38" rx="8"/><text class="ax-t" x="475" y="309" text-anchor="middle">files</text>
+
+          <!-- agents (right) -->
+          <rect class="ax-box" x="560" y="100" width="150" height="40" rx="8"/><text class="ax-t" x="635" y="124" text-anchor="middle">Specialist agent B</text>
+          <rect class="ax-box" x="560" y="224" width="150" height="40" rx="8"/><text class="ax-t" x="635" y="248" text-anchor="middle">Specialist agent C</text>
+        </svg>
+      </div>
+      <p>The three are <strong>complementary, not competing</strong>: they cover different edges of the same agent. A shopping assistant might use <em>WebMCP</em> to operate a retailer's site, <em>MCP</em> to read your calendar, and <em>A2A</em> to hand payment off to a specialist finance agent.</p>
+    </section>
+
+    <!-- ============ 5 · CODE ============ -->
+    <section id="code">
+      <h2><span class="pill">Concretely</span> &nbsp;What they look like</h2>
+      <p>The gist of each, in a few lines. Both are moving proposals — the exact shapes are illustrative.</p>
+
+      <div class="code-wrap" data-tabs>
+        <div class="tabs" role="tablist" aria-label="WebMCP and A2A">
+          <button class="tab" role="tab" aria-selected="true" data-target="c-web">webmcp.js</button>
+          <button class="tab" role="tab" aria-selected="false" data-target="c-a2a">agent-card.json</button>
+        </div>
+        <div class="code-head"><span class="label">emerging shapes (illustrative)</span><button class="copy">Copy</button></div>
+<pre id="c-web" role="tabpanel"><code><span class="cmt">// WebMCP: a website registers a tool for the browser's AI agent, so the</span>
+<span class="cmt">// agent calls add_to_cart(sku) directly instead of scraping/clicking.</span>
+<span class="cmt">// (Proposal-stage API — the exact surface is still being standardized.)</span>
+window.agent?.registerTool?.({
+  name: "add_to_cart",
+  description: "Add a product to the shopping cart.",
+  inputSchema: {
+    type: "object",
+    properties: { sku: { type: "string" } },
+    required: ["sku"],
+  },
+  async execute({ sku }) {
+    return await cart.add(sku);          <span class="cmt">// the site's own code runs</span>
+  },
+});</code></pre>
+<pre id="c-a2a" role="tabpanel" hidden><code><span class="cmt">// A2A: an agent advertises itself with an "Agent Card", typically served at</span>
+<span class="cmt">// /.well-known/agent.json, so other agents can discover and delegate to it.</span>
+{
+  "name": "Invoice Agent",
+  "description": "Creates and sends invoices from line items.",
+  "url": "https://agents.acme.example/invoice",
+  "capabilities": { "streaming": true },
+  "skills": [
+    {
+      "id": "create_invoice",
+      "description": "Draft an invoice from customer and line items.",
+      "examples": ["Invoice Acme for 3 hours of consulting"]
+    }
+  ]
+}</code></pre>
+      </div>
+      <div class="callout"><strong>Same DNA as MCP:</strong> declare a capability, publish a machine-readable description, let a client discover and invoke it. WebMCP declares tools on a <em>page</em>; A2A declares skills for an <em>agent</em>.</div>
+    </section>
+
+    <!-- ============ 6 · COMPARE ============ -->
+    <section id="compare">
+      <h2>MCP vs WebMCP vs A2A</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th></th><th>MCP</th><th>WebMCP</th><th>A2A</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Connects</strong></td><td>Agent → tools/data</td><td>Agent → a website's tools</td><td>Agent → other agents</td></tr>
+            <tr><td><strong>Direction</strong></td><td>Vertical (down)</td><td>Vertical, in the browser</td><td>Horizontal (across)</td></tr>
+            <tr><td><strong>Runs where</strong></td><td>Local or remote server</td><td>In the web page (client-side)</td><td>Between networked agents</td></tr>
+            <tr><td><strong>Exposes</strong></td><td>Tools · resources · prompts</td><td>Page-defined tools</td><td>Agent Card (skills)</td></tr>
+            <tr><td><strong>Discovery</strong></td><td>Client lists server tools</td><td>Page registers tools with the browser</td><td>Fetch the agent's card</td></tr>
+            <tr><td><strong>Maturity</strong></td><td>Established, growing</td><td>Early proposal</td><td>Young, gaining backers</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><strong>Not either/or.</strong> They stack. The safe bet is still to build capabilities as plain APIs, wrap them in MCP for AI hosts, and reach for WebMCP or A2A when you specifically need in-browser tools or cross-agent delegation.</div>
+    </section>
+
+    <!-- ============ CHEAT SHEET ============ -->
+    <section id="cheatsheet">
+      <h2>Cheat sheet</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Question</th><th>Short answer</th></tr></thead>
+          <tbody>
+            <tr><td>What does WebMCP do?</td><td>Lets a website expose tools to the AI agent in the browser — no scraping.</td></tr>
+            <tr><td>What does A2A do?</td><td>Lets agents discover and delegate tasks to each other across frameworks/vendors.</td></tr>
+            <tr><td>MCP vs A2A?</td><td>MCP = agent→tools (vertical); A2A = agent→agent (horizontal).</td></tr>
+            <tr><td>How does an agent advertise itself in A2A?</td><td>An "Agent Card" (JSON) describing its skills and endpoint.</td></tr>
+            <tr><td>Can one agent use all three?</td><td>Yes — MCP for tools, WebMCP in the browser, A2A to peers.</td></tr>
+            <tr><td>Biggest caveat?</td><td>Both are emerging — specs and security models are still moving.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ QUIZ ============ -->
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions on WebMCP and A2A. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="b">
+          <p>1. What does WebMCP let a website do?</p>
+          <label><input type="radio" name="q1" value="a"> Train its own language model</label>
+          <label><input type="radio" name="q1" value="b"> Expose structured tools to the AI agent running in the browser</label>
+          <label><input type="radio" name="q1" value="c"> Replace HTTPS</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>2. A2A is primarily about connecting…</p>
+          <label><input type="radio" name="q2" value="a"> An agent to a vector database</label>
+          <label><input type="radio" name="q2" value="b"> A model to its training data</label>
+          <label><input type="radio" name="q2" value="c"> An agent to other agents</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>3. In A2A, how does an agent advertise its capabilities?</p>
+          <label><input type="radio" name="q3" value="a"> An Agent Card (JSON) describing its skills and endpoint</label>
+          <label><input type="radio" name="q3" value="b"> A Dockerfile</label>
+          <label><input type="radio" name="q3" value="c"> A SQL schema</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>4. How do MCP and A2A relate?</p>
+          <label><input type="radio" name="q4" value="a"> They're the same protocol</label>
+          <label><input type="radio" name="q4" value="b"> MCP connects agents to tools (vertical); A2A connects agents to agents (horizontal)</label>
+          <label><input type="radio" name="q4" value="c"> A2A replaced MCP</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>5. Why is WebMCP better than DOM scraping for browser agents?</p>
+          <label><input type="radio" name="q5" value="a"> It runs the model on the GPU</label>
+          <label><input type="radio" name="q5" value="b"> It removes the need for the internet</label>
+          <label><input type="radio" name="q5" value="c"> The site declares intent-level tools, so the agent acts reliably instead of guessing at pixels</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. What's the right posture toward both protocols today?</p>
+          <label><input type="radio" name="q6" value="a"> Rip out all APIs and rewrite on them immediately</label>
+          <label><input type="radio" name="q6" value="b"> Treat them as emerging — build on APIs/MCP, adopt WebMCP/A2A where they clearly fit</label>
+          <label><input type="radio" name="q6" value="c"> Ignore agents entirely</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>🔌 APIs vs MCP</h4><p><a href="api-mcp.html">The base layer</a> — how agents connect to tools, and the M×N problem MCP solves.</p></div>
+        <div class="card"><h4>🧰 Agent Development Kits</h4><p><a href="adk.html">Build the agents</a> that speak these protocols — Google ADK, Strands, LangGraph.</p></div>
+        <div class="card"><h4>📡 IoT × Agents</h4><p><a href="iot-agent.html">Agents acting in the world</a> — a device-triggered agent that reasons and acts.</p></div>
+        <div class="card"><h4>📓 All tutorials</h4><p><a href="index.html">The hub</a> — LLM apps, embeddings, retrieval, agent kits, AWS &amp; IoT.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  WebMCP &amp; A2A — emerging protocols for the agentic web. Both are early and evolving; confirm against the current specs (modelcontextprotocol.io · the A2A project) before building. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) {
+    root.setAttribute("data-theme", t);
+    tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 ";
+    tLabel.textContent = t === "dark" ? "Light" : "Dark";
+  }
+  var saved = null;
+  try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () {
+    var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    applyTheme(next);
+    try { localStorage.setItem("theme", next); } catch (e) {}
+  });
+
+  var menuBtn = document.getElementById("menuToggle");
+  var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () {
+    var open = side.classList.toggle("open");
+    menuBtn.setAttribute("aria-expanded", String(open));
+  });
+  side.addEventListener("click", function (e) {
+    if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); }
+  });
+
+  var bar = document.getElementById("progress");
+  function onScroll() {
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%";
+  }
+  document.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a"));
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (en.isIntersecting) {
+        links.forEach(function (a) { a.classList.remove("active"); });
+        if (map[en.target.id]) map[en.target.id].classList.add("active");
+      }
+    });
+  }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+
+  document.querySelectorAll("[data-tabs]").forEach(function (wrap) {
+    var tabs = wrap.querySelectorAll(".tab");
+    tabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        tabs.forEach(function (t) {
+          t.setAttribute("aria-selected", "false");
+          var p = document.getElementById(t.dataset.target);
+          if (p) p.hidden = true;
+        });
+        tab.setAttribute("aria-selected", "true");
+        document.getElementById(tab.dataset.target).hidden = false;
+      });
+    });
+  });
+
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var wrap = btn.closest(".code-wrap");
+      var pre = wrap.querySelector("pre:not([hidden])");
+      var text = pre ? pre.innerText : "";
+      var done = function () { var o = btn.textContent; btn.textContent = "Copied!"; setTimeout(function () { btn.textContent = o; }, 1400); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, done);
+      } else {
+        var ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); } catch (e) {}
+        document.body.removeChild(ta); done();
+      }
+    });
+  });
+
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q");
+    var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      var correctLabel = q.querySelector('input[value="' + answer + '"]').parentNode;
+      correctLabel.classList.add("correct");
+      if (chosen) {
+        if (chosen.value === answer) { score++; }
+        else { chosen.parentNode.classList.add("wrong"); }
+      }
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length +
+      (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>

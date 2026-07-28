@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔌</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="APIs vs MCP (Model Context Protocol) — the problem each solves, the M×N integration problem MCP fixes, how MCP works (hosts, clients, servers, tools/resources/prompts), a direct comparison, and when to use which.">
+<title>APIs vs MCP — Connecting AI to the World</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f5f7fa;
+    --bg-code: #0b2233;      /* deep sky ink */
+    --text: #1a2130;
+    --text-soft: #55617a;
+    --border: #e2e8f0;
+    --accent: #0369a1;       /* sky-700 (AA on white) */
+    --ink: #075985;          /* sky-800 */
+    --solve: #15803d;
+    --limit: #b45309;
+    --choose: #1e40af;
+    --solve-bg: #dcfce7;
+    --limit-bg: #fef3c7;
+    --choose-bg: #dbeafe;
+    --radius: 12px;
+    --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #0f172a;
+    --bg-soft: #17233d;
+    --bg-code: #071a28;
+    --text: #e6ecf7;
+    --text-soft: #9fb0cc;
+    --border: #263450;
+    --accent: #7dd3fc;
+    --ink: #38bdf8;
+    --solve: #86efac;
+    --limit: #fcd34d;
+    --choose: #93c5fd;
+    --solve-bg: #14351f;
+    --limit-bg: #3a2a0c;
+    --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: var(--font);
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  .skip-link {
+    position: absolute; left: -999px; top: 0;
+    background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100;
+  }
+  .skip-link:focus { left: 0; }
+
+  #progress {
+    position: fixed; top: 0; left: 0; height: 4px; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--ink));
+    z-index: 60; transition: width .1s linear;
+  }
+
+  header.top {
+    position: sticky; top: 0; z-index: 50;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 1rem;
+    padding: .6rem 1rem;
+  }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; }
+  header.top .brand span { color: var(--accent); }
+  header.top .spacer { flex: 1; }
+  .btn {
+    font: inherit; cursor: pointer; border: 1px solid var(--border);
+    background: var(--bg-soft); color: var(--text);
+    border-radius: 999px; padding: .5rem .9rem; min-height: 44px;
+    display: inline-flex; align-items: center; gap: .4rem;
+  }
+  .btn:hover { border-color: var(--accent); }
+  #menuToggle { display: none; }
+
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side {
+    position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px);
+    overflow-y: auto; padding: 1.25rem 0; font-size: .93rem;
+  }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a {
+    display: block; padding: .45rem .75rem; border-radius: 8px;
+    color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent;
+  }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); }
+  nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.15rem; margin: 1.75rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; }
+  .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .card .count { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; }
+  .callout strong { color: var(--accent); }
+
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 1.25rem 0; }
+  .flow .node { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: .5rem .8rem; font-size: .88rem; font-weight: 600; }
+  .flow .node.hot { border-color: var(--accent); color: var(--accent); }
+  .flow .arrow { color: var(--text-soft); font-weight: 700; }
+
+  .svc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-soft); padding: 1rem 1.2rem; margin: 1.1rem 0; }
+  .svc h3 { margin: 0 0 .6rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
+  .svc h3 .full { font-size: .82rem; font-weight: 500; color: var(--text-soft); font-family: var(--mono); }
+  .svc p { margin: .4rem 0; font-size: .95rem; }
+  .tag { display: inline-block; min-width: 5.6rem; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .12rem .5rem; border-radius: 6px; margin-right: .5rem; text-align: center; }
+  .tag.solve  { background: var(--solve-bg);  color: var(--solve); }
+  .tag.limit  { background: var(--limit-bg);  color: var(--limit); }
+  .tag.choose { background: var(--choose-bg); color: var(--choose); }
+
+  /* Code + tabs */
+  .code-wrap { margin: 1.1rem 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .tabs { display: flex; flex-wrap: wrap; gap: .25rem; background: var(--bg-soft); padding: .4rem .4rem 0; border-bottom: 1px solid var(--border); }
+  .tab { font: inherit; cursor: pointer; border: none; background: transparent; color: var(--text-soft); padding: .55rem .9rem; border-radius: 8px 8px 0 0; min-height: 40px; }
+  .tab[aria-selected="true"] { background: var(--bg-code); color: #e6f1fb; font-weight: 600; }
+  pre { margin: 0; background: var(--bg-code); color: #e6f1fb; padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .86rem; line-height: 1.6; }
+  pre code { font-family: inherit; }
+  .code-head { display: flex; align-items: center; justify-content: space-between; background: var(--bg-code); padding: .35rem .6rem .35rem 1rem; }
+  .code-head .label { color: #8fb9d6; font-size: .78rem; font-family: var(--mono); }
+  .copy { font: inherit; cursor: pointer; background: #124d6e; color: #e6f1fb; border: none; border-radius: 6px; padding: .35rem .7rem; min-height: 36px; font-size: .8rem; }
+  .copy:hover { background: #175f86; }
+  .cmt { color: #7fa6c2; }
+  code.inline { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; }
+
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-soft); }
+
+  /* M×N diagram */
+  .mx-wrap { overflow-x: auto; margin: 1.3rem 0; }
+  .mx { width: 100%; min-width: 660px; max-width: 780px; height: auto; display: block; margin: 0 auto; font-family: var(--font); }
+  .mx-box { fill: var(--bg-soft); stroke: var(--border); stroke-width: 1.5; }
+  .mx-hub { fill: var(--accent); stroke: var(--accent); }
+  .mx-tangle { stroke: var(--limit); stroke-width: 1.4; fill: none; opacity: .55; }
+  .mx-clean { stroke: var(--accent); stroke-width: 1.6; fill: none; }
+  .mx-t { fill: var(--text); font-size: 12px; font-weight: 600; }
+  .mx-hubt { fill: #ffffff; font-size: 13px; font-weight: 700; }
+  [data-theme="dark"] .mx-hubt { fill: #071a28; }
+  .mx-title { fill: var(--text-soft); font-size: 12.5px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
+  .mx-div { stroke: var(--border); stroke-width: 1.5; stroke-dasharray: 5 4; }
+
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); }
+  details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; }
+  .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); }
+  .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; }
+  [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; }
+  #score { font-weight: 700; margin-left: 1rem; }
+
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; }
+    #menuToggle { display: inline-flex; }
+    main { padding-top: .5rem; }
+    .tag { min-width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <a class="btn home" href="index.html" aria-label="Back to all tutorials">← All tutorials</a>
+  <div class="brand">APIs <span>vs</span> MCP</div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#api">1 · The API baseline</a></li>
+      <li><a href="#mcp">2 · What MCP is</a></li>
+      <li><a href="#mxn">3 · The M×N problem</a></li>
+      <li><a href="#how">4 · How MCP works</a></li>
+      <li><a href="#code">5 · Same tool, both ways</a></li>
+      <li><a href="#compare">6 · API vs MCP</a></li>
+      <li><a href="#when">7 · When to use which</a></li>
+      <li><a href="#cheatsheet">Cheat sheet</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>APIs vs MCP — connecting AI to the world</h1>
+      <p class="lede">An <strong>API</strong> is how one piece of software talks to another. <strong>MCP</strong> (the Model Context Protocol) is a <em>standard way</em> for AI models and agents to discover and use tools and data. They're not rivals — MCP is a layer built <em>on top of</em> APIs, designed for the way models work.</p>
+
+      <div class="flow">
+        <span class="node">agent</span><span class="arrow">→</span>
+        <span class="node hot">MCP (one protocol)</span><span class="arrow">→</span>
+        <span class="node">tool / API / data</span>
+      </div>
+
+      <div class="callout"><strong>The analogy.</strong> MCP is often called "USB-C for AI." Before USB-C, every device needed its own cable; after, one port fits everything. MCP is one standard "port" so any AI app can plug into any tool — instead of bespoke wiring for every pair.</div>
+    </section>
+
+    <!-- ============ 1 · API ============ -->
+    <section id="api">
+      <h2><span class="pill">Baseline</span> &nbsp;The API — software talking to software</h2>
+      <article class="svc">
+        <h3>Traditional API <span class="full">REST · GraphQL · RPC</span></h3>
+        <p><span class="tag solve">Solves</span> A contract for two programs to exchange data and actions over the network — request an endpoint, get a structured response. It's the universal, decades-proven way systems integrate, and it's what actually holds the data and does the work.</p>
+        <p><span class="tag limit">Limits (for AI)</span> Each API is bespoke: your code must know its endpoints, auth, and response shapes ahead of time, and you hand-write an integration <em>per API, per app</em>. A model can't "look up" how to call it at runtime — someone must wire and describe every tool for every assistant. N tools × M apps = a lot of glue.</p>
+        <p><span class="tag choose">Choose</span> Always, underneath everything — deterministic backend-to-backend integration where your code controls both ends.</p>
+      </article>
+    </section>
+
+    <!-- ============ 2 · MCP ============ -->
+    <section id="mcp">
+      <h2><span class="pill">The standard</span> &nbsp;What MCP is</h2>
+      <article class="svc">
+        <h3>Model Context Protocol <span class="full">open protocol · introduced by Anthropic, 2024</span></h3>
+        <p><span class="tag solve">Solves</span> The <em>integration explosion</em> between AI apps and tools. MCP defines one open protocol so any compliant AI app (the <strong>host</strong>) can connect to any <strong>server</strong> that exposes tools, data and prompts — with <strong>runtime discovery</strong>, so the model can list what's available and call it by name using self-describing JSON schemas. Write a tool server once; every MCP-aware assistant can use it.</p>
+        <p><span class="tag limit">Limits</span> It's young and evolving; running/instally third-party servers has real security and trust implications (they can execute code and touch data); and it adds a protocol layer you don't need if only your own code calls your own API. It doesn't replace APIs — servers still call them underneath.</p>
+        <p><span class="tag choose">Choose</span> When you want models/agents to use many tools in a uniform, swappable way — or to publish a tool that <em>other people's</em> AI apps can consume.</p>
+      </article>
+      <div class="callout"><strong>MCP vs function-calling.</strong> Plain tool/function-calling defines tools <em>inside one app's code</em>. MCP moves them <em>outside</em> into reusable servers behind a standard protocol — so the same "GitHub" or "Postgres" server works in Claude Desktop, your IDE, and your custom agent without rewriting the integration.</div>
+    </section>
+
+    <!-- ============ 3 · MxN ============ -->
+    <section id="mxn">
+      <h2><span class="pill">Why it exists</span> &nbsp;The M×N integration problem</h2>
+      <p>Connect <strong>M</strong> AI apps to <strong>N</strong> tools directly and you need up to <strong>M×N</strong> custom integrations. A shared protocol collapses that to <strong>M+N</strong>: each app speaks MCP once, each tool exposes an MCP server once.</p>
+
+      <div class="mx-wrap">
+        <svg class="mx" viewBox="0 0 780 300" role="img" aria-labelledby="mx-title mx-desc">
+          <title id="mx-title">M times N versus M plus N integrations</title>
+          <desc id="mx-desc">On the left, three apps each wire directly to three tools, creating nine tangled integrations. On the right, three apps connect to a single MCP layer, which connects to three tools — six clean connections.</desc>
+          <line class="mx-div" x1="390" y1="30" x2="390" y2="278"/>
+          <text class="mx-title" x="185" y="24" text-anchor="middle">Without MCP · up to M×N</text>
+          <text class="mx-title" x="590" y="24" text-anchor="middle">With MCP · M+N</text>
+
+          <!-- LEFT: tangle (lines first) -->
+          <path class="mx-tangle" d="M140,80 L250,80"/><path class="mx-tangle" d="M140,80 L250,150"/><path class="mx-tangle" d="M140,80 L250,220"/>
+          <path class="mx-tangle" d="M140,150 L250,80"/><path class="mx-tangle" d="M140,150 L250,150"/><path class="mx-tangle" d="M140,150 L250,220"/>
+          <path class="mx-tangle" d="M140,220 L250,80"/><path class="mx-tangle" d="M140,220 L250,150"/><path class="mx-tangle" d="M140,220 L250,220"/>
+          <!-- left apps -->
+          <rect class="mx-box" x="50" y="64" width="90" height="32" rx="7"/><text class="mx-t" x="95" y="84" text-anchor="middle">app A</text>
+          <rect class="mx-box" x="50" y="134" width="90" height="32" rx="7"/><text class="mx-t" x="95" y="154" text-anchor="middle">app B</text>
+          <rect class="mx-box" x="50" y="204" width="90" height="32" rx="7"/><text class="mx-t" x="95" y="224" text-anchor="middle">app C</text>
+          <!-- left tools -->
+          <rect class="mx-box" x="250" y="64" width="90" height="32" rx="7"/><text class="mx-t" x="295" y="84" text-anchor="middle">tool 1</text>
+          <rect class="mx-box" x="250" y="134" width="90" height="32" rx="7"/><text class="mx-t" x="295" y="154" text-anchor="middle">tool 2</text>
+          <rect class="mx-box" x="250" y="204" width="90" height="32" rx="7"/><text class="mx-t" x="295" y="224" text-anchor="middle">tool 3</text>
+
+          <!-- RIGHT: clean via hub -->
+          <path class="mx-clean" d="M500,80 L556,150"/><path class="mx-clean" d="M500,150 L556,150"/><path class="mx-clean" d="M500,220 L556,150"/>
+          <path class="mx-clean" d="M624,150 L680,80"/><path class="mx-clean" d="M624,150 L680,150"/><path class="mx-clean" d="M624,150 L680,220"/>
+          <!-- right apps -->
+          <rect class="mx-box" x="410" y="64" width="90" height="32" rx="7"/><text class="mx-t" x="455" y="84" text-anchor="middle">app A</text>
+          <rect class="mx-box" x="410" y="134" width="90" height="32" rx="7"/><text class="mx-t" x="455" y="154" text-anchor="middle">app B</text>
+          <rect class="mx-box" x="410" y="204" width="90" height="32" rx="7"/><text class="mx-t" x="455" y="224" text-anchor="middle">app C</text>
+          <!-- hub -->
+          <rect class="mx-hub" x="556" y="126" width="68" height="48" rx="10"/><text class="mx-hubt" x="590" y="155" text-anchor="middle">MCP</text>
+          <!-- right tools -->
+          <rect class="mx-box" x="680" y="64" width="90" height="32" rx="7"/><text class="mx-t" x="725" y="84" text-anchor="middle">tool 1</text>
+          <rect class="mx-box" x="680" y="134" width="90" height="32" rx="7"/><text class="mx-t" x="725" y="154" text-anchor="middle">tool 2</text>
+          <rect class="mx-box" x="680" y="204" width="90" height="32" rx="7"/><text class="mx-t" x="725" y="224" text-anchor="middle">tool 3</text>
+        </svg>
+      </div>
+      <p>It's the same reason USB, drivers, or LSP (one protocol between many editors and many languages) won: standardize the interface once, and every new participant plugs into all the others for free.</p>
+    </section>
+
+    <!-- ============ 4 · HOW ============ -->
+    <section id="how">
+      <h2><span class="pill">Mechanics</span> &nbsp;How MCP works</h2>
+      <p>MCP has three roles and a small set of primitives.</p>
+      <div class="cards">
+        <div class="card"><h4>🖥️ Host</h4><p>The AI app the user interacts with (Claude Desktop, an IDE, your agent). It embeds one or more clients.</p></div>
+        <div class="card"><h4>🔌 Client</h4><p>Lives in the host; holds a 1:1 connection to a server and relays the protocol.</p></div>
+        <div class="card"><h4>🧩 Server</h4><p>A separate program exposing capabilities — usually wrapping a real API, database or filesystem.</p></div>
+      </div>
+      <p>A server offers three primitives, and the client can <strong>discover them at runtime</strong>:</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Primitive</th><th>What it is</th><th>Who drives it</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Tools</strong></td><td>Actions the model can invoke (with typed inputs) — "search issues", "send email".</td><td>Model-controlled</td></tr>
+            <tr><td><strong>Resources</strong></td><td>Read-only data/context the host can load — files, records, docs.</td><td>App-controlled</td></tr>
+            <tr><td><strong>Prompts</strong></td><td>Reusable prompt templates/workflows a user can invoke.</td><td>User-controlled</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Messages use <strong>JSON-RPC 2.0</strong> over a transport: <code class="inline">stdio</code> for local servers, or HTTP (Server-Sent Events / streamable HTTP) for remote ones — with sessions and server-to-client notifications when things change.</p>
+    </section>
+
+    <!-- ============ 5 · CODE ============ -->
+    <section id="code">
+      <h2><span class="pill">Hands-on</span> &nbsp;The same tool, both ways</h2>
+      <p>A weather lookup, exposed as a hand-wired API client versus a reusable MCP server. Switch tabs; hit <em>Copy</em>.</p>
+
+      <div class="code-wrap" data-tabs>
+        <div class="tabs" role="tablist" aria-label="API vs MCP">
+          <button class="tab" role="tab" aria-selected="true" data-target="c-api">traditional_api.py</button>
+          <button class="tab" role="tab" aria-selected="false" data-target="c-mcp">mcp_server.py</button>
+        </div>
+        <div class="code-head"><span class="label">weather tool</span><button class="copy">Copy</button></div>
+<pre id="c-api" role="tabpanel"><code><span class="cmt"># Traditional API: your app hard-codes the endpoint, auth, and parsing.</span>
+<span class="cmt"># The model can't discover this — you wire &amp; describe it per assistant.</span>
+import requests
+
+def get_forecast(city: str) -&gt; str:
+    r = requests.get(
+        "https://api.weather.example/v1/forecast",
+        params={"city": city},
+        headers={"Authorization": "Bearer $WEATHER_KEY"},
+    )
+    r.raise_for_status()
+    return r.json()["summary"]        <span class="cmt"># shape is specific to THIS API</span>
+
+print(get_forecast("Paris"))</code></pre>
+<pre id="c-mcp" role="tabpanel" hidden><code><span class="cmt"># MCP server: declare the tool once. ANY MCP client (Claude Desktop, an IDE,</span>
+<span class="cmt"># your agent) can now discover and call it — no per-app wiring.</span>
+<span class="cmt"># pip install mcp</span>
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("weather")
+
+@mcp.tool()
+def get_forecast(city: str) -&gt; str:
+    """Get the weather forecast for a city."""   <span class="cmt"># schema + docs are exposed</span>
+    # ...usually calls the same REST API under the hood...
+    return f"Sunny, 24°C in {city}."
+
+if __name__ == "__main__":
+    mcp.run()      <span class="cmt"># speaks MCP over stdio; clients list_tools() then call it</span></code></pre>
+      </div>
+      <div class="callout"><strong>Notice the shift.</strong> The API version is invoked by <em>your code</em>, in one app. The MCP version is <em>described</em> once and invoked by <em>the model</em>, in any host — and it still calls a REST API inside. MCP standardizes the <em>exposure</em>, not the implementation.</div>
+    </section>
+
+    <!-- ============ 6 · COMPARE ============ -->
+    <section id="compare">
+      <h2>API vs MCP — side by side</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Aspect</th><th>Traditional API</th><th>MCP</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Purpose</strong></td><td>Software ↔ software</td><td>AI/agents ↔ tools &amp; data (standardized)</td></tr>
+            <tr><td><strong>Who invokes it</strong></td><td>Your application code</td><td>The model/agent, at runtime</td></tr>
+            <tr><td><strong>Discovery</strong></td><td>Read docs; hard-code endpoints</td><td>Dynamic — client lists tools + JSON schemas</td></tr>
+            <tr><td><strong>Integration effort</strong></td><td>Custom per API, per app (M×N)</td><td>Server once; any client reuses (M+N)</td></tr>
+            <tr><td><strong>Interface</strong></td><td>Bespoke endpoints &amp; shapes</td><td>Uniform: tools · resources · prompts</td></tr>
+            <tr><td><strong>Coupling</strong></td><td>Tight, versioned per integration</td><td>Swappable servers behind one protocol</td></tr>
+            <tr><td><strong>Transport</strong></td><td>Usually stateless HTTP</td><td>JSON-RPC over stdio or HTTP/SSE, with sessions</td></tr>
+            <tr><td><strong>Best at</strong></td><td>Deterministic app integration</td><td>Letting agents use many tools uniformly</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><strong>They compose, not compete.</strong> An MCP server is almost always a thin adapter over one or more REST/GraphQL APIs. MCP doesn't replace your API — it makes it consumable by any AI host without custom glue.</div>
+    </section>
+
+    <!-- ============ 7 · WHEN ============ -->
+    <section id="when">
+      <h2>When to use which</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>If you…</th><th>Use…</th></tr></thead>
+          <tbody>
+            <tr><td>Integrate two backends you control, deterministically</td><td><strong>API</strong> (REST/GraphQL/RPC)</td></tr>
+            <tr><td>Need raw performance / fine-grained control</td><td><strong>API</strong> directly</td></tr>
+            <tr><td>Want an agent to use many tools, discovered at runtime</td><td><strong>MCP</strong></td></tr>
+            <tr><td>Want one tool integration reusable across hosts (Desktop, IDE, your agent)</td><td><strong>MCP</strong></td></tr>
+            <tr><td>Are publishing a tool for <em>other people's</em> AI apps to use</td><td><strong>MCP</strong> server (wrapping your API)</td></tr>
+            <tr><td>Only your own code calls your own service</td><td><strong>API</strong> — MCP would be overhead</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><strong>Rule of thumb.</strong> Build the capability as an <strong>API</strong> (it's the source of truth), then put an <strong>MCP</strong> server in front when you want AI hosts to use it without bespoke integration. APIs are the plumbing; MCP is the standard socket AI plugs into.</div>
+    </section>
+
+    <!-- ============ CHEAT SHEET ============ -->
+    <section id="cheatsheet">
+      <h2>Cheat sheet</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Question</th><th>Short answer</th></tr></thead>
+          <tbody>
+            <tr><td>Is MCP a replacement for APIs?</td><td>No — it's a standard layer on top of them, aimed at AI.</td></tr>
+            <tr><td>What problem does MCP solve?</td><td>The M×N glue explosion between AI apps and tools → M+N.</td></tr>
+            <tr><td>Who calls an MCP tool?</td><td>The model/agent, after discovering it at runtime.</td></tr>
+            <tr><td>MCP's three primitives?</td><td>Tools (actions), Resources (data), Prompts (templates).</td></tr>
+            <tr><td>MCP vs function-calling?</td><td>Function-calling is per-app; MCP externalizes tools into reusable servers.</td></tr>
+            <tr><td>Main caution?</td><td>Third-party servers run code &amp; touch data — trust &amp; auth matter.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ QUIZ ============ -->
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions on APIs and MCP. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="b">
+          <p>1. What is MCP, in one line?</p>
+          <label><input type="radio" name="q1" value="a"> A faster replacement for REST APIs</label>
+          <label><input type="radio" name="q1" value="b"> An open standard for AI apps to discover and use tools &amp; data</label>
+          <label><input type="radio" name="q1" value="c"> A vector database protocol</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>2. What core problem does MCP address?</p>
+          <label><input type="radio" name="q2" value="a"> Models being too slow</label>
+          <label><input type="radio" name="q2" value="b"> Embeddings going stale</label>
+          <label><input type="radio" name="q2" value="c"> The M×N explosion of custom integrations between AI apps and tools</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>3. Who invokes an MCP tool at runtime?</p>
+          <label><input type="radio" name="q3" value="a"> The model/agent, after discovering available tools</label>
+          <label><input type="radio" name="q3" value="b"> Only a human clicking a button</label>
+          <label><input type="radio" name="q3" value="c"> The database engine</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>4. Which are MCP's three primitives?</p>
+          <label><input type="radio" name="q4" value="a"> GET, POST, DELETE</label>
+          <label><input type="radio" name="q4" value="b"> Tools, Resources, Prompts</label>
+          <label><input type="radio" name="q4" value="c"> Models, Chains, Agents</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>5. How does MCP relate to your existing REST API?</p>
+          <label><input type="radio" name="q5" value="a"> It deletes the need for the API</label>
+          <label><input type="radio" name="q5" value="b"> They're unrelated</label>
+          <label><input type="radio" name="q5" value="c"> An MCP server usually wraps the API, exposing it to AI hosts</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. You only integrate two backends you fully control, deterministically. Best choice?</p>
+          <label><input type="radio" name="q6" value="a"> MCP, always</label>
+          <label><input type="radio" name="q6" value="b"> A plain API — MCP would be unnecessary overhead</label>
+          <label><input type="radio" name="q6" value="c"> Neither — use a spreadsheet</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>🧰 Agent Development Kits</h4><p><a href="adk.html">Frameworks that use tools</a> — many support MCP servers as a tool source (Strands, ADK, LangGraph).</p></div>
+        <div class="card"><h4>📡 IoT × Agents</h4><p><a href="iot-agent.html">A real agent</a> — Bedrock AgentCore's Gateway turns APIs/Lambdas into MCP tools.</p></div>
+        <div class="card"><h4>🤖 LLM apps tutorial</h4><p><a href="llm-apps.html#langgraph">Tool-calling in an agent</a> — the in-app version MCP standardizes.</p></div>
+        <div class="card"><h4>📓 All tutorials</h4><p><a href="index.html">The hub</a> — LLM apps, embeddings, retrieval, agent kits, AWS &amp; IoT.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  APIs vs MCP — how models connect to tools and data. MCP is young and moving fast; confirm details against the current spec at modelcontextprotocol.io. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) {
+    root.setAttribute("data-theme", t);
+    tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 ";
+    tLabel.textContent = t === "dark" ? "Light" : "Dark";
+  }
+  var saved = null;
+  try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () {
+    var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    applyTheme(next);
+    try { localStorage.setItem("theme", next); } catch (e) {}
+  });
+
+  var menuBtn = document.getElementById("menuToggle");
+  var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () {
+    var open = side.classList.toggle("open");
+    menuBtn.setAttribute("aria-expanded", String(open));
+  });
+  side.addEventListener("click", function (e) {
+    if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); }
+  });
+
+  var bar = document.getElementById("progress");
+  function onScroll() {
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%";
+  }
+  document.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a"));
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (en.isIntersecting) {
+        links.forEach(function (a) { a.classList.remove("active"); });
+        if (map[en.target.id]) map[en.target.id].classList.add("active");
+      }
+    });
+  }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+
+  document.querySelectorAll("[data-tabs]").forEach(function (wrap) {
+    var tabs = wrap.querySelectorAll(".tab");
+    tabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        tabs.forEach(function (t) {
+          t.setAttribute("aria-selected", "false");
+          var p = document.getElementById(t.dataset.target);
+          if (p) p.hidden = true;
+        });
+        tab.setAttribute("aria-selected", "true");
+        document.getElementById(tab.dataset.target).hidden = false;
+      });
+    });
+  });
+
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var wrap = btn.closest(".code-wrap");
+      var pre = wrap.querySelector("pre:not([hidden])");
+      var text = pre ? pre.innerText : "";
+      var done = function () { var o = btn.textContent; btn.textContent = "Copied!"; setTimeout(function () { btn.textContent = o; }, 1400); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, done);
+      } else {
+        var ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); } catch (e) {}
+        document.body.removeChild(ta); done();
+      }
+    });
+  });
+
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q");
+    var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      var correctLabel = q.querySelector('input[value="' + answer + '"]').parentNode;
+      correctLabel.classList.add("correct");
+      if (chosen) {
+        if (chosen.value === answer) { score++; }
+        else { chosen.parentNode.classList.add("wrong"); }
+      }
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length +
+      (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>
