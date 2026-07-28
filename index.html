@@ -133,6 +133,20 @@
   .path p { margin: 0; font-size: .93rem; color: var(--text-soft); }
   [data-theme="dark"] .path li::before { color: #0f172a; }
 
+  /* Search / filter */
+  .search { max-width: 30rem; margin: 0 auto 1.75rem; position: relative; }
+  .search .mag { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-soft); pointer-events: none; }
+  .search input {
+    width: 100%; font: inherit; color: var(--text);
+    background: var(--bg-soft); border: 1px solid var(--border);
+    border-radius: 999px; padding: .75rem 1rem .75rem 2.7rem; min-height: 48px;
+  }
+  .search input::placeholder { color: var(--text-soft); }
+  .search input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+  .is-hidden { display: none !important; }
+  #noResults { text-align: center; color: var(--text-soft); padding: 1.5rem 0 2.5rem; }
+  #noResults button { margin-left: .5rem; min-height: 40px; }
+
   footer { border-top: 1px solid var(--border); margin-top: 3.5rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
 
   @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } .tile { transition: none; } }
@@ -153,6 +167,13 @@
     <p class="eyebrow">Interactive tutorials</p>
     <h1>Build with LLMs, agents &amp; AWS</h1>
     <p>Five self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
+  </div>
+
+  <div class="search" role="search">
+    <span class="mag" aria-hidden="true">🔎</span>
+    <input id="filter" type="search" autocomplete="off" spellcheck="false"
+           placeholder="Filter tutorials — try “rag”, “aws”, “agent”…"
+           aria-label="Filter tutorials by keyword" aria-controls="tutorials">
   </div>
 
   <section id="tutorials" aria-label="Tutorials">
@@ -193,6 +214,11 @@
       </a>
     </div>
   </section>
+
+  <p id="noResults" class="is-hidden" role="status" aria-live="polite">
+    No tutorials match “<span id="noResultsQ"></span>”.
+    <button type="button" class="btn" id="clearFilter">Clear filter</button>
+  </p>
 
   <section id="path" aria-label="Suggested reading order">
     <h2>Suggested reading order</h2>
@@ -254,6 +280,33 @@
   }
   document.addEventListener("scroll", onScroll, { passive: true });
   onScroll();
+
+  // Filter tutorials as you type — matches tile title, kicker & description.
+  var input = document.getElementById("filter");
+  var tiles = Array.prototype.slice.call(document.querySelectorAll(".tile"));
+  var pathSection = document.getElementById("path");
+  var noRes = document.getElementById("noResults");
+  var noResQ = document.getElementById("noResultsQ");
+  var clearBtn = document.getElementById("clearFilter");
+  function applyFilter() {
+    var q = input.value.trim().toLowerCase();
+    var shown = 0;
+    tiles.forEach(function (t) {
+      var match = q === "" || t.textContent.toLowerCase().indexOf(q) !== -1;
+      t.classList.toggle("is-hidden", !match);
+      if (match) shown++;
+    });
+    // In search mode, hide the ordered reading path (it's a browse-only aid).
+    pathSection.classList.toggle("is-hidden", q !== "");
+    var none = q !== "" && shown === 0;
+    noRes.classList.toggle("is-hidden", !none);
+    noResQ.textContent = input.value.trim();
+  }
+  input.addEventListener("input", applyFilter);
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { input.value = ""; applyFilter(); }
+  });
+  clearBtn.addEventListener("click", function () { input.value = ""; applyFilter(); input.focus(); });
 })();
 </script>
 </body>
