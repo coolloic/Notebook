@@ -19,6 +19,7 @@
     --maxw: 960px;
     /* per-tutorial accents */
     --llm: #4f46e5;   /* indigo */
+    --rag: #be185d;   /* rose   */
     --adk: #0f766e;   /* teal   */
     --aws: #d9701a;   /* orange */
     --iot: #6d28d9;   /* violet */
@@ -34,6 +35,7 @@
     --accent: #a5b4fc;
     --ink: #a5b4fc;
     --llm: #a5b4fc;
+    --rag: #f472b6;
     --adk: #5eead4;
     --aws: #f0a35e;
     --iot: #c4b5fd;
@@ -98,6 +100,7 @@
     outline: none;
   }
   .tile.llm { --tile: var(--llm); }
+  .tile.rag { --tile: var(--rag); }
   .tile.adk { --tile: var(--adk); }
   .tile.aws { --tile: var(--aws); }
   .tile.iot { --tile: var(--iot); }
@@ -119,6 +122,7 @@
     background: var(--step, var(--accent)); color: #fff;
   }
   .path li.llm { --step: var(--llm); }
+  .path li.rag { --step: var(--rag); }
   .path li.adk { --step: var(--adk); }
   .path li.aws { --step: var(--aws); }
   .path li.iot { --step: var(--iot); }
@@ -148,7 +152,7 @@
   <div class="hero">
     <p class="eyebrow">Interactive tutorials</p>
     <h1>Build with LLMs, agents &amp; AWS</h1>
-    <p>Four self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
+    <p>Five self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
   </div>
 
   <section id="tutorials" aria-label="Tutorials">
@@ -158,6 +162,13 @@
         <h3>Building LLM Applications</h3>
         <p>LangChain, LangGraph &amp; LangSmith organized around the three problems you hit as an app grows: glue code, non-linear logic, and observability. Includes RAG, a full agent, and a support-agent capstone.</p>
         <span class="go">Start learning</span>
+      </a>
+
+      <a class="tile rag" href="rag-cag.html">
+        <div class="top"><span class="ico">🔎</span><span class="kicker">Retrieval deep-dive</span></div>
+        <h3>RAG vs CAG vs GraphRAG</h3>
+        <p>How to ground a model in your data: retrieve at query time (RAG), preload &amp; cache a small stable corpus (CAG), when to mix them, and GraphRAG plus the wider family (hybrid, reranking, HyDE, Agentic/Corrective/Self-RAG).</p>
+        <span class="go">Compare methods</span>
       </a>
 
       <a class="tile adk" href="adk.html">
@@ -191,6 +202,10 @@
         <h3><a href="llm-apps.html">Building LLM Applications</a></h3>
         <p>Start with the fundamentals — chains, RAG, stateful agents, and tracing. Everything else assumes this vocabulary.</p>
       </li>
+      <li class="rag">
+        <h3><a href="rag-cag.html">RAG vs CAG vs GraphRAG</a></h3>
+        <p>Go deep on grounding — how to get your data into the model reliably, and which retrieval method fits which corpus and question.</p>
+      </li>
       <li class="adk">
         <h3><a href="adk.html">Agent Development Kits</a></h3>
         <p>Now zoom out: how the frameworks for <em>building</em> agents differ, and how to pick one for the job.</p>
@@ -208,7 +223,7 @@
 </main>
 
 <footer>
-  Four interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
+  Five interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
 </footer>
 
 <script>
