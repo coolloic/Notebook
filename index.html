@@ -36,6 +36,7 @@
     --web: #a21caf;   /* fuchsia */
     --sec: #3730a3;   /* indigo (security) */
     --owp: #065f46;   /* dark emerald (OWASP) */
+    --cyb: #1e3a8a;   /* navy (cyber security) */
     --n8n: #dc2626;   /* red     */
     --cn:  #0e7490;   /* cyan    */
     --conc: #db2777;  /* pink (concurrency) */
@@ -70,6 +71,7 @@
     --web: #f0abfc;
     --sec: #818cf8;
     --owp: #34d399;
+    --cyb: #93c5fd;
     --n8n: #f87171;
     --cn:  #67e8f9;
     --conc: #f9a8d4;
@@ -153,6 +155,7 @@
   .tile.web { --tile: var(--web); }
   .tile.sec { --tile: var(--sec); }
   .tile.owp { --tile: var(--owp); }
+  .tile.cyb { --tile: var(--cyb); }
   .tile.n8n { --tile: var(--n8n); }
   .tile.cn  { --tile: var(--cn); }
   .tile.conc { --tile: var(--conc); }
@@ -193,6 +196,7 @@
   .path li.web { --step: var(--web); }
   .path li.sec { --step: var(--sec); }
   .path li.owp { --step: var(--owp); }
+  .path li.cyb { --step: var(--cyb); }
   .path li.n8n { --step: var(--n8n); }
   .path li.cn  { --step: var(--cn); }
   .path li.conc { --step: var(--conc); }
@@ -238,7 +242,7 @@
   <div class="hero">
     <p class="eyebrow">Interactive tutorials</p>
     <h1>Build with LLMs, agents &amp; AWS</h1>
-    <p>Twenty-three self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
+    <p>Twenty-four self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
   </div>
 
   <div class="search" role="search">
@@ -376,6 +380,13 @@
         <span class="go">Explore OWASP</span>
       </a>
 
+      <a class="tile cyb" href="cyber-security.html">
+        <div class="top"><span class="ico">🕵️</span><span class="kicker">Cyber security</span></div>
+        <h3>Cyber Security</h3>
+        <p>The big picture: the CIA triad, security mechanisms &amp; controls, the threat landscape and cyber kill chain, how to prevent attacks (defense in depth, zero trust, MFA), and how to manage a program (NIST CSF, risk, incident response).</p>
+        <span class="go">Defend &amp; manage</span>
+      </a>
+
       <a class="tile n8n" href="n8n.html">
         <div class="top"><span class="ico">🔗</span><span class="kicker">Automation</span></div>
         <h3>n8n — Workflow Automation</h3>
@@ -494,6 +505,10 @@
         <h3><a href="owasp.html">OWASP — Top 10 &amp; Toolbox</a></h3>
         <p>The shared vocabulary of app security — the Top 10 risk lists and the standards/tools that operationalize them.</p>
       </li>
+      <li class="cyb">
+        <h3><a href="cyber-security.html">Cyber Security</a></h3>
+        <p>Zoom out to the whole program — mechanisms, attack prevention, and how to govern &amp; manage security.</p>
+      </li>
       <li class="n8n">
         <h3><a href="n8n.html">n8n — Workflow Automation</a></h3>
         <p>Zoom out to the practical: wire apps and APIs into automated workflows — low-code, self-hosted, with code when you need it.</p>
@@ -519,7 +534,7 @@
 </main>
 
 <footer>
-  Twenty-three interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
+  Twenty-four interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
 </footer>
 
 <script>
