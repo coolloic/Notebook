@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="How LLMs and transformers work — from tokens to embeddings to self-attention to next-token prediction, the transformer block, sampling, training (pretraining + RLHF), and what it all means for people building with LLMs.">
+<title>How LLMs &amp; Transformers Work</title>
+<style>
+  :root {
+    --bg: #ffffff; --bg-soft: #f5f7fa; --bg-code: #201436; --text: #1a2130; --text-soft: #55617a; --border: #e2e8f0;
+    --accent: #7c3aed; --ink: #6d28d9;
+    --solve: #15803d; --limit: #b45309; --choose: #1e40af; --solve-bg: #dcfce7; --limit-bg: #fef3c7; --choose-bg: #dbeafe;
+    --radius: 12px; --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #0f172a; --bg-soft: #17233d; --bg-code: #191033; --text: #e6ecf7; --text-soft: #9fb0cc; --border: #263450;
+    --accent: #c4b5fd; --ink: #ddd6fe; --solve: #86efac; --limit: #fcd34d; --choose: #93c5fd; --solve-bg: #14351f; --limit-bg: #3a2a0c; --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: var(--font); color: var(--text); background: var(--bg); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  .skip-link { position: absolute; left: -999px; top: 0; background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100; }
+  .skip-link:focus { left: 0; }
+  #progress { position: fixed; top: 0; left: 0; height: 4px; width: 0%; background: linear-gradient(90deg, var(--accent), var(--ink)); z-index: 60; transition: width .1s linear; }
+  header.top { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; padding: .6rem 1rem; }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; }
+  header.top .brand span { color: var(--accent); }
+  header.top .spacer { flex: 1; }
+  .btn { font: inherit; cursor: pointer; border: 1px solid var(--border); background: var(--bg-soft); color: var(--text); border-radius: 999px; padding: .5rem .9rem; min-height: 44px; display: inline-flex; align-items: center; gap: .4rem; }
+  .btn:hover { border-color: var(--accent); }
+  #menuToggle { display: none; }
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side { position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px); overflow-y: auto; padding: 1.25rem 0; font-size: .93rem; }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a { display: block; padding: .45rem .75rem; border-radius: 8px; color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent; }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); }
+  nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.12rem; margin: 1.6rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; }
+  .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; }
+  .callout strong { color: var(--accent); }
+  .callout.tip { border-left-color: var(--solve); } .callout.tip strong { color: var(--solve); }
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 1.25rem 0; }
+  .flow .node { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: .5rem .8rem; font-size: .86rem; font-weight: 600; }
+  .flow .node.hot { border-color: var(--accent); color: var(--accent); }
+  .flow .arrow { color: var(--text-soft); font-weight: 700; }
+  .code-wrap { margin: 1.1rem 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  pre { margin: 0; background: var(--bg-code); color: #ece7fb; padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .84rem; line-height: 1.6; }
+  pre code { font-family: inherit; }
+  .code-head { display: flex; align-items: center; justify-content: space-between; background: var(--bg-code); padding: .35rem .6rem .35rem 1rem; }
+  .code-head .label { color: #b3a4d8; font-size: .78rem; font-family: var(--mono); }
+  .copy { font: inherit; cursor: pointer; background: #362766; color: #ece7fb; border: none; border-radius: 6px; padding: .35rem .7rem; min-height: 36px; font-size: .8rem; }
+  .copy:hover { background: #453280; }
+  .cmt { color: #968cc4; }
+  code.inline { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; }
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-soft); }
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); }
+  details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+  /* forward-pass diagram */
+  .fp-wrap { overflow-x: auto; margin: 1.3rem 0; }
+  .fp { width: 100%; min-width: 680px; max-width: 762px; height: auto; display: block; margin: 0 auto; font-family: var(--font); }
+  .fp-box { fill: var(--bg-soft); stroke: var(--border); stroke-width: 1.5; }
+  .fp-hot { fill: var(--bg-soft); stroke: var(--accent); stroke-width: 2; }
+  .fp-line { fill: none; stroke: var(--text-soft); stroke-width: 1.6; }
+  .fp-loop { fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-dasharray: 5 4; }
+  .fp-ah { fill: var(--text-soft); } .fp-ahh { fill: var(--accent); }
+  .fp-t { fill: var(--text); font-size: 11.5px; font-weight: 700; }
+  .fp-sub { fill: var(--text-soft); font-size: 10px; }
+  .fp-lbl { fill: var(--accent); font-size: 11px; font-weight: 700; }
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; } .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); }
+  .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; }
+  [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; } #score { font-weight: 700; margin-left: 1rem; }
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; } #menuToggle { display: inline-flex; } main { padding-top: .5rem; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <a class="btn home" href="index.html" aria-label="Back to all tutorials">← All tutorials</a>
+  <div class="brand">How <span>LLMs</span> Work</div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#tokens">1 · Tokens</a></li>
+      <li><a href="#embeddings">2 · Embeddings &amp; position</a></li>
+      <li><a href="#attention">3 · Attention</a></li>
+      <li><a href="#block">4 · The transformer block</a></li>
+      <li><a href="#output">5 · Predicting the next token</a></li>
+      <li><a href="#training">6 · How it's trained</a></li>
+      <li><a href="#matters">7 · Why it matters for builders</a></li>
+      <li><a href="#cheatsheet">Cheat sheet</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>How LLMs &amp; transformers work</h1>
+      <p class="lede">Every large language model does one thing: <strong>predict the next token</strong>. Under the hood it's a <strong>transformer</strong> — text becomes tokens, tokens become vectors, <em>attention</em> layers mix in context, and the model outputs a probability for every possible next token. Sample one, append it, repeat. That loop, at scale, is everything.</p>
+      <div class="fp-wrap">
+        <svg class="fp" viewBox="0 0 762 200" role="img" aria-labelledby="fp-title fp-desc">
+          <title id="fp-title">The LLM forward pass</title>
+          <desc id="fp-desc">Text is tokenized, embedded with position, passed through N transformer layers (attention plus feed-forward), producing logits that are turned into probabilities and sampled into the next token, which is appended and the process repeats.</desc>
+          <defs>
+            <marker id="fp-a" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" class="fp-ah"/></marker>
+            <marker id="fp-ah" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" class="fp-ahh"/></marker>
+          </defs>
+          <path class="fp-loop" d="M690,60 C690,20 96,20 96,60" marker-end="url(#fp-ah)"/>
+          <text class="fp-lbl" x="393" y="16" text-anchor="middle">append token → repeat (autoregressive)</text>
+          <g>
+            <rect class="fp-box" x="16" y="66" width="112" height="52" rx="9"/><text class="fp-t" x="72" y="88" text-anchor="middle">Text</text><text class="fp-sub" x="72" y="104" text-anchor="middle">→ tokenize</text>
+            <rect class="fp-box" x="150" y="66" width="120" height="52" rx="9"/><text class="fp-t" x="210" y="88" text-anchor="middle">Embed</text><text class="fp-sub" x="210" y="104" text-anchor="middle">+ position</text>
+            <rect class="fp-hot" x="292" y="66" width="150" height="52" rx="9"/><text class="fp-t" x="367" y="88" text-anchor="middle">Transformer ×N</text><text class="fp-sub" x="367" y="104" text-anchor="middle">attention + feed-forward</text>
+            <rect class="fp-box" x="464" y="66" width="120" height="52" rx="9"/><text class="fp-t" x="524" y="88" text-anchor="middle">Logits</text><text class="fp-sub" x="524" y="104" text-anchor="middle">→ softmax</text>
+            <rect class="fp-hot" x="606" y="66" width="140" height="52" rx="9"/><text class="fp-t" x="676" y="88" text-anchor="middle">Sample</text><text class="fp-sub" x="676" y="104" text-anchor="middle">next token</text>
+          </g>
+          <path class="fp-line" d="M128,92 L150,92" marker-end="url(#fp-a)"/>
+          <path class="fp-line" d="M270,92 L292,92" marker-end="url(#fp-a)"/>
+          <path class="fp-line" d="M442,92 L464,92" marker-end="url(#fp-a)"/>
+          <path class="fp-line" d="M584,92 L606,92" marker-end="url(#fp-a)"/>
+        </svg>
+      </div>
+      <div class="callout"><strong>The big idea.</strong> An LLM isn't a database of facts or a reasoning engine — it's a very good <em>next-token predictor</em> trained on enormous text. Everything it appears to "know" or "reason" emerges from predicting plausible continuations.</div>
+    </section>
+
+    <section id="tokens">
+      <h2><span class="pill">Step 1</span> &nbsp;Tokens</h2>
+      <p>Models don't see letters or words — they see <strong>tokens</strong>: common chunks of text (whole words, word-pieces, or characters) from a fixed <em>vocabulary</em> (~50k–200k entries). "tokenization" is roughly "≈ 4 characters" in English, so ~750 words ≈ 1,000 tokens.</p>
+      <div class="callout"><strong>Why you care.</strong> The <strong>context window</strong> is measured in tokens (how much the model can see at once), and you're <strong>billed per token</strong>. Rare words, code and other languages tokenize into more tokens.</div>
+    </section>
+
+    <section id="embeddings">
+      <h2><span class="pill">Step 2</span> &nbsp;Embeddings &amp; position</h2>
+      <p>Each token id is mapped to a learned <strong>vector</strong> (its embedding) — a point in high-dimensional space capturing meaning (see the <a href="embeddings.html">embeddings guide</a>). Because a plain transformer has no inherent sense of order, a <strong>positional encoding</strong> is added so the model knows <em>where</em> each token sits in the sequence.</p>
+    </section>
+
+    <section id="attention">
+      <h2><span class="pill">Step 3 · the key idea</span> &nbsp;Attention</h2>
+      <p><strong>Self-attention</strong> is what made transformers work. For every token, the model asks: <em>which other tokens should I pay attention to, to understand this one?</em> It computes a <strong>query</strong>, <strong>key</strong> and <strong>value</strong> for each token; the query·key match decides how much each other token's value contributes. So "it" can attend to the noun it refers to, and a word's meaning is shaped by its whole context.</p>
+      <p><strong>Multi-head</strong> attention runs several of these in parallel, each learning a different kind of relationship (syntax, coreference, topic…). This is the "Attention Is All You Need" mechanism.</p>
+      <div class="callout"><strong>In one line.</strong> Attention lets every token gather relevant context from the rest of the sequence — that's how the model handles long-range meaning instead of just local word order.</div>
+    </section>
+
+    <section id="block">
+      <h2><span class="pill">Step 4</span> &nbsp;The transformer block</h2>
+      <p>One <strong>transformer layer</strong> = multi-head attention → a feed-forward network → with <em>residual connections</em> and <em>normalization</em> around each. Stack <strong>N</strong> of these (dozens to over a hundred) and you have the model. The count of all the numbers in these layers is the model's <strong>parameters</strong> (billions).</p>
+      <div class="flow">
+        <span class="node">input vectors</span><span class="arrow">→</span>
+        <span class="node hot">attention</span><span class="arrow">→</span>
+        <span class="node hot">feed-forward</span><span class="arrow">→</span>
+        <span class="node">richer vectors</span><span class="arrow">× N layers</span>
+      </div>
+    </section>
+
+    <section id="output">
+      <h2><span class="pill">Step 5</span> &nbsp;Predicting the next token</h2>
+      <p>The final layer produces a score (<strong>logit</strong>) for every token in the vocabulary. <strong>Softmax</strong> turns those into probabilities, and the model <strong>samples</strong> one — then appends it and runs the whole pass again for the next token. This one-at-a-time generation is called <em>autoregressive</em>.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Knob</th><th>Effect</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Temperature</strong></td><td>Higher = more random/creative; lower = more focused/deterministic.</td></tr>
+            <tr><td><strong>Top-p / Top-k</strong></td><td>Limit sampling to the most likely tokens (nucleus sampling).</td></tr>
+            <tr><td><strong>Max tokens</strong></td><td>How many tokens to generate before stopping.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="training">
+      <h2><span class="pill">Step 6</span> &nbsp;How it's trained</h2>
+      <div class="cards">
+        <div class="card"><h4>📚 Pretraining</h4><p>Predict the next token across a huge text corpus. Errors adjust the parameters (weights) via back-propagation — for a very long time, on many GPUs.</p></div>
+        <div class="card"><h4>🎯 Fine-tuning / RLHF</h4><p>Then align it — instruction tuning and reinforcement learning from human feedback teach it to be helpful, follow instructions, and be safe.</p></div>
+      </div>
+      <p>The result is a fixed set of <strong>weights</strong> — the model. It has a <strong>knowledge cutoff</strong> (it only "knows" what was in its training data) and doesn't learn from your chats unless you add memory or retrieval.</p>
+    </section>
+
+    <section id="matters">
+      <h2><span class="pill">So what</span> &nbsp;Why it matters for builders</h2>
+      <div class="cards">
+        <div class="card"><h4>🪟 Context window</h4><p>Everything the model uses must fit in the token budget — prompt + retrieved data + output.</p></div>
+        <div class="card"><h4>💸 Tokens = cost &amp; latency</h4><p>You pay and wait per token. Concise prompts and outputs save both.</p></div>
+        <div class="card"><h4>🎲 Hallucination</h4><p>It predicts <em>plausible</em> tokens, not <em>true</em> ones — so ground it (RAG) and verify.</p></div>
+        <div class="card"><h4>📅 Knowledge cutoff</h4><p>No live knowledge; use retrieval or tools for fresh/private facts.</p></div>
+      </div>
+      <div class="callout tip"><strong>The mental model that pays off:</strong> treat the LLM as a powerful next-token predictor with a fixed context window and no memory — then everything else in this repo (prompting, RAG, tools, agents, evals) is about feeding it the right context and checking its output.</div>
+    </section>
+
+    <section id="cheatsheet">
+      <h2>Cheat sheet</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Question</th><th>Short answer</th></tr></thead>
+          <tbody>
+            <tr><td>What does an LLM fundamentally do?</td><td>Predict the next token, repeatedly (autoregressive).</td></tr>
+            <tr><td>What's a token?</td><td>A chunk of text (~4 chars) from a fixed vocabulary; the unit of context &amp; billing.</td></tr>
+            <tr><td>The key mechanism?</td><td>Self-attention — each token gathers context from the others.</td></tr>
+            <tr><td>What are parameters?</td><td>The billions of learned weights in the stacked transformer layers.</td></tr>
+            <tr><td>Why does it hallucinate?</td><td>It outputs plausible tokens, not verified facts.</td></tr>
+            <tr><td>Two knobs to know?</td><td>Temperature (randomness) and max tokens (length).</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions on how LLMs work. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="b">
+          <p>1. What does an LLM fundamentally do?</p>
+          <label><input type="radio" name="q1" value="a"> Look facts up in a database</label>
+          <label><input type="radio" name="q1" value="b"> Predict the next token, one at a time</label>
+          <label><input type="radio" name="q1" value="c"> Compile code</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>2. What is a token?</p>
+          <label><input type="radio" name="q2" value="a"> A single letter, always</label>
+          <label><input type="radio" name="q2" value="b"> A whole sentence</label>
+          <label><input type="radio" name="q2" value="c"> A chunk of text (~4 chars) from the model's vocabulary — the unit of context &amp; billing</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>3. What is self-attention for?</p>
+          <label><input type="radio" name="q3" value="a"> Letting each token gather relevant context from the other tokens</label>
+          <label><input type="radio" name="q3" value="b"> Compressing the model</label>
+          <label><input type="radio" name="q3" value="c"> Encrypting the prompt</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>4. What are a model's "parameters"?</p>
+          <label><input type="radio" name="q4" value="a"> Its API settings</label>
+          <label><input type="radio" name="q4" value="b"> The billions of learned weights in its transformer layers</label>
+          <label><input type="radio" name="q4" value="c"> The prompt you send</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>5. Why do LLMs hallucinate?</p>
+          <label><input type="radio" name="q5" value="a"> Bugs in the API</label>
+          <label><input type="radio" name="q5" value="b"> Too little RAM</label>
+          <label><input type="radio" name="q5" value="c"> They predict <em>plausible</em> tokens, not verified facts</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. What does raising the temperature do?</p>
+          <label><input type="radio" name="q6" value="a"> Speeds up the GPU</label>
+          <label><input type="radio" name="q6" value="b"> Makes sampling more random / creative</label>
+          <label><input type="radio" name="q6" value="c"> Increases the context window</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>🧬 Embedding models</h4><p><a href="embeddings.html">Vectors in depth</a> — the token embeddings this relies on.</p></div>
+        <div class="card"><h4>✍️ Prompt &amp; context engineering</h4><p><a href="prompt-engineering.html">Feed it well</a> — get the most from the next-token predictor.</p></div>
+        <div class="card"><h4>🤖 Build LLM apps</h4><p><a href="llm-apps.html">Put it to work</a> — chains, RAG and agents on top of the model.</p></div>
+        <div class="card"><h4>📓 All tutorials</h4><p><a href="index.html">The hub</a> — LLMs, agents, ML, cloud &amp; more.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  How LLMs &amp; transformers work — tokens, attention, and next-token prediction. A conceptual overview; the field moves fast. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) { root.setAttribute("data-theme", t); tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 "; tLabel.textContent = t === "dark" ? "Light" : "Dark"; }
+  var saved = null; try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () { var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark"; applyTheme(next); try { localStorage.setItem("theme", next); } catch (e) {} });
+  var menuBtn = document.getElementById("menuToggle"); var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () { var open = side.classList.toggle("open"); menuBtn.setAttribute("aria-expanded", String(open)); });
+  side.addEventListener("click", function (e) { if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); } });
+  var bar = document.getElementById("progress");
+  function onScroll() { var h = document.documentElement; var max = h.scrollHeight - h.clientHeight; bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%"; }
+  document.addEventListener("scroll", onScroll, { passive: true }); onScroll();
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a"));
+  var map = {}; links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) { entries.forEach(function (en) { if (en.isIntersecting) { links.forEach(function (a) { a.classList.remove("active"); }); if (map[en.target.id]) map[en.target.id].classList.add("active"); } }); }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q"); var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      q.querySelector('input[value="' + answer + '"]').parentNode.classList.add("correct");
+      if (chosen && chosen.value !== answer) chosen.parentNode.classList.add("wrong");
+      if (chosen && chosen.value === answer) score++;
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length + (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>

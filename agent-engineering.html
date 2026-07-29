@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛠️</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Harness engineer vs loop engineer vs graph engineer — three mindsets for building AI agents along a control-versus-autonomy spectrum: explicit graphs, agentic loops, and model-driven harnesses. What each controls, their trade-offs, and how they compose.">
+<title>Harness vs Loop vs Graph Engineer — Ways to Build Agents</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f5f7fa;
+    --bg-code: #292524;      /* stone-800 ink */
+    --text: #1a2130;
+    --text-soft: #55617a;
+    --border: #e2e8f0;
+    --accent: #57534e;       /* stone-600 (AA on white) */
+    --ink: #44403c;
+    --solve: #15803d;
+    --limit: #b45309;
+    --choose: #1e40af;
+    --solve-bg: #dcfce7;
+    --limit-bg: #fef3c7;
+    --choose-bg: #dbeafe;
+    --radius: 12px;
+    --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #0f172a;
+    --bg-soft: #17233d;
+    --bg-code: #1c1917;
+    --text: #e6ecf7;
+    --text-soft: #9fb0cc;
+    --border: #263450;
+    --accent: #a8a29e;
+    --ink: #d6d3d1;
+    --solve: #86efac;
+    --limit: #fcd34d;
+    --choose: #93c5fd;
+    --solve-bg: #14351f;
+    --limit-bg: #3a2a0c;
+    --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: var(--font); color: var(--text); background: var(--bg); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  .skip-link { position: absolute; left: -999px; top: 0; background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100; }
+  .skip-link:focus { left: 0; }
+  #progress { position: fixed; top: 0; left: 0; height: 4px; width: 0%; background: linear-gradient(90deg, var(--accent), var(--ink)); z-index: 60; transition: width .1s linear; }
+  header.top { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; padding: .6rem 1rem; }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; }
+  header.top .brand span { color: var(--accent); }
+  header.top .spacer { flex: 1; }
+  .btn { font: inherit; cursor: pointer; border: 1px solid var(--border); background: var(--bg-soft); color: var(--text); border-radius: 999px; padding: .5rem .9rem; min-height: 44px; display: inline-flex; align-items: center; gap: .4rem; }
+  .btn:hover { border-color: var(--accent); }
+  #menuToggle { display: none; }
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side { position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px); overflow-y: auto; padding: 1.25rem 0; font-size: .93rem; }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a { display: block; padding: .45rem .75rem; border-radius: 8px; color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent; }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); }
+  nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.12rem; margin: 1.6rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; }
+  .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; }
+  .callout strong { color: var(--accent); }
+  .callout.tip { border-left-color: var(--solve); }
+  .callout.tip strong { color: var(--solve); }
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 1.25rem 0; }
+  .flow .node { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: .5rem .8rem; font-size: .88rem; font-weight: 600; }
+  .flow .node.hot { border-color: var(--accent); color: var(--accent); }
+  .flow .arrow { color: var(--text-soft); font-weight: 700; }
+  .svc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-soft); padding: 1rem 1.2rem; margin: 1.1rem 0; }
+  .svc h3 { margin: 0 0 .5rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
+  .svc h3 .full { font-size: .82rem; font-weight: 500; color: var(--text-soft); font-family: var(--mono); }
+  .svc p { margin: .4rem 0; font-size: .95rem; }
+  .tag { display: inline-block; min-width: 5rem; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .12rem .5rem; border-radius: 6px; margin-right: .5rem; text-align: center; }
+  .tag.does  { background: var(--solve-bg); color: var(--solve); }
+  .tag.use   { background: var(--choose-bg); color: var(--choose); }
+  .tag.cost  { background: var(--limit-bg); color: var(--limit); }
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-soft); }
+  code.inline { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; }
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); }
+  details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+  /* Spectrum diagram */
+  .sp-wrap { overflow-x: auto; margin: 1.3rem 0; }
+  .sp { width: 100%; min-width: 660px; max-width: 760px; height: auto; display: block; margin: 0 auto; font-family: var(--font); }
+  .sp-box { fill: var(--bg-soft); stroke: var(--border); stroke-width: 1.5; }
+  .sp-cap { fill: var(--accent); }
+  .sp-t { fill: var(--text); font-size: 13px; font-weight: 800; }
+  .sp-sub { fill: var(--text-soft); font-size: 10.5px; }
+  .sp-ico { font-size: 20px; }
+  .sp-axis { stroke: var(--text-soft); stroke-width: 1.5; fill: none; }
+  .sp-ah { fill: var(--text-soft); }
+  .sp-ax { fill: var(--text-soft); font-size: 11px; font-weight: 700; }
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; }
+  .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); }
+  .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; }
+  [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; }
+  #score { font-weight: 700; margin-left: 1rem; }
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; }
+    #menuToggle { display: inline-flex; }
+    main { padding-top: .5rem; }
+    .tag { min-width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <a class="btn home" href="index.html" aria-label="Back to all tutorials">← All tutorials</a>
+  <div class="brand">Harness · Loop · <span>Graph</span></div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#spectrum">1 · The spectrum</a></li>
+      <li><a href="#graph">2 · Graph engineer</a></li>
+      <li><a href="#loop">3 · Loop engineer</a></li>
+      <li><a href="#harness">4 · Harness engineer</a></li>
+      <li><a href="#compare">5 · Side by side</a></li>
+      <li><a href="#compose">6 · They compose (&amp; the trend)</a></li>
+      <li><a href="#cheatsheet">Cheat sheet</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>Harness vs loop vs graph engineer</h1>
+      <p class="lede">Three mindsets for building AI-agent systems — and they differ on one axis: <strong>how much structure you impose versus how much you let the model drive</strong>. A <strong>graph engineer</strong> hand-draws the workflow; a <strong>loop engineer</strong> designs the iteration and its stop; a <strong>harness engineer</strong> builds the model's environment and gets out of the way.</p>
+      <div class="flow">
+        <span class="node hot">Graph</span><span class="arrow">— you draw the flow —</span>
+        <span class="node hot">Loop</span><span class="arrow">— you set the cycle —</span>
+        <span class="node hot">Harness</span><span class="arrow">— the model drives —</span>
+      </div>
+      <div class="callout"><strong>Not rival camps — a dial.</strong> The same engineer moves along this dial per task: impose more structure when you need guarantees, less when you want the model's full capability. Most real systems blend all three.</div>
+    </section>
+
+    <!-- ============ 1 · SPECTRUM ============ -->
+    <section id="spectrum">
+      <h2><span class="pill">The axis</span> &nbsp;The control ↔ autonomy spectrum</h2>
+      <p>Each role sits at a different point between <em>you</em> controlling the flow and the <em>model</em> controlling it:</p>
+      <div class="sp-wrap">
+        <svg class="sp" viewBox="0 0 760 210" role="img" aria-labelledby="sp-title sp-desc">
+          <title id="sp-title">Graph, loop and harness on the control-versus-autonomy spectrum</title>
+          <desc id="sp-desc">Graph engineering imposes the most structure with the model having least autonomy; loop engineering is in the middle; harness engineering imposes least structure and gives the model the most autonomy.</desc>
+          <defs>
+            <marker id="sp-a" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" class="sp-ah"/></marker>
+            <marker id="sp-a0" markerWidth="9" markerHeight="9" refX="2.5" refY="3" orient="auto"><path d="M6.5,0 L0,3 L6.5,6 Z" class="sp-ah"/></marker>
+          </defs>
+          <g>
+            <rect class="sp-box" x="30" y="40" width="200" height="98" rx="10"/><rect class="sp-cap" x="30" y="40" width="200" height="5" rx="2"/>
+            <text class="sp-ico" x="130" y="78" text-anchor="middle">🗺️</text>
+            <text class="sp-t" x="130" y="104" text-anchor="middle">Graph</text>
+            <text class="sp-sub" x="130" y="122" text-anchor="middle">explicit nodes &amp; edges</text>
+          </g>
+          <g>
+            <rect class="sp-box" x="280" y="40" width="200" height="98" rx="10"/><rect class="sp-cap" x="280" y="40" width="200" height="5" rx="2"/>
+            <text class="sp-ico" x="380" y="78" text-anchor="middle">🔁</text>
+            <text class="sp-t" x="380" y="104" text-anchor="middle">Loop</text>
+            <text class="sp-sub" x="380" y="122" text-anchor="middle">iterate to a stop</text>
+          </g>
+          <g>
+            <rect class="sp-box" x="530" y="40" width="200" height="98" rx="10"/><rect class="sp-cap" x="530" y="40" width="200" height="5" rx="2"/>
+            <text class="sp-ico" x="630" y="78" text-anchor="middle">🛠️</text>
+            <text class="sp-t" x="630" y="104" text-anchor="middle">Harness</text>
+            <text class="sp-sub" x="630" y="122" text-anchor="middle">environment + tools</text>
+          </g>
+          <path class="sp-axis" d="M30,168 L730,168" marker-end="url(#sp-a)" marker-start="url(#sp-a0)"/>
+          <text class="sp-ax" x="30" y="190" text-anchor="start">you control · high structure · deterministic</text>
+          <text class="sp-ax" x="730" y="190" text-anchor="end">model controls · high autonomy</text>
+        </svg>
+      </div>
+      <div class="callout tip"><strong>Golden rule:</strong> impose the <em>least</em> structure that still gives you the control and guarantees the task needs. More structure buys predictability; less unlocks the model's capability.</div>
+    </section>
+
+    <!-- ============ 2 · GRAPH ============ -->
+    <section id="graph">
+      <h2><span class="pill">Most structure</span> &nbsp;The graph engineer</h2>
+      <article class="svc">
+        <h3>🗺️ Graph engineer <span class="full">explicit nodes · edges · state</span></h3>
+        <p><span class="tag does">Builds</span> The agent as an explicit <strong>graph</strong>: nodes (steps), edges (control flow, including branches and cycles), and a shared state object. <em>You</em> decide every route; the model fills in the steps you allow.</p>
+        <p><span class="tag use">Best for</span> Well-understood, structured, high-stakes or compliance-bound flows where you must <strong>guarantee</strong> the path — and where determinism and debuggability matter most.</p>
+        <p><span class="tag cost">Trade-off</span> Rigid and more to build; struggles with the unexpected; gives the model the <em>least</em> autonomy. Tooling: <strong>LangGraph</strong> (see <a href="adk.html">agent kits</a>).</p>
+      </article>
+    </section>
+
+    <!-- ============ 3 · LOOP ============ -->
+    <section id="loop">
+      <h2><span class="pill">Some structure</span> &nbsp;The loop engineer</h2>
+      <article class="svc">
+        <h3>🔁 Loop engineer <span class="full">trigger · cycle · stop</span></h3>
+        <p><span class="tag does">Builds</span> The <strong>agentic loop</strong>: a trigger, what happens each cycle (reason → act → observe), and the <strong>stop criteria</strong>. The model iterates on its own until "done." Control lives in the loop's shape and its stopping conditions — not in the route.</p>
+        <p><span class="tag use">Best for</span> Open-ended tasks with a <strong>measurable stop</strong> ("make the tests pass", "until no new items") — where the number of steps can't be predicted.</p>
+        <p><span class="tag cost">Trade-off</span> Less predictable than a graph; needs solid stop criteria, turn caps and guardrails to avoid runaway. Tooling: the agent loop &amp; goal/loop primitives (see <a href="loops.html">Getting started with loops</a>).</p>
+      </article>
+    </section>
+
+    <!-- ============ 4 · HARNESS ============ -->
+    <section id="harness">
+      <h2><span class="pill">Least structure</span> &nbsp;The harness engineer</h2>
+      <article class="svc">
+        <h3>🛠️ Harness engineer <span class="full">environment · tools · context · verification</span></h3>
+        <p><span class="tag does">Builds</span> The <strong>environment around the model</strong> — context management (what it sees), tools, permissions, feedback and verification — then lets the model drive autonomously. The bet: a great harness + a capable model beats hand-coded control flow.</p>
+        <p><span class="tag use">Best for</span> Broad, open-ended, evolving work where you want the model's <strong>full capability</strong> — coding agents, research, general assistants. It's the frontier: <em>context engineering</em> and harness design.</p>
+        <p><span class="tag cost">Trade-off</span> Least predictable and hardest to constrain; leans heavily on model quality and <strong>strong verification</strong>. Tooling: agent SDKs and Claude Code-style harnesses.</p>
+      </article>
+      <details>
+        <summary>Why the harness bet keeps winning — the "bitter lesson"</summary>
+        <p>Rich Sutton's <em>bitter lesson</em>: over time, general methods that scale with compute and data beat hand-crafted structure. Applied to agents: as models get more capable, elaborate hand-drawn control flow becomes a ceiling. A thin, powerful harness — great context, tools and verification — lets a strong model do more than any graph you could draw. So effort shifts <em>from</em> encoding logic <em>toward</em> shaping the model's environment.</p>
+      </details>
+    </section>
+
+    <!-- ============ 5 · COMPARE ============ -->
+    <section id="compare">
+      <h2>Side by side</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th></th><th>🗺️ Graph</th><th>🔁 Loop</th><th>🛠️ Harness</th></tr></thead>
+          <tbody>
+            <tr><td><strong>You control</strong></td><td>The exact route</td><td>The cycle &amp; stop</td><td>The environment</td></tr>
+            <tr><td><strong>Model autonomy</strong></td><td>Low</td><td>Medium</td><td>High</td></tr>
+            <tr><td><strong>Determinism</strong></td><td>High</td><td>Medium</td><td>Low</td></tr>
+            <tr><td><strong>You build</strong></td><td>Nodes, edges, state</td><td>Trigger, cycle, stop criteria</td><td>Context, tools, verification, permissions</td></tr>
+            <tr><td><strong>Tooling</strong></td><td>LangGraph</td><td>Agent loop · /goal · /loop</td><td>Agent SDKs · Claude Code harness</td></tr>
+            <tr><td><strong>Best for</strong></td><td>Known, high-stakes flows</td><td>Open-ended w/ clear stop</td><td>General, capable agents</td></tr>
+            <tr><td><strong>Main risk</strong></td><td>Rigidity</td><td>Runaway / loose stop</td><td>Unpredictability</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 6 · COMPOSE ============ -->
+    <section id="compose">
+      <h2><span class="pill">In reality</span> &nbsp;They compose — and the trend</h2>
+      <p>These nest. A production system is often a <strong>harness</strong> that contains <strong>loops</strong>, some of which run small <strong>graphs</strong> for the parts that must be deterministic:</p>
+      <div class="flow">
+        <span class="node hot">Harness</span><span class="arrow">contains</span>
+        <span class="node">Loops</span><span class="arrow">which run</span>
+        <span class="node">Graphs (for must-be-exact steps)</span>
+      </div>
+      <p><strong>The direction of travel:</strong> as models get more capable, engineering effort shifts <em>rightward</em> — from drawing graphs, to shaping loops, to engineering harnesses and context. You hand more to the model and spend your effort on giving it a great environment and verifying its work.</p>
+      <div class="callout"><strong>How to choose today.</strong> Need a guaranteed path (money, compliance)? Put that part in a <strong>graph</strong>. Open-ended with a clear "done"? A <strong>loop</strong>. Broad and capability-bound by the model? Invest in the <strong>harness</strong> — and always pair autonomy with verification.</div>
+    </section>
+
+    <!-- ============ CHEAT SHEET ============ -->
+    <section id="cheatsheet">
+      <h2>Cheat sheet</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Question</th><th>Short answer</th></tr></thead>
+          <tbody>
+            <tr><td>The one axis?</td><td>How much structure you impose vs how much the model drives.</td></tr>
+            <tr><td>Graph engineer builds…</td><td>Explicit nodes/edges/state — you control the route (LangGraph).</td></tr>
+            <tr><td>Loop engineer builds…</td><td>The trigger, cycle and stop — the model iterates until done.</td></tr>
+            <tr><td>Harness engineer builds…</td><td>The environment: context, tools, verification — the model drives.</td></tr>
+            <tr><td>Which is most deterministic?</td><td>Graph. Most autonomous? Harness.</td></tr>
+            <tr><td>How do they relate?</td><td>They compose (harness ⊃ loops ⊃ graphs); effort trends toward harness as models improve.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ QUIZ ============ -->
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions on the three mindsets. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="b">
+          <p>1. What single axis separates the three roles?</p>
+          <label><input type="radio" name="q1" value="a"> Programming language</label>
+          <label><input type="radio" name="q1" value="b"> How much structure you impose vs how much the model drives</label>
+          <label><input type="radio" name="q1" value="c"> Cloud provider</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>2. A graph engineer primarily builds…</p>
+          <label><input type="radio" name="q2" value="a"> The model's tools only</label>
+          <label><input type="radio" name="q2" value="b"> A recurring schedule</label>
+          <label><input type="radio" name="q2" value="c"> An explicit graph of nodes, edges and shared state — controlling the route</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>3. A loop engineer's control lives mainly in…</p>
+          <label><input type="radio" name="q3" value="a"> The trigger, the cycle, and the stop criteria</label>
+          <label><input type="radio" name="q3" value="b"> Hard-coding every branch</label>
+          <label><input type="radio" name="q3" value="c"> The GPU driver</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>4. A harness engineer's bet is that…</p>
+          <label><input type="radio" name="q4" value="a"> Smaller models always win</label>
+          <label><input type="radio" name="q4" value="b"> A great environment (context, tools, verification) + a capable model beats hand-coded control flow</label>
+          <label><input type="radio" name="q4" value="c"> Agents should never use tools</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>5. Which is most deterministic, and which most autonomous?</p>
+          <label><input type="radio" name="q5" value="a"> Harness / Graph</label>
+          <label><input type="radio" name="q5" value="b"> Loop / Loop</label>
+          <label><input type="radio" name="q5" value="c"> Graph (most deterministic) / Harness (most autonomous)</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. How do the three relate in practice?</p>
+          <label><input type="radio" name="q6" value="a"> You must pick exactly one forever</label>
+          <label><input type="radio" name="q6" value="b"> They compose — a harness contains loops that can run graphs; effort trends toward the harness as models improve</label>
+          <label><input type="radio" name="q6" value="c"> They're unrelated</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>🔄 Getting started with loops</h4><p><a href="loops.html">Loop engineering</a> — the middle of the spectrum in depth.</p></div>
+        <div class="card"><h4>🧰 Agent Development Kits</h4><p><a href="adk.html">LangGraph &amp; friends</a> — the graph engineer's toolbox.</p></div>
+        <div class="card"><h4>🔁 Anthropic architectures</h4><p><a href="anthropic-agents.html">Workflows vs agents</a> — the same control-vs-autonomy idea.</p></div>
+        <div class="card"><h4>📓 All tutorials</h4><p><a href="index.html">The hub</a> — LLMs, agents, protocols, cloud &amp; more.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  Harness vs loop vs graph engineer — three points on the control-versus-autonomy spectrum for building agents. A conceptual framing; tools and terms evolve. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) { root.setAttribute("data-theme", t); tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 "; tLabel.textContent = t === "dark" ? "Light" : "Dark"; }
+  var saved = null;
+  try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () { var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark"; applyTheme(next); try { localStorage.setItem("theme", next); } catch (e) {} });
+  var menuBtn = document.getElementById("menuToggle");
+  var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () { var open = side.classList.toggle("open"); menuBtn.setAttribute("aria-expanded", String(open)); });
+  side.addEventListener("click", function (e) { if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); } });
+  var bar = document.getElementById("progress");
+  function onScroll() { var h = document.documentElement; var max = h.scrollHeight - h.clientHeight; bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%"; }
+  document.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a"));
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) { entries.forEach(function (en) { if (en.isIntersecting) { links.forEach(function (a) { a.classList.remove("active"); }); if (map[en.target.id]) map[en.target.id].classList.add("active"); } }); }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q");
+    var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      var correctLabel = q.querySelector('input[value="' + answer + '"]').parentNode;
+      correctLabel.classList.add("correct");
+      if (chosen) { if (chosen.value === answer) { score++; } else { chosen.parentNode.classList.add("wrong"); } }
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length + (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>

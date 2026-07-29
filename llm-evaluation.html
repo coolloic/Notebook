@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="LLM evaluation &amp; observability — how to measure whether an LLM app actually works: eval datasets, offline vs online evals, LLM-as-judge, tracing, metrics, and guardrails.">
+<title>LLM Evaluation &amp; Observability — Prove It Works</title>
+<style>
+  :root {
+    --bg: #ffffff; --bg-soft: #f4f8f5; --bg-code: #0f1f16; --text: #16241c; --text-soft: #4f6154; --border: #dbe7de;
+    --accent: #15803d; --ink: #166534;
+    --solve: #15803d; --limit: #b45309; --choose: #1e40af; --solve-bg: #dcfce7; --limit-bg: #fef3c7; --choose-bg: #dbeafe;
+    --radius: 12px; --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #0d1712; --bg-soft: #14241a; --bg-code: #0a1710; --text: #e4efe8; --text-soft: #9db4a5; --border: #223528;
+    --accent: #86efac; --ink: #bbf7d0; --solve: #86efac; --limit: #fcd34d; --choose: #93c5fd; --solve-bg: #14351f; --limit-bg: #3a2a0c; --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; } html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: var(--font); color: var(--text); background: var(--bg); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  .skip-link { position: absolute; left: -999px; top: 0; background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100; } .skip-link:focus { left: 0; }
+  #progress { position: fixed; top: 0; left: 0; height: 4px; width: 0%; background: linear-gradient(90deg, var(--accent), var(--ink)); z-index: 60; transition: width .1s linear; }
+  header.top { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; padding: .6rem 1rem; }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; } header.top .brand span { color: var(--accent); } header.top .spacer { flex: 1; }
+  .btn { font: inherit; cursor: pointer; border: 1px solid var(--border); background: var(--bg-soft); color: var(--text); border-radius: 999px; padding: .5rem .9rem; min-height: 44px; display: inline-flex; align-items: center; gap: .4rem; }
+  .btn:hover { border-color: var(--accent); } #menuToggle { display: none; }
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side { position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px); overflow-y: auto; padding: 1.25rem 0; font-size: .93rem; }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a { display: block; padding: .45rem .75rem; border-radius: 8px; color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent; }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); } nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.12rem; margin: 1.6rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; } .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .card .count { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; } .callout strong { color: var(--accent); }
+  .callout.tip { border-left-color: var(--solve); } .callout.tip strong { color: var(--solve); }
+  .svc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-soft); padding: 1rem 1.2rem; margin: 1.1rem 0; }
+  .svc h3 { margin: 0 0 .5rem; } .svc p { margin: .4rem 0; font-size: .95rem; }
+  .tag { display: inline-block; min-width: 5rem; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .12rem .5rem; border-radius: 6px; margin-right: .5rem; text-align: center; }
+  .tag.good { background: var(--solve-bg); color: var(--solve); } .tag.bad { background: var(--limit-bg); color: var(--limit); }
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; } table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; } th { background: var(--bg-soft); }
+  code.inline { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; }
+  pre { background: var(--bg-code); color: #e6f0ea; border-radius: var(--radius); padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .85rem; line-height: 1.55; position: relative; }
+  pre .cp { position: absolute; top: .5rem; right: .5rem; font-size: .72rem; padding: .3rem .6rem; min-height: auto; background: rgba(255,255,255,.1); color: #e6f0ea; border-color: rgba(255,255,255,.2); }
+  .tok { color: #86efac; } .tk2 { color: #fca5a5; } .tk3 { color: #93c5fd; } .cmt { color: #64748b; }
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); } details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+  /* pipeline diagram */
+  .pl-wrap { overflow-x: auto; margin: 1.3rem 0; }
+  .pl { width: 100%; min-width: 640px; max-width: 720px; height: auto; display: block; margin: 0 auto; font-family: var(--font); }
+  .pl-box { fill: var(--bg-soft); stroke: var(--accent); stroke-width: 1.6; }
+  .pl-alt { fill: var(--bg-soft); stroke: var(--border); stroke-width: 1.5; }
+  .pl-line { fill: none; stroke: var(--text-soft); stroke-width: 1.6; } .pl-ah { fill: var(--text-soft); }
+  .pl-t { fill: var(--text); font-size: 12px; font-weight: 700; } .pl-s { fill: var(--text-soft); font-size: 10.5px; }
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; } .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); } .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; } [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; } #score { font-weight: 700; margin-left: 1rem; }
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; } #menuToggle { display: inline-flex; } main { padding-top: .5rem; } .tag { min-width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <a class="btn home" href="index.html" aria-label="Back to all tutorials">← All tutorials</a>
+  <div class="brand">LLM <span>Eval &amp; Observability</span></div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#why">1 · Why it's hard</a></li>
+      <li><a href="#dataset">2 · Eval datasets</a></li>
+      <li><a href="#offline">3 · Offline evals</a></li>
+      <li><a href="#judge">4 · LLM-as-judge</a></li>
+      <li><a href="#online">5 · Online &amp; observability</a></li>
+      <li><a href="#metrics">6 · What to measure</a></li>
+      <li><a href="#loop">7 · The eval loop</a></li>
+      <li><a href="#cheatsheet">Cheat sheet</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>LLM evaluation &amp; observability</h1>
+      <p class="lede">A demo that looks great in five hand-picked prompts can fail one in ten in production — and you'd never know. Evaluation and observability are how you turn "seems good" into <strong>measured, monitored, and defensible</strong>. This is the practice of proving an LLM app works and keeping it working.</p>
+      <div class="callout"><strong>The core problem.</strong> LLM outputs are open-ended and non-deterministic, so there's rarely one "correct" string to diff against. You need graded judgement, representative test sets, and live monitoring — not just unit tests.</div>
+    </section>
+
+    <section id="why">
+      <h2><span class="pill">Why</span> &nbsp;Why LLM evaluation is hard</h2>
+      <div class="cards">
+        <div class="card"><span class="count">No single answer</span><h4>Open-ended</h4><p>Many valid outputs. Exact-match fails; you need graded or semantic judgement.</p></div>
+        <div class="card"><span class="count">Non-deterministic</span><h4>Varies per call</h4><p>Same input → different output. One good run doesn't prove reliability.</p></div>
+        <div class="card"><span class="count">Silent regressions</span><h4>Prompt/model drift</h4><p>A prompt tweak or model upgrade can quietly break cases that used to work.</p></div>
+        <div class="card"><span class="count">Multi-step</span><h4>Agents compound</h4><p>Errors accumulate across tool calls and turns; you must trace the whole chain.</p></div>
+      </div>
+      <div class="callout tip"><strong>Mindset:</strong> treat evaluation as a <em>dataset problem</em>, not a vibe check. If you can't point to a scored test set, you can't claim it works — and you can't safely change anything.</div>
+    </section>
+
+    <section id="dataset">
+      <h2><span class="pill">Foundation</span> &nbsp;Build an eval dataset</h2>
+      <p>Everything starts with a curated set of representative inputs — ideally with expected outputs or grading criteria. Grow it from real traffic and every bug you find.</p>
+      <article class="svc">
+        <h3>🗂️ What goes in it</h3>
+        <p><span class="tag good">Include</span> Happy-path cases, known-hard cases, edge cases, and <strong>every past failure</strong> (turn each bug into a permanent test — this is your regression suite).</p>
+        <p><span class="tag bad">Avoid</span> Only cherry-picked easy prompts; letting it go stale; leaking the eval set into your few-shot prompt (then you're testing memorisation).</p>
+      </article>
+      <div class="callout"><strong>Start tiny, stay honest.</strong> 20–50 well-chosen, hand-labelled cases beat 10,000 noisy ones. Add every production failure the moment you find it.</div>
+    </section>
+
+    <section id="offline">
+      <h2><span class="pill">Pre-ship</span> &nbsp;Offline evaluation</h2>
+      <p>Run your app over the dataset <em>before</em> shipping a change, and compare scores against the previous version. This is the LLM equivalent of a test suite in CI.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Grader</th><th>How it scores</th><th>Good for</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Exact / rule</strong></td><td>String match, regex, JSON-schema valid, code runs</td><td>Structured or verifiable outputs</td></tr>
+            <tr><td><strong>Reference-based</strong></td><td>Similarity to a gold answer (embedding / F1 / ROUGE)</td><td>Q&amp;A, summarisation with a known answer</td></tr>
+            <tr><td><strong>LLM-as-judge</strong></td><td>A model grades against a rubric</td><td>Open-ended quality, tone, helpfulness</td></tr>
+            <tr><td><strong>Human</strong></td><td>People rate or label</td><td>Ground truth &amp; calibrating the judge</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="cmt"># Offline eval loop — the shape of every eval harness</span>
+<span class="tk3">for</span> case <span class="tk3">in</span> dataset:
+    output = app(case.input)
+    case.score = grade(output, case.expected)   <span class="cmt"># rule / reference / judge</span>
+
+pass_rate = mean(c.score <span class="tk3">for</span> c <span class="tk3">in</span> dataset)
+<span class="cmt"># Gate the deploy: fail CI if pass_rate drops vs the baseline</span>
+<span class="tk3">assert</span> pass_rate &gt;= baseline - tolerance</code></pre>
+    </section>
+
+    <section id="judge">
+      <h2><span class="pill">Technique</span> &nbsp;LLM-as-judge</h2>
+      <p>For open-ended outputs, use a (usually strong) model to grade against an explicit rubric. Powerful and scalable — but only trustworthy if you <strong>validate the judge against human labels</strong> first.</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="tok">JUDGE_PROMPT</span> = <span class="tk2">"""You are grading a support answer.</span>
+<span class="tk2">Rubric (score 1-5):</span>
+<span class="tk2">  5 = correct, complete, cites the policy</span>
+<span class="tk2">  3 = correct but missing a detail</span>
+<span class="tk2">  1 = wrong or hallucinated</span>
+
+<span class="tk2">Question: {q}</span>
+<span class="tk2">Answer:   {a}</span>
+<span class="tk2">Return JSON: {"score": <int>, "reason": "<one line>"}"""</span></code></pre>
+      <div class="callout"><strong>Make the judge reliable:</strong> give a concrete rubric &amp; scale, ask for a reason (not just a number), prefer pairwise "A vs B" over absolute scores when possible, watch for bias (position, verbosity, self-preference), and <em>measure the judge's agreement with humans</em> before you trust it.</div>
+    </section>
+
+    <section id="online">
+      <h2><span class="pill">Post-ship</span> &nbsp;Online evaluation &amp; observability</h2>
+      <p>Offline tells you a change is safe; <strong>observability</strong> tells you what's actually happening in production. You want to see, sample, and score real traffic.</p>
+      <article class="svc">
+        <h3>🔭 Tracing</h3>
+        <p><span class="tag good">Capture</span> Every request: full prompt, retrieved context, tool calls, model + params, output, latency, tokens, cost. For <a href="anthropic-agents.html">agents</a>, trace the whole multi-step chain (spans) so you can see <em>where</em> it went wrong.</p>
+      </article>
+      <article class="svc">
+        <h3>📊 Online signals</h3>
+        <p><span class="tag good">Watch</span> Implicit feedback (retries, edits, thumbs, abandonment), sampled LLM-as-judge scores on live traffic, guardrail hits, and drift in latency/cost/refusal rate. Alert on regressions.</p>
+      </article>
+      <article class="svc">
+        <h3>🛡️ Guardrails</h3>
+        <p><span class="tag good">Enforce</span> Input/output checks that run in real time: PII / safety filters, schema &amp; grounding validation, refusal of out-of-scope asks. A failed guardrail is both a block <em>and</em> an eval signal. See <a href="web-ai-security.html">AI security</a>.</p>
+      </article>
+      <div class="pl-wrap">
+        <svg class="pl" viewBox="0 0 720 210" role="img" aria-labelledby="pl-title pl-desc">
+          <title id="pl-title">The evaluation and observability loop</title>
+          <desc id="pl-desc">Users hit the LLM app; every call is traced; traces feed observability and get sampled into the eval dataset; offline evals gate the next deploy — a closed loop.</desc>
+          <defs><marker id="pl-a" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" class="pl-ah"/></marker></defs>
+          <rect class="pl-alt" x="20" y="80" width="120" height="50" rx="10"/><text class="pl-t" x="80" y="102" text-anchor="middle">Users</text><text class="pl-s" x="80" y="119" text-anchor="middle">real traffic</text>
+          <path class="pl-line" d="M140,105 L182,105" marker-end="url(#pl-a)"/>
+          <rect class="pl-box" x="182" y="80" width="130" height="50" rx="10"/><text class="pl-t" x="247" y="102" text-anchor="middle">LLM app</text><text class="pl-s" x="247" y="119" text-anchor="middle">+ guardrails</text>
+          <path class="pl-line" d="M312,105 L360,105" marker-end="url(#pl-a)"/>
+          <rect class="pl-box" x="360" y="80" width="130" height="50" rx="10"/><text class="pl-t" x="425" y="102" text-anchor="middle">Trace store</text><text class="pl-s" x="425" y="119" text-anchor="middle">prompts · cost · spans</text>
+          <path class="pl-line" d="M490,105 L538,105" marker-end="url(#pl-a)"/>
+          <rect class="pl-alt" x="538" y="80" width="150" height="50" rx="10"/><text class="pl-t" x="613" y="102" text-anchor="middle">Observability</text><text class="pl-s" x="613" y="119" text-anchor="middle">dashboards · alerts</text>
+          <path class="pl-line" d="M425,80 L425,50 L247,50 L247,25" marker-end="url(#pl-a)"/><text class="pl-s" x="336" y="43" text-anchor="middle">sample failures → eval dataset</text>
+          <rect class="pl-box" x="182" y="150" width="130" height="45" rx="10"/><text class="pl-t" x="247" y="177" text-anchor="middle">Offline evals</text>
+          <path class="pl-line" d="M425,50 L425,172 L312,172" marker-end="url(#pl-a)"/>
+          <path class="pl-line" d="M247,150 L247,132" marker-end="url(#pl-a)"/><text class="pl-s" x="247" y="146" text-anchor="middle">gate deploy</text>
+        </svg>
+      </div>
+    </section>
+
+    <section id="metrics">
+      <h2><span class="pill">Metrics</span> &nbsp;What to measure</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Dimension</th><th>Example metrics</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Quality</strong></td><td>Accuracy / pass-rate, rubric score, groundedness (is it supported by context?), relevance</td></tr>
+            <tr><td><strong>Safety</strong></td><td>Hallucination rate, toxicity, PII leakage, jailbreak / refusal rate</td></tr>
+            <tr><td><strong>Task</strong></td><td>Task success, tool-call correctness, format/schema validity, citation accuracy</td></tr>
+            <tr><td><strong>Ops</strong></td><td>Latency (p50/p95), tokens &amp; cost per request, throughput, error rate</td></tr>
+            <tr><td><strong>User</strong></td><td>Thumbs up/down, edit/retry rate, abandonment, CSAT</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><strong>For RAG,</strong> split the metric: retrieval quality (did we fetch the right chunks? — recall / MRR) vs generation quality (given those chunks, was the answer grounded &amp; correct?). A bad answer from good context is a generation bug; a bad answer from bad context is a retrieval bug. See <a href="rag-cag.html">RAG</a>.</div>
+    </section>
+
+    <section id="loop">
+      <h2><span class="pill">Practice</span> &nbsp;The eval loop</h2>
+      <p>Evaluation isn't a one-off gate — it's a flywheel that ties directly to the <a href="loops.html">agent loop</a> and your release process:</p>
+      <ol>
+        <li><strong>Curate</strong> a small, representative dataset with grading criteria.</li>
+        <li><strong>Grade</strong> offline (rules + reference + judge) and set a baseline.</li>
+        <li><strong>Change</strong> one thing — prompt, model, retrieval, tool.</li>
+        <li><strong>Compare</strong> scores vs baseline; gate the deploy in CI.</li>
+        <li><strong>Observe</strong> production via tracing + sampled online evals.</li>
+        <li><strong>Feed back</strong> every failure into the dataset → go to step 2.</li>
+      </ol>
+      <div class="callout tip"><strong>Golden rule:</strong> change one variable at a time and re-score. If you tweak the prompt <em>and</em> swap the model at once, a score change tells you nothing about which one caused it.</div>
+    </section>
+
+    <section id="cheatsheet">
+      <h2>Cheat sheet</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Question</th><th>Short answer</th></tr></thead>
+          <tbody>
+            <tr><td>Why not just unit tests?</td><td>Outputs are open-ended &amp; non-deterministic — you need graded evals, not exact match.</td></tr>
+            <tr><td>Where do I start?</td><td>A small, representative, hand-labelled dataset. Grow it from real failures.</td></tr>
+            <tr><td>Offline vs online?</td><td>Offline gates deploys (pre-ship); online monitors real traffic (post-ship).</td></tr>
+            <tr><td>Grade open-ended output?</td><td>LLM-as-judge with a rubric — but validate it against humans first.</td></tr>
+            <tr><td>Observability = ?</td><td>Trace every call (prompt, context, tools, cost, latency) + dashboards + alerts.</td></tr>
+            <tr><td>Golden rule?</td><td>Change one variable at a time, then re-score against the baseline.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="b">
+          <p>1. Why can't you evaluate most LLM apps with exact-match unit tests?</p>
+          <label><input type="radio" name="q1" value="a"> Unit tests are deprecated</label>
+          <label><input type="radio" name="q1" value="b"> Outputs are open-ended and non-deterministic — many valid answers, varies per call</label>
+          <label><input type="radio" name="q1" value="c"> LLMs have no output</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>2. What's the best first step in an eval practice?</p>
+          <label><input type="radio" name="q2" value="a"> Buy the biggest GPU</label>
+          <label><input type="radio" name="q2" value="b"> Ship and hope</label>
+          <label><input type="radio" name="q2" value="c"> Curate a small, representative, labelled dataset</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>3. Offline evaluation is mainly used to…</p>
+          <label><input type="radio" name="q3" value="a"> Gate a change before shipping (compare vs baseline in CI)</label>
+          <label><input type="radio" name="q3" value="b"> Monitor live user traffic</label>
+          <label><input type="radio" name="q3" value="c"> Replace the model</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>4. Before trusting LLM-as-judge scores, you should…</p>
+          <label><input type="radio" name="q4" value="a"> Nothing — judges are always right</label>
+          <label><input type="radio" name="q4" value="b"> Validate the judge's agreement with human labels</label>
+          <label><input type="radio" name="q4" value="c"> Use the weakest model available</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>5. In production, observability primarily means…</p>
+          <label><input type="radio" name="q5" value="a"> Deleting logs</label>
+          <label><input type="radio" name="q5" value="b"> Turning off the model</label>
+          <label><input type="radio" name="q5" value="c"> Tracing every call (prompt, context, tools, cost, latency) + dashboards + alerts</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. You changed the prompt and swapped the model at the same time; the score moved. What went wrong?</p>
+          <label><input type="radio" name="q6" value="a"> Nothing — that's efficient</label>
+          <label><input type="radio" name="q6" value="b"> You changed two variables at once, so you can't attribute the change — change one at a time</label>
+          <label><input type="radio" name="q6" value="c"> Scores are meaningless</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>🎚️ Fine-tune · RAG · prompt</h4><p><a href="finetune-rag-prompt.html">Choose what to change</a> — then evaluate the change.</p></div>
+        <div class="card"><h4>🔁 Getting started with loops</h4><p><a href="loops.html">The agent loop</a> evals plug into.</p></div>
+        <div class="card"><h4>🛡️ Web &amp; AI security</h4><p><a href="web-ai-security.html">Guardrails</a> — safety as an eval signal.</p></div>
+        <div class="card"><h4>📓 All tutorials</h4><p><a href="index.html">The hub</a> — LLMs, agents, ML &amp; more.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  LLM evaluation &amp; observability — measure it, monitor it, keep it working. Every failure becomes a test. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) { root.setAttribute("data-theme", t); tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 "; tLabel.textContent = t === "dark" ? "Light" : "Dark"; }
+  var saved = null; try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () { var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark"; applyTheme(next); try { localStorage.setItem("theme", next); } catch (e) {} });
+  var menuBtn = document.getElementById("menuToggle"); var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () { var open = side.classList.toggle("open"); menuBtn.setAttribute("aria-expanded", String(open)); });
+  side.addEventListener("click", function (e) { if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); } });
+  var bar = document.getElementById("progress");
+  function onScroll() { var h = document.documentElement; var max = h.scrollHeight - h.clientHeight; bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%"; }
+  document.addEventListener("scroll", onScroll, { passive: true }); onScroll();
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a")); var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) { entries.forEach(function (en) { if (en.isIntersecting) { links.forEach(function (a) { a.classList.remove("active"); }); if (map[en.target.id]) map[en.target.id].classList.add("active"); } }); }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+  document.querySelectorAll("pre .cp").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var code = btn.parentNode.querySelector("code");
+      navigator.clipboard.writeText(code.innerText).then(function () { var old = btn.textContent; btn.textContent = "Copied!"; setTimeout(function () { btn.textContent = old; }, 1500); });
+    });
+  });
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q"); var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      q.querySelector('input[value="' + answer + '"]').parentNode.classList.add("correct");
+      if (chosen && chosen.value !== answer) chosen.parentNode.classList.add("wrong");
+      if (chosen && chosen.value === answer) score++;
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length + (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>

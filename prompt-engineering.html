@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✍️</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Prompt and context engineering — how to get the most from an LLM: prompting techniques (roles, few-shot, chain-of-thought, structured output), managing the context window, prompt caching, and the shift to context engineering for agents.">
+<title>Prompt &amp; Context Engineering</title>
+<style>
+  :root {
+    --bg: #ffffff; --bg-soft: #f5f7fa; --bg-code: #2a0f28; --text: #1a2130; --text-soft: #55617a; --border: #e2e8f0;
+    --accent: #c026d3; --ink: #a21caf;
+    --solve: #15803d; --limit: #b45309; --choose: #1e40af; --solve-bg: #dcfce7; --limit-bg: #fef3c7; --choose-bg: #dbeafe;
+    --radius: 12px; --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #0f172a; --bg-soft: #17233d; --bg-code: #250a23; --text: #e6ecf7; --text-soft: #9fb0cc; --border: #263450;
+    --accent: #f0abfc; --ink: #f5d0fe; --solve: #86efac; --limit: #fcd34d; --choose: #93c5fd; --solve-bg: #14351f; --limit-bg: #3a2a0c; --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; } html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: var(--font); color: var(--text); background: var(--bg); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  .skip-link { position: absolute; left: -999px; top: 0; background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100; }
+  .skip-link:focus { left: 0; }
+  #progress { position: fixed; top: 0; left: 0; height: 4px; width: 0%; background: linear-gradient(90deg, var(--accent), var(--ink)); z-index: 60; transition: width .1s linear; }
+  header.top { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; padding: .6rem 1rem; }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; } header.top .brand span { color: var(--accent); } header.top .spacer { flex: 1; }
+  .btn { font: inherit; cursor: pointer; border: 1px solid var(--border); background: var(--bg-soft); color: var(--text); border-radius: 999px; padding: .5rem .9rem; min-height: 44px; display: inline-flex; align-items: center; gap: .4rem; }
+  .btn:hover { border-color: var(--accent); } #menuToggle { display: none; }
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side { position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px); overflow-y: auto; padding: 1.25rem 0; font-size: .93rem; }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a { display: block; padding: .45rem .75rem; border-radius: 8px; color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent; }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); }
+  nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.12rem; margin: 1.6rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; } .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; } .callout strong { color: var(--accent); }
+  .callout.tip { border-left-color: var(--solve); } .callout.tip strong { color: var(--solve); }
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 1.25rem 0; }
+  .flow .node { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: .5rem .8rem; font-size: .86rem; font-weight: 600; }
+  .flow .node.hot { border-color: var(--accent); color: var(--accent); } .flow .arrow { color: var(--text-soft); font-weight: 700; }
+  .svc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-soft); padding: 1rem 1.2rem; margin: 1.1rem 0; }
+  .svc h3 { margin: 0 0 .5rem; } .svc p { margin: .4rem 0; font-size: .95rem; }
+  .code-wrap { margin: 1.1rem 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  pre { margin: 0; background: var(--bg-code); color: #fbe6f8; padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .84rem; line-height: 1.6; } pre code { font-family: inherit; }
+  .code-head { display: flex; align-items: center; justify-content: space-between; background: var(--bg-code); padding: .35rem .6rem .35rem 1rem; }
+  .code-head .label { color: #cf9bcb; font-size: .78rem; font-family: var(--mono); }
+  .copy { font: inherit; cursor: pointer; background: #5a2455; color: #fbe6f8; border: none; border-radius: 6px; padding: .35rem .7rem; min-height: 36px; font-size: .8rem; } .copy:hover { background: #742f6d; }
+  .cmt { color: #b98ab2; } code.inline { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; }
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; } table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; } th { background: var(--bg-soft); }
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); } details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; } .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); } .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; } [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; } #score { font-weight: 700; margin-left: 1rem; }
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; } #menuToggle { display: inline-flex; } main { padding-top: .5rem; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <a class="btn home" href="index.html" aria-label="Back to all tutorials">← All tutorials</a>
+  <div class="brand">Prompt &amp; <span>Context</span></div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#anatomy">1 · Anatomy of a prompt</a></li>
+      <li><a href="#techniques">2 · Prompting techniques</a></li>
+      <li><a href="#structured">3 · Structured output</a></li>
+      <li><a href="#context">4 · The context window</a></li>
+      <li><a href="#caching">5 · Prompt caching</a></li>
+      <li><a href="#contexteng">6 · Context engineering</a></li>
+      <li><a href="#cheatsheet">Cheat sheet</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>Prompt &amp; context engineering</h1>
+      <p class="lede">The model is fixed; the one thing you control is <strong>what goes into the context window</strong>. <em>Prompt engineering</em> is crafting that input for a single call; <em>context engineering</em> is managing everything the model sees across a whole task or agent run. Both are about getting a next-token predictor to produce exactly what you need.</p>
+      <div class="callout"><strong>The core skill.</strong> Be specific, give examples, show the format you want, and supply the right context — no more, no less. Vague in, vague out.</div>
+    </section>
+
+    <section id="anatomy">
+      <h2><span class="pill">Basics</span> &nbsp;Anatomy of a prompt</h2>
+      <p>Most prompts have the same parts. Naming them helps you write better ones:</p>
+      <div class="cards">
+        <div class="card"><h4>🎭 Role / system</h4><p>Who the model should be and its rules ("You are a careful support agent…").</p></div>
+        <div class="card"><h4>🎯 Task</h4><p>The specific instruction — clear, unambiguous, one job.</p></div>
+        <div class="card"><h4>📎 Context</h4><p>The data it needs: documents, examples, prior turns.</p></div>
+        <div class="card"><h4>📐 Format</h4><p>Exactly how to answer — length, structure, JSON schema.</p></div>
+      </div>
+      <div class="callout tip"><strong>Biggest wins, in order:</strong> be specific about the task → show the desired output format → give a few examples → supply only the relevant context.</div>
+    </section>
+
+    <section id="techniques">
+      <h2><span class="pill">Toolbox</span> &nbsp;Prompting techniques</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Technique</th><th>What &amp; when</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Zero-shot</strong></td><td>Just ask. Fine for simple, well-known tasks.</td></tr>
+            <tr><td><strong>Few-shot</strong></td><td>Show 2–5 input→output examples so the model matches the pattern &amp; format.</td></tr>
+            <tr><td><strong>Role / persona</strong></td><td>Set expertise &amp; tone in the system prompt.</td></tr>
+            <tr><td><strong>Chain-of-thought</strong></td><td>Ask it to reason step by step before answering — better on multi-step problems.</td></tr>
+            <tr><td><strong>Decomposition</strong></td><td>Break a big task into smaller prompts/steps (see <a href="anthropic-agents.html">prompt chaining</a>).</td></tr>
+            <tr><td><strong>Give an "out"</strong></td><td>Let it say "I don't know" to curb hallucination.</td></tr>
+            <tr><td><strong>Delimiters</strong></td><td>Fence untrusted input (quotes/XML tags) so instructions and data don't blur.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">few-shot + role + format, in one prompt</span><button class="copy">Copy</button></div>
+<pre><code>System: You classify support tickets. Reply with ONE word: refund | tech | sales.
+
+<span class="cmt"># few-shot examples set the pattern</span>
+"My card was charged twice"      → refund
+"The app crashes on login"       → tech
+"Do you offer volume discounts?" → sales
+
+<span class="cmt"># the real input, fenced so it can't inject instructions</span>
+"&lt;ticket&gt;I can't reset my password&lt;/ticket&gt;" →</code></pre>
+      </div>
+    </section>
+
+    <section id="structured">
+      <h2><span class="pill">Reliability</span> &nbsp;Structured output</h2>
+      <p>For anything a program will consume, don't parse prose — ask for <strong>JSON</strong> and, ideally, enforce a <strong>schema</strong>. Modern APIs support structured outputs / tool schemas that <em>guarantee</em> valid JSON, so you get typed data instead of "please output JSON" and hoping.</p>
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">ask for a schema, not prose</span><button class="copy">Copy</button></div>
+<pre><code>Extract the order into this exact JSON (no prose):
+{ "id": string, "total": number, "status": "paid" | "pending" | "refunded" }
+
+<span class="cmt"># Better: use the API's structured-output / tool-schema feature so the</span>
+<span class="cmt"># response is GUARANTEED to match — no fragile string parsing.</span></code></pre>
+      </div>
+    </section>
+
+    <section id="context">
+      <h2><span class="pill">The budget</span> &nbsp;The context window</h2>
+      <p>Everything the model uses shares one <strong>token budget</strong>: system prompt + instructions + examples + retrieved data + conversation history + the output. Overflow it and older content is dropped or the call fails.</p>
+      <div class="flow">
+        <span class="node">system</span><span class="arrow">+</span>
+        <span class="node">instructions</span><span class="arrow">+</span>
+        <span class="node hot">context / RAG</span><span class="arrow">+</span>
+        <span class="node">history</span><span class="arrow">+</span>
+        <span class="node">output</span><span class="arrow">≤</span>
+        <span class="node hot">context window</span>
+      </div>
+      <div class="callout"><strong>More context isn't always better.</strong> Irrelevant or excessive context adds cost, latency, and "lost-in-the-middle" errors (models attend less to the middle of long inputs). Curate: retrieve the <em>relevant</em> chunks, summarize history, drop the rest.</div>
+    </section>
+
+    <section id="caching">
+      <h2><span class="pill">Save cost</span> &nbsp;Prompt caching</h2>
+      <p>If a large chunk of your prompt is <em>the same</em> every call — a long system prompt, a policy doc, few-shot examples — <strong>prompt caching</strong> stores the model's processed state for that prefix so repeat calls skip re-processing it: much cheaper and faster.</p>
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">cache a stable prefix (Anthropic-style)</span><button class="copy">Copy</button></div>
+<pre><code>system=[{
+  "type": "text",
+  "text": LONG_STABLE_INSTRUCTIONS_AND_EXAMPLES,
+  "cache_control": {"type": "ephemeral"}     <span class="cmt"># cache this prefix</span>
+}]
+<span class="cmt"># put stable content first (cached), variable content last — big savings at volume</span></code></pre>
+      </div>
+      <div class="callout tip"><strong>Structure for the cache:</strong> stable stuff first (cached), variable stuff last. This is also the mechanism behind CAG — see <a href="rag-cag.html">RAG vs CAG</a>.</div>
+    </section>
+
+    <section id="contexteng">
+      <h2><span class="pill">The frontier</span> &nbsp;From prompt to context engineering</h2>
+      <p>For a single call you write a <em>prompt</em>. For an <strong>agent</strong> running many steps, the harder problem is <strong>context engineering</strong>: deciding what the model sees at <em>each</em> step as history grows — what to keep, retrieve, summarize, or drop, and how to structure tools and memory.</p>
+      <div class="cards">
+        <div class="card"><h4>✂️ Curate</h4><p>Feed only what's relevant now; retrieve on demand (RAG) instead of stuffing everything.</p></div>
+        <div class="card"><h4>🗜️ Compact</h4><p>Summarize old turns / tool output so history doesn't blow the budget.</p></div>
+        <div class="card"><h4>🧠 Remember</h4><p>Persist durable facts to a memory store, not the running context.</p></div>
+        <div class="card"><h4>🛠️ Shape tools</h4><p>Clear tool names &amp; descriptions <em>are</em> prompts — the model reads them to decide.</p></div>
+      </div>
+      <div class="callout"><strong>The shift.</strong> As models and agents get more capable, the leverage moves from clever wording to <em>managing the context</em> — which is why "context engineering" is now the frontier skill (and a key job of the <a href="agent-engineering.html">harness engineer</a>).</div>
+    </section>
+
+    <section id="cheatsheet">
+      <h2>Cheat sheet</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Question</th><th>Short answer</th></tr></thead>
+          <tbody>
+            <tr><td>Prompt vs context engineering?</td><td>Prompt = one call's input; context = everything the model sees across a task/agent run.</td></tr>
+            <tr><td>Highest-leverage habit?</td><td>Be specific + show the exact output format.</td></tr>
+            <tr><td>When to use few-shot?</td><td>To lock a pattern/format the model keeps getting wrong.</td></tr>
+            <tr><td>Machine-readable output?</td><td>Ask for JSON with a schema; use structured-output APIs.</td></tr>
+            <tr><td>Is more context better?</td><td>No — relevant &amp; concise beats big; watch lost-in-the-middle.</td></tr>
+            <tr><td>Repeating a big prefix?</td><td>Prompt caching — stable content first, variable last.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions on prompting &amp; context. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="b">
+          <p>1. What's the difference between prompt and context engineering?</p>
+          <label><input type="radio" name="q1" value="a"> They're identical</label>
+          <label><input type="radio" name="q1" value="b"> Prompt = crafting one call's input; context engineering = managing everything the model sees across a task/agent run</label>
+          <label><input type="radio" name="q1" value="c"> Context engineering is only for images</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>2. What is few-shot prompting?</p>
+          <label><input type="radio" name="q2" value="a"> Asking many models at once</label>
+          <label><input type="radio" name="q2" value="b"> Using a smaller model</label>
+          <label><input type="radio" name="q2" value="c"> Including a few input→output examples so the model matches the pattern</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>3. For output a program will parse, you should…</p>
+          <label><input type="radio" name="q3" value="a"> Ask for JSON with a schema (ideally via structured-output APIs)</label>
+          <label><input type="radio" name="q3" value="b"> Ask for a long essay</label>
+          <label><input type="radio" name="q3" value="c"> Hope it formats correctly</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>4. Is stuffing more context always better?</p>
+          <label><input type="radio" name="q4" value="a"> Yes, always</label>
+          <label><input type="radio" name="q4" value="b"> No — irrelevant/excess context adds cost, latency and "lost-in-the-middle" errors</label>
+          <label><input type="radio" name="q4" value="c"> Context doesn't affect output</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>5. What does prompt caching save on?</p>
+          <label><input type="radio" name="q5" value="a"> Disk space only</label>
+          <label><input type="radio" name="q5" value="b"> Nothing</label>
+          <label><input type="radio" name="q5" value="c"> Cost &amp; latency — by not re-processing a stable prompt prefix each call</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. Why does context engineering matter for agents?</p>
+          <label><input type="radio" name="q6" value="a"> It makes the model bigger</label>
+          <label><input type="radio" name="q6" value="b"> As history grows across steps, you must curate/compact what the model sees each turn</label>
+          <label><input type="radio" name="q6" value="c"> It replaces the need for tools</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>🧠 How LLMs work</h4><p><a href="transformers.html">The model underneath</a> — why context &amp; tokens are the levers.</p></div>
+        <div class="card"><h4>🔎 RAG vs CAG</h4><p><a href="rag-cag.html">Grounding</a> — the biggest source of good context.</p></div>
+        <div class="card"><h4>🛠️ Harness vs Loop vs Graph</h4><p><a href="agent-engineering.html">Context engineering</a> as the harness engineer's craft.</p></div>
+        <div class="card"><h4>📓 All tutorials</h4><p><a href="index.html">The hub</a> — LLMs, agents, ML &amp; more.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  Prompt &amp; context engineering — crafting input and managing what the model sees. Techniques evolve; confirm API features against current docs. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) { root.setAttribute("data-theme", t); tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 "; tLabel.textContent = t === "dark" ? "Light" : "Dark"; }
+  var saved = null; try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () { var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark"; applyTheme(next); try { localStorage.setItem("theme", next); } catch (e) {} });
+  var menuBtn = document.getElementById("menuToggle"); var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () { var open = side.classList.toggle("open"); menuBtn.setAttribute("aria-expanded", String(open)); });
+  side.addEventListener("click", function (e) { if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); } });
+  var bar = document.getElementById("progress");
+  function onScroll() { var h = document.documentElement; var max = h.scrollHeight - h.clientHeight; bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%"; }
+  document.addEventListener("scroll", onScroll, { passive: true }); onScroll();
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a")); var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) { entries.forEach(function (en) { if (en.isIntersecting) { links.forEach(function (a) { a.classList.remove("active"); }); if (map[en.target.id]) map[en.target.id].classList.add("active"); } }); }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var wrap = btn.closest(".code-wrap"); var pre = wrap.querySelector("pre"); var text = pre ? pre.innerText : "";
+      var done = function () { var o = btn.textContent; btn.textContent = "Copied!"; setTimeout(function () { btn.textContent = o; }, 1400); };
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, done); }
+      else { var ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch (e) {} document.body.removeChild(ta); done(); }
+    });
+  });
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q"); var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      q.querySelector('input[value="' + answer + '"]').parentNode.classList.add("correct");
+      if (chosen && chosen.value !== answer) chosen.parentNode.classList.add("wrong");
+      if (chosen && chosen.value === answer) score++;
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length + (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>

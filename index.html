@@ -19,18 +19,23 @@
     --maxw: 960px;
     /* per-tutorial accents */
     --llm: #4f46e5;   /* indigo  */
+    --xfmr: #7c3aed;  /* violet (transformers) */
+    --prompt: #c026d3;/* fuchsia (prompt engineering) */
     --emb: #047857;   /* emerald */
     --tf:  #ea580c;   /* orange (TensorFlow) */
     --pt:  #be123c;   /* crimson (PyTorch)   */
     --lab: #9a3412;   /* rust (CV lab)       */
     --yolo: #7c3aed;  /* violet (YOLO/LS)    */
     --rag: #be185d;   /* rose    */
+    --ftrag: #9333ea; /* purple (fine-tune vs RAG vs prompt) */
     --vdb: #7e22ce;   /* purple  */
     --lci: #a16207;   /* gold    */
+    --eval: #15803d;  /* green (LLM evaluation) */
     --adk: #0f766e;   /* teal    */
     --ant: #a3502a;   /* clay (Anthropic) */
     --goo: #2563eb;   /* blue (Google)    */
     --loop: #475569;  /* slate   */
+    --eng: #57534e;   /* stone (agent engineering) */
     --net: #4d7c0f;   /* lime    */
     --api: #0369a1;   /* sky     */
     --mcp: #4338ca;   /* indigo (build MCP) */
@@ -55,18 +60,23 @@
     --accent: #a5b4fc;
     --ink: #a5b4fc;
     --llm: #a5b4fc;
+    --xfmr: #c4b5fd;
+    --prompt: #f0abfc;
     --emb: #6ee7b7;
     --tf:  #fb923c;
     --pt:  #fb7185;
     --lab: #fdba74;
     --yolo: #a78bfa;
     --rag: #f472b6;
+    --ftrag: #d8b4fe;
     --vdb: #d8b4fe;
     --lci: #fbbf24;
+    --eval: #86efac;
     --adk: #5eead4;
     --ant: #f4b48f;
     --goo: #60a5fa;
     --loop: #94a3b8;
+    --eng: #a8a29e;
     --net: #a3e635;
     --api: #7dd3fc;
     --mcp: #c7d2fe;
@@ -140,18 +150,23 @@
     outline: none;
   }
   .tile.llm { --tile: var(--llm); }
+  .tile.xfmr { --tile: var(--xfmr); }
+  .tile.prompt { --tile: var(--prompt); }
   .tile.emb { --tile: var(--emb); }
   .tile.tf  { --tile: var(--tf); }
   .tile.pt  { --tile: var(--pt); }
   .tile.lab { --tile: var(--lab); }
   .tile.yolo { --tile: var(--yolo); }
   .tile.rag { --tile: var(--rag); }
+  .tile.ftrag { --tile: var(--ftrag); }
   .tile.vdb { --tile: var(--vdb); }
   .tile.lci { --tile: var(--lci); }
+  .tile.eval { --tile: var(--eval); }
   .tile.adk { --tile: var(--adk); }
   .tile.ant { --tile: var(--ant); }
   .tile.goo { --tile: var(--goo); }
   .tile.loop { --tile: var(--loop); }
+  .tile.eng { --tile: var(--eng); }
   .tile.net { --tile: var(--net); }
   .tile.api { --tile: var(--api); }
   .tile.mcp { --tile: var(--mcp); }
@@ -182,18 +197,23 @@
     background: var(--step, var(--accent)); color: #fff;
   }
   .path li.llm { --step: var(--llm); }
+  .path li.xfmr { --step: var(--xfmr); }
+  .path li.prompt { --step: var(--prompt); }
   .path li.emb { --step: var(--emb); }
   .path li.tf  { --step: var(--tf); }
   .path li.pt  { --step: var(--pt); }
   .path li.lab { --step: var(--lab); }
   .path li.yolo { --step: var(--yolo); }
   .path li.rag { --step: var(--rag); }
+  .path li.ftrag { --step: var(--ftrag); }
   .path li.vdb { --step: var(--vdb); }
   .path li.lci { --step: var(--lci); }
+  .path li.eval { --step: var(--eval); }
   .path li.adk { --step: var(--adk); }
   .path li.ant { --step: var(--ant); }
   .path li.goo { --step: var(--goo); }
   .path li.loop { --step: var(--loop); }
+  .path li.eng { --step: var(--eng); }
   .path li.net { --step: var(--net); }
   .path li.api { --step: var(--api); }
   .path li.mcp { --step: var(--mcp); }
@@ -246,7 +266,7 @@
   <div class="hero">
     <p class="eyebrow">Interactive tutorials</p>
     <h1>Build with LLMs, agents &amp; AWS</h1>
-    <p>Twenty-five self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
+    <p>Thirty self-contained, hands-on guides — from the transformer under the hood to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
   </div>
 
   <div class="search" role="search">
@@ -263,6 +283,20 @@
         <h3>Building LLM Applications</h3>
         <p>LangChain, LangGraph &amp; LangSmith organized around the three problems you hit as an app grows: glue code, non-linear logic, and observability. Includes RAG, a full agent, and a support-agent capstone.</p>
         <span class="go">Start learning</span>
+      </a>
+
+      <a class="tile xfmr" href="transformers.html">
+        <div class="top"><span class="ico">🧠</span><span class="kicker">Under the hood</span></div>
+        <h3>How LLMs &amp; Transformers Work</h3>
+        <p>The forward pass, end to end: tokenization, embeddings, self-attention, the transformer block, and how sampling turns logits into the next token — the machinery every LLM app sits on top of.</p>
+        <span class="go">See inside the model</span>
+      </a>
+
+      <a class="tile prompt" href="prompt-engineering.html">
+        <div class="top"><span class="ico">✍️</span><span class="kicker">Core skill</span></div>
+        <h3>Prompt &amp; Context Engineering</h3>
+        <p>Get the most from a model without training it: prompt anatomy, few-shot &amp; chain-of-thought, structured output, prompt caching, and context engineering — what to put in the window and what to leave out.</p>
+        <span class="go">Write better prompts</span>
       </a>
 
       <a class="tile emb" href="embeddings.html">
@@ -307,6 +341,13 @@
         <span class="go">Compare methods</span>
       </a>
 
+      <a class="tile ftrag" href="finetune-rag-prompt.html">
+        <div class="top"><span class="ico">🎚️</span><span class="kicker">Decision guide</span></div>
+        <h3>Fine-tuning vs RAG vs Prompting</h3>
+        <p>Three levers to adapt a model — and which to pull when: prompting changes how you ask, RAG changes what it knows now, fine-tuning changes how it behaves. A decision flow, trade-offs, and how to combine them.</p>
+        <span class="go">Choose the lever</span>
+      </a>
+
       <a class="tile vdb" href="vector-databases.html">
         <div class="top"><span class="ico">🗄️</span><span class="kicker">Vector store</span></div>
         <h3>Vector Databases Compared</h3>
@@ -319,6 +360,13 @@
         <h3>LangChain vs LlamaIndex</h3>
         <p>Which framework to build on: LangChain's breadth (agents, orchestration) vs LlamaIndex's depth on data (ingestion, indexing, retrieval) — where they overlap on RAG, and when to use each or both.</p>
         <span class="go">Compare frameworks</span>
+      </a>
+
+      <a class="tile eval" href="llm-evaluation.html">
+        <div class="top"><span class="ico">🧪</span><span class="kicker">Quality &amp; ops</span></div>
+        <h3>LLM Evaluation &amp; Observability</h3>
+        <p>Prove it works and keep it working: eval datasets, offline vs online evals, LLM-as-judge, tracing &amp; observability, what to measure, and the eval loop that turns every failure into a permanent test.</p>
+        <span class="go">Measure &amp; monitor</span>
       </a>
 
       <a class="tile adk" href="adk.html">
@@ -347,6 +395,13 @@
         <h3>Getting Started with Loops</h3>
         <p>Designing agents that repeat cycles of work until a stop condition: the anatomy (trigger · stop · primitive), the four loop types (turn / goal / time / proactive), a worked example, and best practices.</p>
         <span class="go">Engineer loops</span>
+      </a>
+
+      <a class="tile eng" href="agent-engineering.html">
+        <div class="top"><span class="ico">🛠️</span><span class="kicker">Agent engineering</span></div>
+        <h3>Harness vs Loop vs Graph</h3>
+        <p>Three mindsets for building agents on the control-vs-autonomy spectrum: explicit graphs (you draw the flow), agentic loops (you set the cycle), and model-driven harnesses (the model drives) — trade-offs and how they compose.</p>
+        <span class="go">Compare mindsets</span>
       </a>
 
       <a class="tile net" href="rest-graphql-grpc.html">
@@ -448,6 +503,14 @@
         <h3><a href="llm-apps.html">Building LLM Applications</a></h3>
         <p>Start with the fundamentals — chains, RAG, stateful agents, and tracing. Everything else assumes this vocabulary.</p>
       </li>
+      <li class="xfmr">
+        <h3><a href="transformers.html">How LLMs &amp; Transformers Work</a></h3>
+        <p>Look under the hood — tokens, embeddings, attention and sampling — so the rest stops being a black box.</p>
+      </li>
+      <li class="prompt">
+        <h3><a href="prompt-engineering.html">Prompt &amp; Context Engineering</a></h3>
+        <p>The highest-leverage skill — steer the model with instructions, examples and the right context before reaching for anything heavier.</p>
+      </li>
       <li class="emb">
         <h3><a href="embeddings.html">How Embedding Models Work</a></h3>
         <p>Understand the vectors under the hood — what retrieval and semantic search are actually built on.</p>
@@ -472,6 +535,10 @@
         <h3><a href="rag-cag.html">RAG vs CAG vs GraphRAG</a></h3>
         <p>Go deep on grounding — how to get your data into the model reliably, and which retrieval method fits which corpus and question.</p>
       </li>
+      <li class="ftrag">
+        <h3><a href="finetune-rag-prompt.html">Fine-tuning vs RAG vs Prompting</a></h3>
+        <p>Zoom out on the levers — when to prompt, when to retrieve, when to fine-tune, and how they stack together.</p>
+      </li>
       <li class="vdb">
         <h3><a href="vector-databases.html">Vector Databases Compared</a></h3>
         <p>Where the vectors are stored and searched — from a one-line library to a distributed cluster.</p>
@@ -479,6 +546,10 @@
       <li class="lci">
         <h3><a href="langchain-vs-llamaindex.html">LangChain vs LlamaIndex</a></h3>
         <p>Pick the framework to build on — orchestration-first (LangChain) or data/RAG-first (LlamaIndex), and when to combine them.</p>
+      </li>
+      <li class="eval">
+        <h3><a href="llm-evaluation.html">LLM Evaluation &amp; Observability</a></h3>
+        <p>Before you scale up to agents — learn to measure and monitor quality, so every later change is provable, not a guess.</p>
       </li>
       <li class="adk">
         <h3><a href="adk.html">Agent Development Kits</a></h3>
@@ -495,6 +566,10 @@
       <li class="loop">
         <h3><a href="loops.html">Getting Started with Loops</a></h3>
         <p>Put agents to work unattended — trigger, verify, stop — with the four loop types and their guardrails.</p>
+      </li>
+      <li class="eng">
+        <h3><a href="agent-engineering.html">Harness vs Loop vs Graph</a></h3>
+        <p>Step back — the three engineering mindsets for agents and when to impose structure vs trust the model.</p>
       </li>
       <li class="net">
         <h3><a href="rest-graphql-grpc.html">REST vs GraphQL vs gRPC</a></h3>
@@ -549,7 +624,7 @@
 </main>
 
 <footer>
-  Twenty-five interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
+  Thirty interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
 </footer>
 
 <script>

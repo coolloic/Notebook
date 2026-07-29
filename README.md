@@ -511,14 +511,18 @@ Runnable scaffolds for each agentic AI design pattern (from Google Cloud's *Choo
 
 - **[📓 Interactive tutorial hub](index.html)** — the landing page linking all four browser-based tutorials (LLM apps, agent kits, AWS services, IoT × agents) with a suggested reading order.
 - **[Building LLM Applications](llm-apps.html)** — the interactive version of this guide: LangChain, LangGraph &amp; LangSmith with RAG, a full agent, and a support-agent capstone.
+- **[How LLMs &amp; Transformers Work](transformers.html)** — the forward pass end to end: tokenization, embeddings, self-attention, the transformer block, and how sampling turns logits into the next token.
+- **[Prompt &amp; Context Engineering](prompt-engineering.html)** — getting the most from a model without training it: prompt anatomy, few-shot &amp; chain-of-thought, structured output, prompt caching, and context engineering.
 - **[How Embedding Models Work](embeddings.html)** — turning text into vectors: what an embedding is, how models learn the space, similarity metrics, and how to choose &amp; use one well.
 - **[TensorFlow](tensorflow.html)** — Google's end-to-end ML platform: the problem it solves, how it works (tensors, Keras, autodiff), its deployment reach, limits, and vs PyTorch/JAX.
 - **[PyTorch](pytorch.html)** — the research-favorite deep-learning framework: dynamic graphs, autograd, training loops, ecosystem, limits, and when to pick it over TensorFlow.
 - **[Lab: Train a Licence Recognizer](license-ml-lab.html)** — a from-scratch, no-ML-experience hands-on lab: label images, train YOLO weights, detect &amp; OCR NZ/AU driver-licence fields, and serve an API — with privacy/compliance guardrails.
 - **[How YOLO &amp; Label Studio Work](yolo-label-studio.html)** — the two tools behind the lab explained: YOLO's one-pass detection architecture (backbone/neck/head/NMS) and the Ultralytics API, Label Studio's labeling config &amp; YOLO export, and the label↔train loop.
 - **[RAG vs CAG vs GraphRAG](rag-cag.html)** — the grounding problem each technique solves, when to use each, when to mix them, and the wider family (hybrid search, reranking, HyDE, Agentic/Corrective/Self-RAG, Contextual Retrieval).
+- **[Fine-tuning vs RAG vs Prompting](finetune-rag-prompt.html)** — three levers to adapt a model and which to pull when: prompting (how you ask), RAG (what it knows now), fine-tuning (how it behaves) — a decision flow, trade-offs, and how to combine them.
 - **[Vector Databases Compared](vector-databases.html)** — the ANN search problem, how vector stores work, and Chroma vs FAISS vs Qdrant vs Pinecone vs pgvector vs Weaviate vs Milvus, with a landscape map and when to choose which.
 - **[LangChain vs LlamaIndex](langchain-vs-llamaindex.html)** — the framework-choice question: LangChain's orchestration/agent breadth vs LlamaIndex's data/RAG depth, the same RAG both ways, and when to use each or both.
+- **[LLM Evaluation &amp; Observability](llm-evaluation.html)** — proving an LLM app works and keeping it working: eval datasets, offline vs online evals, LLM-as-judge, tracing &amp; observability, what to measure, and the eval loop.
 - **[REST vs GraphQL vs gRPC](rest-graphql-grpc.html)** — three API styles compared: the problem each solves, their limits, the same request three ways, and when to choose which.
 - **[Build MCP From Scratch](mcp-build.html)** — the hands-on companion to APIs-vs-MCP: build an MCP server (the app that exposes tools/resources/prompts) and an MCP client/task that consumes them, with examples, scenarios, and how to run &amp; connect them.
 - **[APIs vs MCP](api-mcp.html)** — how agents connect to tools: the M×N problem MCP solves, how it works, a direct comparison, and when to use each.
@@ -534,6 +538,7 @@ Runnable scaffolds for each agentic AI design pattern (from Google Cloud's *Choo
 - **[Anthropic Agent Architectures](anthropic-agents.html)** — from *Building Effective Agents*: the augmented LLM, the five workflow patterns, and the autonomous agent loop, with when to use each.
 - **[Google Agent Design Patterns](google-agent-patterns.html)** — Google Cloud's taxonomy by who decides the route: predetermined (sequential/parallel/loop) vs dynamic (coordinator/hierarchical/swarm), plus human-in-the-loop.
 - **[Getting Started with Loops](loops.html)** — loop engineering: agents that repeat cycles until a stop condition — the anatomy (trigger/stop/primitive), the four loop types (turn/goal/time/proactive), and best practices.
+- **[Harness vs Loop vs Graph Engineer](agent-engineering.html)** — three mindsets for building agents on the control-vs-autonomy spectrum: explicit graphs, agentic loops, and model-driven harnesses — trade-offs and how they compose.
 - **[IoT × Agents: a self-restocking fridge](iot-agent.html)** — an end-to-end example wiring AWS IoT Core to a Strands agent on Bedrock AgentCore, with architecture, code, and the guardrails auto-purchasing needs.
 - LangChain docs — https://python.langchain.com / https://js.langchain.com
 - LangGraph docs — https://langchain-ai.github.io/langgraph/
