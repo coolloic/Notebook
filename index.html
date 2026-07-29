@@ -23,6 +23,7 @@
     --tf:  #ea580c;   /* orange (TensorFlow) */
     --pt:  #be123c;   /* crimson (PyTorch)   */
     --rag: #be185d;   /* rose    */
+    --vdb: #7e22ce;   /* purple  */
     --lci: #a16207;   /* gold    */
     --adk: #0f766e;   /* teal    */
     --ant: #a3502a;   /* clay (Anthropic) */
@@ -50,6 +51,7 @@
     --tf:  #fb923c;
     --pt:  #fb7185;
     --rag: #f472b6;
+    --vdb: #d8b4fe;
     --lci: #fbbf24;
     --adk: #5eead4;
     --ant: #f4b48f;
@@ -126,6 +128,7 @@
   .tile.tf  { --tile: var(--tf); }
   .tile.pt  { --tile: var(--pt); }
   .tile.rag { --tile: var(--rag); }
+  .tile.vdb { --tile: var(--vdb); }
   .tile.lci { --tile: var(--lci); }
   .tile.adk { --tile: var(--adk); }
   .tile.ant { --tile: var(--ant); }
@@ -159,6 +162,7 @@
   .path li.tf  { --step: var(--tf); }
   .path li.pt  { --step: var(--pt); }
   .path li.rag { --step: var(--rag); }
+  .path li.vdb { --step: var(--vdb); }
   .path li.lci { --step: var(--lci); }
   .path li.adk { --step: var(--adk); }
   .path li.ant { --step: var(--ant); }
@@ -210,7 +214,7 @@
   <div class="hero">
     <p class="eyebrow">Interactive tutorials</p>
     <h1>Build with LLMs, agents &amp; AWS</h1>
-    <p>Sixteen self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
+    <p>Seventeen self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
   </div>
 
   <div class="search" role="search">
@@ -255,6 +259,13 @@
         <h3>RAG vs CAG vs GraphRAG</h3>
         <p>How to ground a model in your data: retrieve at query time (RAG), preload &amp; cache a small stable corpus (CAG), when to mix them, and GraphRAG plus the wider family (hybrid, reranking, HyDE, Agentic/Corrective/Self-RAG).</p>
         <span class="go">Compare methods</span>
+      </a>
+
+      <a class="tile vdb" href="vector-databases.html">
+        <div class="top"><span class="ico">🗄️</span><span class="kicker">Vector store</span></div>
+        <h3>Vector Databases Compared</h3>
+        <p>Where embeddings live and how nearest-neighbour search works — the ANN problem, then Chroma, FAISS, Qdrant, Pinecone, pgvector, Weaviate &amp; Milvus compared, with a landscape map and when to choose which.</p>
+        <span class="go">Compare stores</span>
       </a>
 
       <a class="tile lci" href="langchain-vs-llamaindex.html">
@@ -365,6 +376,10 @@
         <h3><a href="rag-cag.html">RAG vs CAG vs GraphRAG</a></h3>
         <p>Go deep on grounding — how to get your data into the model reliably, and which retrieval method fits which corpus and question.</p>
       </li>
+      <li class="vdb">
+        <h3><a href="vector-databases.html">Vector Databases Compared</a></h3>
+        <p>Where the vectors are stored and searched — from a one-line library to a distributed cluster.</p>
+      </li>
       <li class="lci">
         <h3><a href="langchain-vs-llamaindex.html">LangChain vs LlamaIndex</a></h3>
         <p>Pick the framework to build on — orchestration-first (LangChain) or data/RAG-first (LlamaIndex), and when to combine them.</p>
@@ -414,7 +429,7 @@
 </main>
 
 <footer>
-  Sixteen interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
+  Seventeen interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
 </footer>
 
 <script>

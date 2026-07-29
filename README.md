@@ -515,6 +515,7 @@ Runnable scaffolds for each agentic AI design pattern (from Google Cloud's *Choo
 - **[TensorFlow](tensorflow.html)** — Google's end-to-end ML platform: the problem it solves, how it works (tensors, Keras, autodiff), its deployment reach, limits, and vs PyTorch/JAX.
 - **[PyTorch](pytorch.html)** — the research-favorite deep-learning framework: dynamic graphs, autograd, training loops, ecosystem, limits, and when to pick it over TensorFlow.
 - **[RAG vs CAG vs GraphRAG](rag-cag.html)** — the grounding problem each technique solves, when to use each, when to mix them, and the wider family (hybrid search, reranking, HyDE, Agentic/Corrective/Self-RAG, Contextual Retrieval).
+- **[Vector Databases Compared](vector-databases.html)** — the ANN search problem, how vector stores work, and Chroma vs FAISS vs Qdrant vs Pinecone vs pgvector vs Weaviate vs Milvus, with a landscape map and when to choose which.
 - **[LangChain vs LlamaIndex](langchain-vs-llamaindex.html)** — the framework-choice question: LangChain's orchestration/agent breadth vs LlamaIndex's data/RAG depth, the same RAG both ways, and when to use each or both.
 - **[REST vs GraphQL vs gRPC](rest-graphql-grpc.html)** — three API styles compared: the problem each solves, their limits, the same request three ways, and when to choose which.
 - **[APIs vs MCP](api-mcp.html)** — how agents connect to tools: the M×N problem MCP solves, how it works, a direct comparison, and when to use each.
