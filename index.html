@@ -22,6 +22,7 @@
     --emb: #047857;   /* emerald */
     --tf:  #ea580c;   /* orange (TensorFlow) */
     --pt:  #be123c;   /* crimson (PyTorch)   */
+    --lab: #9a3412;   /* rust (CV lab)       */
     --rag: #be185d;   /* rose    */
     --vdb: #7e22ce;   /* purple  */
     --lci: #a16207;   /* gold    */
@@ -32,6 +33,7 @@
     --net: #4d7c0f;   /* lime    */
     --api: #0369a1;   /* sky     */
     --web: #a21caf;   /* fuchsia */
+    --sec: #3730a3;   /* indigo (security) */
     --n8n: #dc2626;   /* red     */
     --cn:  #0e7490;   /* cyan    */
     --aws: #d9701a;   /* orange  */
@@ -51,6 +53,7 @@
     --emb: #6ee7b7;
     --tf:  #fb923c;
     --pt:  #fb7185;
+    --lab: #fdba74;
     --rag: #f472b6;
     --vdb: #d8b4fe;
     --lci: #fbbf24;
@@ -61,6 +64,7 @@
     --net: #a3e635;
     --api: #7dd3fc;
     --web: #f0abfc;
+    --sec: #818cf8;
     --n8n: #f87171;
     --cn:  #67e8f9;
     --aws: #f0a35e;
@@ -129,6 +133,7 @@
   .tile.emb { --tile: var(--emb); }
   .tile.tf  { --tile: var(--tf); }
   .tile.pt  { --tile: var(--pt); }
+  .tile.lab { --tile: var(--lab); }
   .tile.rag { --tile: var(--rag); }
   .tile.vdb { --tile: var(--vdb); }
   .tile.lci { --tile: var(--lci); }
@@ -139,6 +144,7 @@
   .tile.net { --tile: var(--net); }
   .tile.api { --tile: var(--api); }
   .tile.web { --tile: var(--web); }
+  .tile.sec { --tile: var(--sec); }
   .tile.n8n { --tile: var(--n8n); }
   .tile.cn  { --tile: var(--cn); }
   .tile.aws { --tile: var(--aws); }
@@ -164,6 +170,7 @@
   .path li.emb { --step: var(--emb); }
   .path li.tf  { --step: var(--tf); }
   .path li.pt  { --step: var(--pt); }
+  .path li.lab { --step: var(--lab); }
   .path li.rag { --step: var(--rag); }
   .path li.vdb { --step: var(--vdb); }
   .path li.lci { --step: var(--lci); }
@@ -174,6 +181,7 @@
   .path li.net { --step: var(--net); }
   .path li.api { --step: var(--api); }
   .path li.web { --step: var(--web); }
+  .path li.sec { --step: var(--sec); }
   .path li.n8n { --step: var(--n8n); }
   .path li.cn  { --step: var(--cn); }
   .path li.aws { --step: var(--aws); }
@@ -218,7 +226,7 @@
   <div class="hero">
     <p class="eyebrow">Interactive tutorials</p>
     <h1>Build with LLMs, agents &amp; AWS</h1>
-    <p>Eighteen self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
+    <p>Twenty self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
   </div>
 
   <div class="search" role="search">
@@ -256,6 +264,13 @@
         <h3>PyTorch</h3>
         <p>The research-favorite framework: dynamic, pythonic define-by-run graphs, autograd, explicit training loops, the Hugging Face ecosystem, its limits, and when to pick it over TensorFlow.</p>
         <span class="go">Learn PyTorch</span>
+      </a>
+
+      <a class="tile lab" href="license-ml-lab.html">
+        <div class="top"><span class="ico">🪪</span><span class="kicker">Hands-on CV lab</span></div>
+        <h3>Lab: Train a Licence Recognizer</h3>
+        <p>From scratch, no ML experience needed: label images, train YOLO weights, and read the fields off NZ/AU driver licences — with OCR, an API, and the privacy guardrails ID work demands.</p>
+        <span class="go">Start the lab</span>
       </a>
 
       <a class="tile rag" href="rag-cag.html">
@@ -328,6 +343,13 @@
         <span class="go">Look ahead</span>
       </a>
 
+      <a class="tile sec" href="web-ai-security.html">
+        <div class="top"><span class="ico">🛡️</span><span class="kicker">Security</span></div>
+        <h3>Web · API · AI Security</h3>
+        <p>A defensive guideline across the whole surface: HTTP/TLS, authentication &amp; authorization, OWASP web &amp; API risks, AI/agent threats (prompt injection, excessive agency), and a risk program — breach, user &amp; automation.</p>
+        <span class="go">Harden it</span>
+      </a>
+
       <a class="tile n8n" href="n8n.html">
         <div class="top"><span class="ico">🔗</span><span class="kicker">Automation</span></div>
         <h3>n8n — Workflow Automation</h3>
@@ -383,6 +405,10 @@
         <h3><a href="pytorch.html">PyTorch</a></h3>
         <p>The other giant — dynamic, pythonic, and dominant in research and the LLM ecosystem.</p>
       </li>
+      <li class="lab">
+        <h3><a href="license-ml-lab.html">Lab: Train a Licence Recognizer</a></h3>
+        <p>Put it into practice — a full from-scratch computer-vision lab: label, train weights, detect, OCR, serve.</p>
+      </li>
       <li class="rag">
         <h3><a href="rag-cag.html">RAG vs CAG vs GraphRAG</a></h3>
         <p>Go deep on grounding — how to get your data into the model reliably, and which retrieval method fits which corpus and question.</p>
@@ -423,6 +449,10 @@
         <h3><a href="webmcp-a2a.html">WebMCP &amp; A2A</a></h3>
         <p>Where it's heading: tools in the browser, and agents that discover and delegate to each other.</p>
       </li>
+      <li class="sec">
+        <h3><a href="web-ai-security.html">Web · API · AI Security</a></h3>
+        <p>Secure everything you've built — transport, identity, web/API risks, and the new AI/agent attack surface.</p>
+      </li>
       <li class="n8n">
         <h3><a href="n8n.html">n8n — Workflow Automation</a></h3>
         <p>Zoom out to the practical: wire apps and APIs into automated workflows — low-code, self-hosted, with code when you need it.</p>
@@ -444,7 +474,7 @@
 </main>
 
 <footer>
-  Eighteen interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
+  Twenty interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
 </footer>
 
 <script>

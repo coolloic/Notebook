@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪪</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="A hands-on lab for developers with no ML experience: train a model from scratch to identify NZ or Australian driver licences and extract the card fields — labeling, training weights, inference, OCR, and serving an API.">
+<title>Lab — Train a Driver-Licence Recognizer From Scratch (NZ &amp; AU)</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f5f7fa;
+    --bg-code: #2a1206;      /* deep rust ink */
+    --text: #1a2130;
+    --text-soft: #55617a;
+    --border: #e2e8f0;
+    --accent: #9a3412;       /* rust / terracotta (AA on white) */
+    --ink: #7c2d12;
+    --solve: #15803d;
+    --limit: #b45309;
+    --choose: #1e40af;
+    --solve-bg: #dcfce7;
+    --limit-bg: #fef3c7;
+    --choose-bg: #dbeafe;
+    --radius: 12px;
+    --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #0f172a;
+    --bg-soft: #17233d;
+    --bg-code: #241006;
+    --text: #e6ecf7;
+    --text-soft: #9fb0cc;
+    --border: #263450;
+    --accent: #fdba74;
+    --ink: #fed7aa;
+    --solve: #86efac;
+    --limit: #fcd34d;
+    --choose: #93c5fd;
+    --solve-bg: #14351f;
+    --limit-bg: #3a2a0c;
+    --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: var(--font); color: var(--text); background: var(--bg); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  .skip-link { position: absolute; left: -999px; top: 0; background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100; }
+  .skip-link:focus { left: 0; }
+  #progress { position: fixed; top: 0; left: 0; height: 4px; width: 0%; background: linear-gradient(90deg, var(--accent), var(--ink)); z-index: 60; transition: width .1s linear; }
+  header.top { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; padding: .6rem 1rem; }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; }
+  header.top .brand span { color: var(--accent); }
+  header.top .spacer { flex: 1; }
+  .btn { font: inherit; cursor: pointer; border: 1px solid var(--border); background: var(--bg-soft); color: var(--text); border-radius: 999px; padding: .5rem .9rem; min-height: 44px; display: inline-flex; align-items: center; gap: .4rem; }
+  .btn:hover { border-color: var(--accent); }
+  #menuToggle { display: none; }
+  .layout { display: grid; grid-template-columns: 270px 1fr; gap: 2rem; max-width: 1190px; margin: 0 auto; padding: 0 1rem; }
+  nav.side { position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px); overflow-y: auto; padding: 1.25rem 0; font-size: .92rem; }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a { display: block; padding: .4rem .75rem; border-radius: 8px; color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent; }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); }
+  nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.1rem; margin: 1.5rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; }
+  .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; }
+  .callout strong { color: var(--accent); }
+  .callout.warn { border-left-color: #dc2626; }
+  .callout.warn strong { color: #dc2626; }
+  .callout.tip { border-left-color: var(--solve); }
+  .callout.tip strong { color: var(--solve); }
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 1.25rem 0; }
+  .flow .node { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: .5rem .8rem; font-size: .88rem; font-weight: 600; }
+  .flow .node.hot { border-color: var(--accent); color: var(--accent); }
+  .flow .arrow { color: var(--text-soft); font-weight: 700; }
+  .code-wrap { margin: 1.1rem 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  pre { margin: 0; background: var(--bg-code); color: #f8e7dc; padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .84rem; line-height: 1.6; }
+  pre code { font-family: inherit; }
+  .code-head { display: flex; align-items: center; justify-content: space-between; background: var(--bg-code); padding: .35rem .6rem .35rem 1rem; }
+  .code-head .label { color: #cba58f; font-size: .78rem; font-family: var(--mono); }
+  .copy { font: inherit; cursor: pointer; background: #4d2814; color: #f8e7dc; border: none; border-radius: 6px; padding: .35rem .7rem; min-height: 36px; font-size: .8rem; }
+  .copy:hover { background: #653519; }
+  .cmt { color: #b58a6f; }
+  code.inline { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; }
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-soft); }
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); }
+  details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+  .why { border: 1px dashed var(--border); border-radius: var(--radius); padding: .6rem 1rem; margin: 1rem 0; background: var(--bg-soft); font-size: .93rem; }
+  .why strong { color: var(--accent); }
+  /* Architecture diagram */
+  .ar-wrap { overflow-x: auto; margin: 1.3rem 0; }
+  .ar { width: 100%; min-width: 680px; max-width: 760px; height: auto; display: block; margin: 0 auto; font-family: var(--font); }
+  .ar-box { fill: var(--bg-soft); stroke: var(--border); stroke-width: 1.5; }
+  .ar-hot { fill: var(--bg-soft); stroke: var(--accent); stroke-width: 2; }
+  .ar-line { fill: none; stroke: var(--text-soft); stroke-width: 1.5; }
+  .ar-load { fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-dasharray: 5 4; }
+  .ar-ah { fill: var(--text-soft); }
+  .ar-ahh { fill: var(--accent); }
+  .ar-t { fill: var(--text); font-size: 11.5px; font-weight: 600; }
+  .ar-lane { fill: var(--text-soft); font-size: 11px; font-weight: 800; letter-spacing: .05em; }
+  .ar-lbl { fill: var(--accent); font-size: 11px; font-weight: 700; }
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; }
+  .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); }
+  .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; }
+  [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; }
+  #score { font-weight: 700; margin-left: 1rem; }
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; }
+    #menuToggle { display: inline-flex; }
+    main { padding-top: .5rem; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <a class="btn home" href="index.html" aria-label="Back to all tutorials">← All tutorials</a>
+  <div class="brand">Licence <span>Recognizer</span> Lab</div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#ethics">⚠️ Responsible use &amp; privacy</a></li>
+      <li><a href="#architecture">High-level architecture</a></li>
+      <li><a href="#setup">Step 1 · Setup</a></li>
+      <li><a href="#schema">Step 2 · Define the schema</a></li>
+      <li><a href="#data">Step 3 · Collect data</a></li>
+      <li><a href="#label">Step 4 · Label the data</a></li>
+      <li><a href="#labels">Step 5 · Understand the labels</a></li>
+      <li><a href="#train">Step 6 · Train → weights</a></li>
+      <li><a href="#evaluate">Step 7 · Evaluate</a></li>
+      <li><a href="#detect">Step 8 · Detect (inference)</a></li>
+      <li><a href="#ocr">Step 9 · OCR the fields</a></li>
+      <li><a href="#parse">Step 10 · Parse &amp; validate</a></li>
+      <li><a href="#serve">Step 11 · Serve an API</a></li>
+      <li><a href="#improve">Step 12 · Improve</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>Lab — train a driver-licence recognizer from scratch</h1>
+      <p class="lede">A hands-on, no-prior-ML-experience lab. By the end you'll have trained your own model that, given a photo of a driver licence, says <strong>which type it is</strong> (New Zealand, or which Australian state) and <strong>reads the fields</strong> off the card (name, date of birth, licence number, expiry…) — returning clean JSON.</p>
+
+      <div class="cards">
+        <div class="card"><h4>🎯 What you'll build</h4><p>An <strong>object detector</strong> (finds the card type &amp; each field) + <strong>OCR</strong> (reads the text) + a small <strong>API</strong>.</p></div>
+        <div class="card"><h4>🧰 Main tools</h4><p><strong>Ultralytics YOLO</strong> (training), <strong>Label Studio</strong> (labeling), <strong>EasyOCR</strong> (reading), <strong>FastAPI</strong> (serving).</p></div>
+        <div class="card"><h4>🧑‍💻 For whom</h4><p>Developers new to machine learning. Every ML term is explained in a <em>Why this works</em> box.</p></div>
+      </div>
+
+      <div class="callout"><strong>The mental model.</strong> You won't write the "recognition" logic by hand. Instead you'll <em>show the model examples</em> (labeled images), it will <em>learn</em> patterns into a file of numbers called <strong>weights</strong>, and you'll <em>use those weights</em> to find and read fields on new cards. That loop — label → train → use — is all of supervised machine learning.</div>
+    </section>
+
+    <!-- ============ ETHICS ============ -->
+    <section id="ethics">
+      <h2><span class="pill">Read first</span> &nbsp;⚠️ Responsible use &amp; privacy</h2>
+      <p>Driver licences are <strong>sensitive personal information</strong>. Building recognition for them is legitimate (identity verification, onboarding, accessibility) — but you must handle the data lawfully and safely.</p>
+      <div class="callout warn">
+        <strong>Non-negotiables.</strong>
+        <ul style="margin:.4rem 0 0; padding-left:1.1rem;">
+          <li>Have a <strong>lawful basis / consent</strong> to collect and process each licence image.</li>
+          <li>Comply with <strong>NZ Privacy Act 2020</strong> (the 13 Information Privacy Principles) and, for Australia, the <strong>Privacy Act 1988</strong> / Australian Privacy Principles — plus state ID laws.</li>
+          <li><strong>Prefer synthetic or properly-consented sample data</strong> for training and testing (see Step 3). Never scrape real IDs.</li>
+          <li><strong>Never commit real licence images to git.</strong> Encrypt at rest, restrict access, and set a retention/deletion policy.</li>
+          <li>Data-minimize: extract only the fields you actually need; redact the rest.</li>
+          <li>Don't build this to enable fraud, impersonation, or surveillance.</li>
+        </ul>
+      </div>
+      <p style="font-size:.9rem;color:var(--text-soft)">This lab is educational and not legal advice — check your jurisdiction and consult a privacy specialist before handling real documents.</p>
+    </section>
+
+    <!-- ============ ARCHITECTURE ============ -->
+    <section id="architecture">
+      <h2>High-level architecture</h2>
+      <p>Two phases. You <strong>train once</strong> (offline) to produce a weights file, then <strong>run inference per image</strong> using those weights:</p>
+      <div class="ar-wrap">
+        <svg class="ar" viewBox="0 0 760 300" role="img" aria-labelledby="ar-title ar-desc">
+          <title id="ar-title">Training and inference pipeline</title>
+          <desc id="ar-desc">Training lane: collect images, label them, write a data config, train YOLO, produce a weights file. Inference lane: an input image goes to the detector (which loads the weights), fields are cropped, OCR reads them, results are parsed and validated, and structured JSON is returned.</desc>
+          <defs>
+            <marker id="ar-a" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" class="ar-ah"/></marker>
+            <marker id="ar-ah" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" class="ar-ahh"/></marker>
+          </defs>
+          <text class="ar-lane" x="16" y="34" text-anchor="start">TRAIN · once</text>
+          <text class="ar-lane" x="16" y="184" text-anchor="start">INFER · per image</text>
+          <!-- train row -->
+          <g>
+            <rect class="ar-box" x="20" y="44" width="120" height="40" rx="8"/><text class="ar-t" x="80" y="68" text-anchor="middle">collect images</text>
+            <rect class="ar-box" x="172" y="44" width="120" height="40" rx="8"/><text class="ar-t" x="232" y="68" text-anchor="middle">label (boxes)</text>
+            <rect class="ar-box" x="324" y="44" width="120" height="40" rx="8"/><text class="ar-t" x="384" y="68" text-anchor="middle">data.yaml</text>
+            <rect class="ar-box" x="476" y="44" width="120" height="40" rx="8"/><text class="ar-t" x="536" y="68" text-anchor="middle">train YOLO</text>
+            <rect class="ar-hot" x="628" y="44" width="112" height="40" rx="8"/><text class="ar-t" x="684" y="68" text-anchor="middle">weights .pt</text>
+            <path class="ar-line" d="M140,64 L172,64" marker-end="url(#ar-a)"/>
+            <path class="ar-line" d="M292,64 L324,64" marker-end="url(#ar-a)"/>
+            <path class="ar-line" d="M444,64 L476,64" marker-end="url(#ar-a)"/>
+            <path class="ar-line" d="M596,64 L628,64" marker-end="url(#ar-a)"/>
+          </g>
+          <!-- weights load into detect -->
+          <path class="ar-load" d="M684,84 C684,140 232,120 232,194" marker-end="url(#ar-ah)"/>
+          <text class="ar-lbl" x="470" y="126" text-anchor="middle">load weights</text>
+          <!-- infer row -->
+          <g>
+            <rect class="ar-box" x="20" y="194" width="110" height="40" rx="8"/><text class="ar-t" x="75" y="218" text-anchor="middle">input image</text>
+            <rect class="ar-hot" x="176" y="194" width="120" height="40" rx="8"/><text class="ar-t" x="236" y="212" text-anchor="middle">detect: type</text><text class="ar-t" x="236" y="226" text-anchor="middle">+ fields</text>
+            <rect class="ar-box" x="342" y="194" width="90" height="40" rx="8"/><text class="ar-t" x="387" y="218" text-anchor="middle">crop + OCR</text>
+            <rect class="ar-box" x="478" y="194" width="110" height="40" rx="8"/><text class="ar-t" x="533" y="212" text-anchor="middle">parse &amp;</text><text class="ar-t" x="533" y="226" text-anchor="middle">validate</text>
+            <rect class="ar-box" x="634" y="194" width="106" height="40" rx="8"/><text class="ar-t" x="687" y="218" text-anchor="middle">JSON out</text>
+            <path class="ar-line" d="M130,214 L176,214" marker-end="url(#ar-a)"/>
+            <path class="ar-line" d="M296,214 L342,214" marker-end="url(#ar-a)"/>
+            <path class="ar-line" d="M432,214 L478,214" marker-end="url(#ar-a)"/>
+            <path class="ar-line" d="M588,214 L634,214" marker-end="url(#ar-a)"/>
+          </g>
+        </svg>
+      </div>
+      <p>Why this design? A single <strong>object-detection</strong> model can locate <em>both</em> the card (labelled with its type) and each field region in one pass. OCR then reads only those small regions, which is far more accurate than running OCR on the whole photo.</p>
+    </section>
+
+    <!-- ============ STEP 1 SETUP ============ -->
+    <section id="setup">
+      <h2><span class="pill">Step 1</span> &nbsp;Set up your environment</h2>
+      <p>You need Python 3.10+. A GPU makes training faster but is optional — this works on a laptop CPU (just slower).</p>
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">terminal</span><button class="copy">Copy</button></div>
+<pre><code><span class="cmt"># 1) isolated environment</span>
+python -m venv .venv &amp;&amp; source .venv/bin/activate   <span class="cmt"># Windows: .venv\Scripts\activate</span>
+
+<span class="cmt"># 2) the core libraries</span>
+pip install ultralytics        <span class="cmt"># YOLO training + inference (installs PyTorch)</span>
+pip install easyocr            <span class="cmt"># reads text from image regions</span>
+pip install opencv-python      <span class="cmt"># image loading / cropping</span>
+pip install fastapi uvicorn python-multipart   <span class="cmt"># the API in Step 11</span>
+pip install label-studio       <span class="cmt"># labeling tool (Step 4)</span>
+
+<span class="cmt"># 3) sanity check</span>
+python -c "import ultralytics, easyocr, cv2; print('ok')"</code></pre>
+      </div>
+      <div class="why"><strong>Why this works:</strong> <strong>Ultralytics YOLO</strong> is a batteries-included object-detection framework — one command trains a model and produces weights. It's built on <strong>PyTorch</strong> (the <a href="pytorch.html">deep-learning framework</a>), which pip installs for you. You don't have to write the neural network yourself.</div>
+    </section>
+
+    <!-- ============ STEP 2 SCHEMA ============ -->
+    <section id="schema">
+      <h2><span class="pill">Step 2</span> &nbsp;Define what you'll detect (the schema)</h2>
+      <p>Decide your <strong>classes</strong> — the categories the model can output. You need two groups: <em>card-type</em> classes (one box around the whole card) and <em>field</em> classes (a box around each piece of information).</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Group</th><th>Example classes</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Card type</strong></td><td><code class="inline">card_nz</code>, <code class="inline">card_au_nsw</code>, <code class="inline">card_au_vic</code>, <code class="inline">card_au_qld</code>, … (one per state you support)</td></tr>
+            <tr><td><strong>Fields</strong></td><td><code class="inline">f_surname</code>, <code class="inline">f_firstnames</code>, <code class="inline">f_dob</code>, <code class="inline">f_licence_no</code>, <code class="inline">f_expiry</code>, <code class="inline">f_address</code>, <code class="inline">f_class</code>, <code class="inline">f_photo</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <details>
+        <summary>What's typically on the card (fields to consider)</summary>
+        <p><strong>NZ licence:</strong> surname, first names, date of birth, licence number, card/expiry dates, licence class (Learner/Restricted/Full), conditions, donor status, photo, signature, a card/version number. <strong>Australian licences</strong> vary <em>by state</em> (NSW, VIC, QLD, WA, SA, TAS, ACT, NT) — different layouts, colours, number formats and card numbers — which is why "Australia" really means "detect which state." Security features (holograms, UV) verify authenticity and are out of scope for text extraction. Always verify field formats against current official specs.</p>
+      </details>
+      <div class="callout tip"><strong>Start small.</strong> For your first run, support just <code class="inline">card_nz</code> + <code class="inline">card_au_nsw</code> and 4–5 fields. You can add states and fields later by re-labeling and re-training.</div>
+    </section>
+
+    <!-- ============ STEP 3 DATA ============ -->
+    <section id="data">
+      <h2><span class="pill">Step 3</span> &nbsp;Collect (or generate) data</h2>
+      <p>The model is only as good as its examples. Aim for <strong>~150–300 images per card type</strong> to start, in varied conditions: different lighting, angles, phone cameras, slight blur, and both real-world backgrounds and flat scans.</p>
+      <div class="cards">
+        <div class="card"><h4>🧪 Synthetic (best for privacy)</h4><p>Make blank licence <em>templates</em> and script random names/dates/numbers onto them (e.g. with Pillow). No real PII — ideal for a first dataset.</p></div>
+        <div class="card"><h4>🤝 Consented samples</h4><p>Real images collected <em>with consent</em> and a lawful basis, stored securely and never committed to git.</p></div>
+        <div class="card"><h4>🔁 Augmentation</h4><p>YOLO auto-applies flips, rotations, colour jitter and mosaics during training — so each image teaches more. No extra work.</p></div>
+      </div>
+      <p>Put images in a folder; you'll split them into <code class="inline">train/</code> (≈70%), <code class="inline">val/</code> (≈20%) and <code class="inline">test/</code> (≈10%) in the next steps.</p>
+      <div class="why"><strong>Why a val/test split:</strong> you measure the model on images it <em>didn't</em> train on, to check it truly learned the patterns rather than memorizing the training set (that failure is called <em>overfitting</em>).</div>
+    </section>
+
+    <!-- ============ STEP 4 LABEL ============ -->
+    <section id="label">
+      <h2><span class="pill">Step 4</span> &nbsp;Label the data (draw the boxes)</h2>
+      <p><strong>Labeling</strong> = telling the model the right answer for each training image by drawing a <em>bounding box</em> around each thing and tagging it with a class. Do this in a labeling tool:</p>
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">terminal</span><button class="copy">Copy</button></div>
+<pre><code><span class="cmt"># launch Label Studio (opens in your browser)</span>
+label-studio start
+<span class="cmt"># → create a project → import your images → choose the</span>
+<span class="cmt">#   "Object Detection with Bounding Boxes" template →</span>
+<span class="cmt">#   add your labels (card_nz, f_dob, …) → start drawing.</span></code></pre>
+      </div>
+      <h3>Labeling guidelines</h3>
+      <ul>
+        <li>Draw one box per item; keep boxes <strong>tight</strong> around the content.</li>
+        <li>Draw the <code class="inline">card_*</code> box around the <em>whole</em> card; draw <code class="inline">f_*</code> boxes around each field's text.</li>
+        <li>Be <strong>consistent</strong> — same field, same class, every image. Label every instance you can see.</li>
+        <li>Skip fields that are missing or unreadable on a given card.</li>
+      </ul>
+      <p>When done, <strong>export in YOLO format</strong> (Label Studio → Export → "YOLO"). Alternatives: <strong>Roboflow</strong> (web, auto train/val split + augmentation), <strong>CVAT</strong>, or <strong>LabelImg</strong>.</p>
+      <div class="callout tip"><strong>Consistency beats volume.</strong> 200 carefully, consistently labeled images beat 1,000 sloppy ones. Most "the model is bad" problems are actually labeling problems.</div>
+    </section>
+
+    <!-- ============ STEP 5 LABELS ============ -->
+    <section id="labels">
+      <h2><span class="pill">Step 5</span> &nbsp;Understand the label files</h2>
+      <p>YOLO stores labels as one <code class="inline">.txt</code> per image (same filename). Each line is one box: <code class="inline">class_id  x_center  y_center  width  height</code>, with coordinates <strong>normalized 0–1</strong> (fractions of image size).</p>
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">labels/train/licence_042.txt</span><button class="copy">Copy</button></div>
+<pre><code><span class="cmt"># class_id  x_center  y_center  width   height   (all 0..1)</span>
+0          0.512     0.500     0.940   0.900    <span class="cmt"># card_nz (whole card)</span>
+4          0.300     0.360     0.360   0.070    <span class="cmt"># f_licence_no</span>
+2          0.300     0.470     0.300   0.060    <span class="cmt"># f_dob</span></code></pre>
+      </div>
+      <p>And a <strong>dataset config</strong> ties folders to class names:</p>
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">licences.yaml</span><button class="copy">Copy</button></div>
+<pre><code>path: ./dataset          <span class="cmt"># root folder</span>
+train: images/train      <span class="cmt"># images (labels/ mirror these paths)</span>
+val:   images/val
+test:  images/test
+
+names:                   <span class="cmt"># class_id → name (order matters!)</span>
+  0: card_nz
+  1: card_au_nsw
+  2: f_dob
+  3: f_surname
+  4: f_licence_no
+  5: f_expiry
+  6: f_address</code></pre>
+      </div>
+      <div class="why"><strong>Why normalized coordinates:</strong> storing boxes as fractions (not pixels) means the labels stay correct no matter what size the image is resized to during training.</div>
+    </section>
+
+    <!-- ============ STEP 6 TRAIN ============ -->
+    <section id="train">
+      <h2><span class="pill">Step 6</span> &nbsp;Train the model → generate the weights</h2>
+      <p>This is the "learning" step. One command reads your labeled data and produces a weights file.</p>
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">terminal</span><button class="copy">Copy</button></div>
+<pre><code><span class="cmt"># start from a pretrained model (transfer learning) and fine-tune on your data</span>
+yolo detect train data=licences.yaml model=yolo11n.pt epochs=100 imgsz=640 batch=16
+
+<span class="cmt"># → results + weights land in runs/detect/train/</span>
+<span class="cmt">#   runs/detect/train/weights/best.pt   ← your trained weights</span></code></pre>
+      </div>
+      <p>Prefer Python? Identical result:</p>
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">train.py</span><button class="copy">Copy</button></div>
+<pre><code>from ultralytics import YOLO
+
+model = YOLO("yolo11n.pt")          <span class="cmt"># pretrained "nano" model — small &amp; fast</span>
+model.train(
+    data="licences.yaml",
+    epochs=100,                     <span class="cmt"># how many passes over the data</span>
+    imgsz=640,                      <span class="cmt"># image size the model trains at</span>
+    batch=16,                       <span class="cmt"># images processed at once</span>
+)
+<span class="cmt"># best weights: runs/detect/train/weights/best.pt</span></code></pre>
+      </div>
+      <div class="why"><strong>Key terms, plainly:</strong> <strong>Weights</strong> are the millions of numbers the model adjusts as it learns — the trained model <em>is</em> the weights file (<code class="inline">best.pt</code>). An <strong>epoch</strong> is one full pass over your images. <strong>Transfer learning</strong> means starting from a model already trained on millions of general images (<code class="inline">yolo11n.pt</code>) and nudging it toward your task — so you need far less data. <code class="inline">yolo11n</code> is the smallest ("nano"); use <code class="inline">yolo11s/m</code> for more accuracy if you have a GPU.</div>
+    </section>
+
+    <!-- ============ STEP 7 EVALUATE ============ -->
+    <section id="evaluate">
+      <h2><span class="pill">Step 7</span> &nbsp;Evaluate &amp; iterate</h2>
+      <p>Training auto-reports metrics on the <code class="inline">val</code> set (charts in <code class="inline">runs/detect/train/</code>). Check the numbers, then improve.</p>
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">terminal</span><button class="copy">Copy</button></div>
+<pre><code>yolo detect val model=runs/detect/train/weights/best.pt data=licences.yaml
+<span class="cmt"># prints per-class Precision, Recall, and mAP; saves a confusion matrix image</span></code></pre>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Metric</th><th>Means</th><th>Aim</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Precision</strong></td><td>Of the boxes it predicted, how many were right</td><td>High (few false alarms)</td></tr>
+            <tr><td><strong>Recall</strong></td><td>Of the boxes it should have found, how many it found</td><td>High (few misses)</td></tr>
+            <tr><td><strong>mAP50</strong></td><td>Overall detection quality (0–1)</td><td>&gt; 0.8 is a good start</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>To improve:</strong> add more images for weak classes, fix inconsistent labels, train more epochs, or step up to <code class="inline">yolo11s</code>. Re-train and re-check — this loop is normal.</p>
+    </section>
+
+    <!-- ============ STEP 8 DETECT ============ -->
+    <section id="detect">
+      <h2><span class="pill">Step 8</span> &nbsp;Use the weights to detect type + fields</h2>
+      <p>Load <code class="inline">best.pt</code> and run it on a new image. You get boxes, each with a class and a confidence score.</p>
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">detect.py</span><button class="copy">Copy</button></div>
+<pre><code>from ultralytics import YOLO
+import cv2
+
+model = YOLO("runs/detect/train/weights/best.pt")   <span class="cmt"># your trained weights</span>
+img = cv2.imread("sample_licence.jpg")
+result = model(img)[0]                                <span class="cmt"># run detection</span>
+
+card_type, regions = None, {}
+for box, cls, conf in zip(result.boxes.xyxy, result.boxes.cls, result.boxes.conf):
+    name = model.names[int(cls)]
+    x1, y1, x2, y2 = map(int, box)
+    if name.startswith("card_"):
+        card_type = name                              <span class="cmt"># e.g. "card_nz"</span>
+    else:
+        regions[name] = img[y1:y2, x1:x2]             <span class="cmt"># crop each field</span>
+
+print("Type:", card_type, "| fields found:", list(regions))</code></pre>
+      </div>
+      <div class="why"><strong>Why crop:</strong> the detector tells you <em>where</em> each field is. Cropping to that little rectangle means the next step (OCR) reads clean, isolated text instead of hunting across the whole busy card.</div>
+    </section>
+
+    <!-- ============ STEP 9 OCR ============ -->
+    <section id="ocr">
+      <h2><span class="pill">Step 9</span> &nbsp;OCR — read the text in each field</h2>
+      <p><strong>OCR</strong> (Optical Character Recognition) turns the pixels of a cropped field into a string. EasyOCR is the simplest to start with.</p>
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">ocr.py</span><button class="copy">Copy</button></div>
+<pre><code>import easyocr
+reader = easyocr.Reader(["en"])          <span class="cmt"># load once; reuse for every crop</span>
+
+text_by_field = {}
+for name, crop in regions.items():       <span class="cmt"># regions from Step 8</span>
+    lines = reader.readtext(crop, detail=0)   <span class="cmt"># detail=0 → just the strings</span>
+    text_by_field[name] = " ".join(lines).strip()
+
+print(text_by_field)
+<span class="cmt"># {'f_dob': '14/09/1994', 'f_licence_no': 'AB123456', ...}</span></code></pre>
+      </div>
+      <div class="callout tip"><strong>Alternatives &amp; accuracy:</strong> <strong>PaddleOCR</strong> and <strong>Tesseract</strong> are other options. Improve results by upscaling small crops, converting to grayscale, and de-skewing. For messy cards, a document-AI model (Step 12) can beat crop-then-OCR.</div>
+    </section>
+
+    <!-- ============ STEP 10 PARSE ============ -->
+    <section id="parse">
+      <h2><span class="pill">Step 10</span> &nbsp;Parse &amp; validate the fields</h2>
+      <p>Raw OCR text is noisy. Clean it and validate formats with plain code (regex) — and reject anything that doesn't look right.</p>
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">parse.py</span><button class="copy">Copy</button></div>
+<pre><code>import re
+
+def parse(card_type, text):
+    out = {"card_type": card_type, "fields": {}, "warnings": []}
+
+    dob = re.search(r"\b(\d{2}/\d{2}/\d{4})\b", text.get("f_dob", ""))
+    if dob: out["fields"]["date_of_birth"] = dob.group(1)
+    else:   out["warnings"].append("DOB not recognised")
+
+    <span class="cmt"># Licence-number formats DIFFER by issuer — verify against official specs.</span>
+    <span class="cmt"># This is only an illustrative pattern (letters + digits).</span>
+    lic = re.search(r"\b([A-Z0-9]{6,10})\b", text.get("f_licence_no", "").upper())
+    if lic: out["fields"]["licence_number"] = lic.group(1)
+
+    out["fields"]["surname"] = text.get("f_surname", "").title()
+    return out</code></pre>
+      </div>
+      <div class="callout warn"><strong>Formats vary and change.</strong> NZ and each Australian state use different licence-number and card-number formats. Don't hard-code a format from memory — confirm the current spec for each issuer you support, and treat validation as best-effort, with a human in the loop for anything important.</div>
+    </section>
+
+    <!-- ============ STEP 11 SERVE ============ -->
+    <section id="serve">
+      <h2><span class="pill">Step 11</span> &nbsp;Serve it as an API</h2>
+      <p>Wrap the whole pipeline (detect → crop → OCR → parse) behind one HTTP endpoint so your app can POST an image and get JSON back.</p>
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">app.py — run: uvicorn app:app</span><button class="copy">Copy</button></div>
+<pre><code>from fastapi import FastAPI, UploadFile
+from ultralytics import YOLO
+import easyocr, cv2, numpy as np
+
+app    = FastAPI()
+model  = YOLO("runs/detect/train/weights/best.pt")   <span class="cmt"># load ONCE at startup</span>
+reader = easyocr.Reader(["en"])
+
+@app.post("/extract")
+async def extract(file: UploadFile):
+    buf = np.frombuffer(await file.read(), np.uint8)
+    img = cv2.imdecode(buf, cv2.IMREAD_COLOR)
+    res = model(img)[0]
+
+    card_type, fields = None, {}
+    for box, cls in zip(res.boxes.xyxy, res.boxes.cls):
+        name = model.names[int(cls)]
+        x1, y1, x2, y2 = map(int, box)
+        if name.startswith("card_"):
+            card_type = name
+        else:
+            crop = img[y1:y2, x1:x2]
+            fields[name] = " ".join(reader.readtext(crop, detail=0))
+    return {"card_type": card_type, "fields": fields}
+<span class="cmt"># test:  curl -F file=@sample_licence.jpg http://localhost:8000/extract</span></code></pre>
+      </div>
+      <div class="why"><strong>Why load once:</strong> loading the model and OCR reader is slow; do it at startup (module level), not inside the request handler, so each request is fast.</div>
+    </section>
+
+    <!-- ============ STEP 12 IMPROVE ============ -->
+    <section id="improve">
+      <h2><span class="pill">Step 12</span> &nbsp;Make it better (and productionize)</h2>
+      <div class="cards">
+        <div class="card"><h4>🔁 Active learning</h4><p>Log low-confidence predictions, label those hard cases, and re-train. Your dataset (and accuracy) compounds.</p></div>
+        <div class="card"><h4>📐 Perspective fix</h4><p>Detect the card corners and warp to a flat rectangle before detection — big accuracy win on phone photos.</p></div>
+        <div class="card"><h4>📄 Document AI</h4><p>Swap crop-then-OCR for a layout model like <strong>Donut</strong> or <strong>LayoutLMv3</strong> that reads structured fields end-to-end.</p></div>
+        <div class="card"><h4>🚀 Deploy</h4><p>Export to <strong>ONNX</strong> (<code class="inline">yolo export format=onnx</code>) for faster serving; containerize with Docker; add auth &amp; logging.</p></div>
+        <div class="card"><h4>🛡️ Guardrails</h4><p>Reject blurry/partial images, flag low-confidence fields for human review, and never auto-approve on a shaky read.</p></div>
+        <div class="card"><h4>🔒 Compliance</h4><p>Encrypt storage, restrict access, log access, honour deletion requests — revisit the privacy section as you scale.</p></div>
+      </div>
+    </section>
+
+    <!-- ============ QUIZ ============ -->
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions on the lab. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="b">
+          <p>1. In supervised ML, what is "labeling"?</p>
+          <label><input type="radio" name="q1" value="a"> Writing the recognition rules by hand</label>
+          <label><input type="radio" name="q1" value="b"> Telling the model the right answer per image — here, drawing boxes and tagging each with a class</label>
+          <label><input type="radio" name="q1" value="c"> Naming the output files</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>2. What are "weights"?</p>
+          <label><input type="radio" name="q2" value="a"> The size of the training images</label>
+          <label><input type="radio" name="q2" value="b"> The number of classes</label>
+          <label><input type="radio" name="q2" value="c"> The learned numbers that make up the trained model (the best.pt file)</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>3. Why start from a pretrained model (yolo11n.pt)?</p>
+          <label><input type="radio" name="q3" value="a"> Transfer learning — it already knows general vision, so you need far less data</label>
+          <label><input type="radio" name="q3" value="b"> It skips the need for any images</label>
+          <label><input type="radio" name="q3" value="c"> It guarantees 100% accuracy</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>4. Why crop each field before running OCR?</p>
+          <label><input type="radio" name="q4" value="a"> To make the image bigger</label>
+          <label><input type="radio" name="q4" value="b"> OCR reads clean isolated text far more accurately than the whole busy card</label>
+          <label><input type="radio" name="q4" value="c"> Cropping trains the model</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>5. What does a val/test split protect against?</p>
+          <label><input type="radio" name="q5" value="a"> Slow training</label>
+          <label><input type="radio" name="q5" value="b"> Large files</label>
+          <label><input type="radio" name="q5" value="c"> Overfitting — the model memorizing instead of learning generalizable patterns</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. What's the responsible way to source training data here?</p>
+          <label><input type="radio" name="q6" value="a"> Scrape real licence photos from the web</label>
+          <label><input type="radio" name="q6" value="b"> Prefer synthetic or properly-consented data; comply with NZ/AU privacy law; never commit real IDs</label>
+          <label><input type="radio" name="q6" value="c"> Commit everything to a public repo</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>🔥 PyTorch</h4><p><a href="pytorch.html">The framework underneath</a> — YOLO is built on PyTorch; learn what's happening below.</p></div>
+        <div class="card"><h4>🔶 TensorFlow</h4><p><a href="tensorflow.html">The other giant</a> — an alternative training stack with strong deployment.</p></div>
+        <div class="card"><h4>🧬 Embedding models</h4><p><a href="embeddings.html">Turning data into vectors</a> — the idea behind document-AI models.</p></div>
+        <div class="card"><h4>📓 All tutorials</h4><p><a href="index.html">The hub</a> — LLMs, agents, ML, cloud &amp; more.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  A from-scratch lab to recognize NZ/AU driver licences and read their fields. Educational only — handle real identity documents lawfully and securely. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) { root.setAttribute("data-theme", t); tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 "; tLabel.textContent = t === "dark" ? "Light" : "Dark"; }
+  var saved = null;
+  try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () { var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark"; applyTheme(next); try { localStorage.setItem("theme", next); } catch (e) {} });
+  var menuBtn = document.getElementById("menuToggle");
+  var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () { var open = side.classList.toggle("open"); menuBtn.setAttribute("aria-expanded", String(open)); });
+  side.addEventListener("click", function (e) { if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); } });
+  var bar = document.getElementById("progress");
+  function onScroll() { var h = document.documentElement; var max = h.scrollHeight - h.clientHeight; bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%"; }
+  document.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a"));
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) { entries.forEach(function (en) { if (en.isIntersecting) { links.forEach(function (a) { a.classList.remove("active"); }); if (map[en.target.id]) map[en.target.id].classList.add("active"); } }); }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var wrap = btn.closest(".code-wrap");
+      var pre = wrap.querySelector("pre");
+      var text = pre ? pre.innerText : "";
+      var done = function () { var o = btn.textContent; btn.textContent = "Copied!"; setTimeout(function () { btn.textContent = o; }, 1400); };
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, done); }
+      else { var ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch (e) {} document.body.removeChild(ta); done(); }
+    });
+  });
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q");
+    var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      var correctLabel = q.querySelector('input[value="' + answer + '"]').parentNode;
+      correctLabel.classList.add("correct");
+      if (chosen) { if (chosen.value === answer) { score++; } else { chosen.parentNode.classList.add("wrong"); } }
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length + (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>
