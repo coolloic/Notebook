@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☸️</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Cloud native explained — the problem it solves, its pillars (containers, microservices, Kubernetes, CI/CD, observability), the benefits it delivers, its limitations, and when (not) to adopt it.">
+<title>Cloud Native — What It Is, Its Pillars &amp; Trade-offs</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f5f7fa;
+    --bg-code: #062630;      /* deep cyan ink */
+    --text: #1a2130;
+    --text-soft: #55617a;
+    --border: #e2e8f0;
+    --accent: #0e7490;       /* cyan-700 (AA on white) */
+    --ink: #155e75;          /* cyan-800 */
+    --solve: #15803d;
+    --limit: #b45309;
+    --choose: #1e40af;
+    --solve-bg: #dcfce7;
+    --limit-bg: #fef3c7;
+    --choose-bg: #dbeafe;
+    --radius: 12px;
+    --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #0f172a;
+    --bg-soft: #17233d;
+    --bg-code: #061e26;
+    --text: #e6ecf7;
+    --text-soft: #9fb0cc;
+    --border: #263450;
+    --accent: #67e8f9;
+    --ink: #22d3ee;
+    --solve: #86efac;
+    --limit: #fcd34d;
+    --choose: #93c5fd;
+    --solve-bg: #14351f;
+    --limit-bg: #3a2a0c;
+    --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: var(--font); color: var(--text); background: var(--bg); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  .skip-link { position: absolute; left: -999px; top: 0; background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100; }
+  .skip-link:focus { left: 0; }
+  #progress { position: fixed; top: 0; left: 0; height: 4px; width: 0%; background: linear-gradient(90deg, var(--accent), var(--ink)); z-index: 60; transition: width .1s linear; }
+  header.top { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; padding: .6rem 1rem; }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; }
+  header.top .brand span { color: var(--accent); }
+  header.top .spacer { flex: 1; }
+  .btn { font: inherit; cursor: pointer; border: 1px solid var(--border); background: var(--bg-soft); color: var(--text); border-radius: 999px; padding: .5rem .9rem; min-height: 44px; display: inline-flex; align-items: center; gap: .4rem; }
+  .btn:hover { border-color: var(--accent); }
+  #menuToggle { display: none; }
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side { position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px); overflow-y: auto; padding: 1.25rem 0; font-size: .93rem; }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a { display: block; padding: .45rem .75rem; border-radius: 8px; color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent; }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); }
+  nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.15rem; margin: 1.75rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; }
+  .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .card .count { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; }
+  .callout strong { color: var(--accent); }
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 1.25rem 0; }
+  .flow .node { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: .5rem .8rem; font-size: .88rem; font-weight: 600; }
+  .flow .node.hot { border-color: var(--accent); color: var(--accent); }
+  .flow .arrow { color: var(--text-soft); font-weight: 700; }
+  .svc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-soft); padding: 1rem 1.2rem; margin: 1.1rem 0; }
+  .svc h3 { margin: 0 0 .6rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
+  .svc h3 .full { font-size: .82rem; font-weight: 500; color: var(--text-soft); font-family: var(--mono); }
+  .svc p { margin: .4rem 0; font-size: .95rem; }
+  .tag { display: inline-block; min-width: 5.6rem; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .12rem .5rem; border-radius: 6px; margin-right: .5rem; text-align: center; }
+  .tag.solve  { background: var(--solve-bg);  color: var(--solve); }
+  .tag.limit  { background: var(--limit-bg);  color: var(--limit); }
+  .tag.choose { background: var(--choose-bg); color: var(--choose); }
+  .code-wrap { margin: 1.1rem 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .tabs { display: flex; flex-wrap: wrap; gap: .25rem; background: var(--bg-soft); padding: .4rem .4rem 0; border-bottom: 1px solid var(--border); }
+  .tab { font: inherit; cursor: pointer; border: none; background: transparent; color: var(--text-soft); padding: .55rem .9rem; border-radius: 8px 8px 0 0; min-height: 40px; }
+  .tab[aria-selected="true"] { background: var(--bg-code); color: #dcf3f7; font-weight: 600; }
+  pre { margin: 0; background: var(--bg-code); color: #dcf3f7; padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .86rem; line-height: 1.6; }
+  pre code { font-family: inherit; }
+  .code-head { display: flex; align-items: center; justify-content: space-between; background: var(--bg-code); padding: .35rem .6rem .35rem 1rem; }
+  .code-head .label { color: #86b9c4; font-size: .78rem; font-family: var(--mono); }
+  .copy { font: inherit; cursor: pointer; background: #14424f; color: #dcf3f7; border: none; border-radius: 6px; padding: .35rem .7rem; min-height: 36px; font-size: .8rem; }
+  .copy:hover { background: #1c5665; }
+  .cmt { color: #6fa3b0; }
+  code.inline { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; }
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-soft); }
+  /* Pillars diagram */
+  .pl-wrap { overflow-x: auto; margin: 1.3rem 0; }
+  .pl { width: 100%; min-width: 640px; max-width: 760px; height: auto; display: block; margin: 0 auto; font-family: var(--font); }
+  .pl-roof { fill: var(--accent); stroke: var(--accent); }
+  .pl-base { fill: var(--bg-soft); stroke: var(--border); stroke-width: 1.5; }
+  .pl-col { fill: var(--bg-soft); stroke: var(--border); stroke-width: 1.5; }
+  .pl-colcap { fill: var(--accent); }
+  .pl-rooft { fill: #ffffff; font-size: 15px; font-weight: 800; }
+  .pl-roofsub { fill: #ffffff; font-size: 11px; opacity: .9; }
+  [data-theme="dark"] .pl-rooft, [data-theme="dark"] .pl-roofsub { fill: #061e26; }
+  .pl-t { fill: var(--text); font-size: 12px; font-weight: 600; }
+  .pl-ico { font-size: 20px; }
+  .pl-baset { fill: var(--text); font-size: 12.5px; font-weight: 600; }
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); }
+  details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; }
+  .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); }
+  .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; }
+  [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; }
+  #score { font-weight: 700; margin-left: 1rem; }
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; }
+    #menuToggle { display: inline-flex; }
+    main { padding-top: .5rem; }
+    .tag { min-width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <a class="btn home" href="index.html" aria-label="Back to all tutorials">← All tutorials</a>
+  <div class="brand">Cloud <span>Native</span></div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#what">1 · What "cloud native" means</a></li>
+      <li><a href="#pillars">2 · The pillars</a></li>
+      <li><a href="#code">3 · Container + orchestration</a></li>
+      <li><a href="#benefits">4 · What it delivers</a></li>
+      <li><a href="#limits">5 · Limitations</a></li>
+      <li><a href="#when">6 · When (not) to adopt it</a></li>
+      <li><a href="#cheatsheet">Cheat sheet</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>Cloud native — build for the cloud, not just on it</h1>
+      <p class="lede">"Cloud native" is an approach to building and running applications that <strong>fully exploit</strong> the cloud: packaged in containers, split into microservices, orchestrated automatically, and shipped continuously. The goal is software that scales elastically, heals itself, and changes fast — on any cloud.</p>
+      <div class="flow">
+        <span class="node">containers</span><span class="arrow">+</span>
+        <span class="node">microservices</span><span class="arrow">+</span>
+        <span class="node hot">orchestration</span><span class="arrow">+</span>
+        <span class="node">automation</span><span class="arrow">→</span>
+        <span class="node hot">elastic, resilient apps</span>
+      </div>
+      <div class="callout"><strong>One line.</strong> Cloud native is about designing apps to be <em>scaled, replaced and automated</em> by the cloud — instead of lifting a traditional server-bound app and hoping it copes.</div>
+    </section>
+
+    <section id="what">
+      <h2><span class="pill">Definition</span> &nbsp;What "cloud native" means</h2>
+      <p>The CNCF (Cloud Native Computing Foundation) defines it as techniques for building <strong>scalable applications in modern, dynamic environments</strong> — public, private and hybrid clouds — using <em>containers, microservices, immutable infrastructure, declarative APIs</em> and robust automation. The through-line: systems that are <strong>loosely coupled, resilient, manageable and observable</strong>, so engineers can make high-impact changes frequently and predictably.</p>
+      <div class="callout"><strong>It's a philosophy, not a product.</strong> You don't "install cloud native" — you adopt a set of practices (and a toolbox, largely from the CNCF, like Kubernetes and Prometheus) that together make apps cloud-first.</div>
+    </section>
+
+    <section id="pillars">
+      <h2><span class="pill">Foundations</span> &nbsp;The pillars</h2>
+      <p>A handful of building blocks hold up every cloud-native system:</p>
+
+      <div class="pl-wrap">
+        <svg class="pl" viewBox="0 0 760 320" role="img" aria-labelledby="pl-title pl-desc">
+          <title id="pl-title">The pillars of cloud native</title>
+          <desc id="pl-desc">A cloud-native application rests on five pillars — containers, microservices, orchestration (Kubernetes), CI/CD and DevOps, and observability — on top of cloud infrastructure.</desc>
+          <!-- roof -->
+          <rect class="pl-roof" x="40" y="26" width="680" height="46" rx="8"/>
+          <text class="pl-rooft" x="380" y="49" text-anchor="middle">Cloud-Native Application</text>
+          <text class="pl-roofsub" x="380" y="65" text-anchor="middle">scalable · resilient · agile · portable</text>
+          <!-- columns -->
+          <g>
+            <rect class="pl-col" x="54" y="92" width="120" height="150" rx="8"/>
+            <rect class="pl-colcap" x="54" y="92" width="120" height="5" rx="2"/>
+            <text class="pl-ico" x="114" y="140" text-anchor="middle">📦</text>
+            <text class="pl-t" x="114" y="168" text-anchor="middle">Containers</text>
+            <text class="pl-t" x="114" y="185" text-anchor="middle" fill="var(--text-soft)" font-weight="500" font-size="11">Docker · OCI</text>
+          </g>
+          <g>
+            <rect class="pl-col" x="188" y="92" width="120" height="150" rx="8"/>
+            <rect class="pl-colcap" x="188" y="92" width="120" height="5" rx="2"/>
+            <text class="pl-ico" x="248" y="140" text-anchor="middle">🧩</text>
+            <text class="pl-t" x="248" y="168" text-anchor="middle">Micro-</text>
+            <text class="pl-t" x="248" y="184" text-anchor="middle">services</text>
+          </g>
+          <g>
+            <rect class="pl-col" x="322" y="92" width="120" height="150" rx="8"/>
+            <rect class="pl-colcap" x="322" y="92" width="120" height="5" rx="2"/>
+            <text class="pl-ico" x="382" y="140" text-anchor="middle">☸️</text>
+            <text class="pl-t" x="382" y="168" text-anchor="middle">Orchestration</text>
+            <text class="pl-t" x="382" y="185" text-anchor="middle" fill="var(--text-soft)" font-weight="500" font-size="11">Kubernetes</text>
+          </g>
+          <g>
+            <rect class="pl-col" x="456" y="92" width="120" height="150" rx="8"/>
+            <rect class="pl-colcap" x="456" y="92" width="120" height="5" rx="2"/>
+            <text class="pl-ico" x="516" y="140" text-anchor="middle">🔁</text>
+            <text class="pl-t" x="516" y="168" text-anchor="middle">CI/CD &amp;</text>
+            <text class="pl-t" x="516" y="184" text-anchor="middle">DevOps</text>
+          </g>
+          <g>
+            <rect class="pl-col" x="590" y="92" width="120" height="150" rx="8"/>
+            <rect class="pl-colcap" x="590" y="92" width="120" height="5" rx="2"/>
+            <text class="pl-ico" x="650" y="140" text-anchor="middle">📊</text>
+            <text class="pl-t" x="650" y="168" text-anchor="middle">Observ-</text>
+            <text class="pl-t" x="650" y="184" text-anchor="middle">ability</text>
+          </g>
+          <!-- base -->
+          <rect class="pl-base" x="40" y="258" width="680" height="42" rx="8"/>
+          <text class="pl-baset" x="380" y="284" text-anchor="middle">Cloud infrastructure — any public / private / hybrid cloud</text>
+        </svg>
+      </div>
+
+      <div class="cards">
+        <div class="card"><h4>📦 Containers</h4><p>Package an app with its dependencies into a portable, immutable image that runs identically everywhere (Docker / OCI).</p></div>
+        <div class="card"><h4>🧩 Microservices</h4><p>Split the system into small, independent services you can build, deploy and scale on their own.</p></div>
+        <div class="card"><h4>☸️ Orchestration</h4><p>Kubernetes schedules containers, restarts failures, scales replicas and rolls out updates — declaratively.</p></div>
+        <div class="card"><h4>🔁 CI/CD &amp; DevOps</h4><p>Automated build/test/deploy pipelines (often GitOps) make shipping frequent and safe.</p></div>
+        <div class="card"><h4>📊 Observability</h4><p>Metrics, logs and traces (Prometheus, Grafana, OpenTelemetry) to see and debug distributed systems.</p></div>
+        <div class="card"><h4>🕸️ Service mesh</h4><p>Istio / Linkerd handle traffic, retries, mTLS and telemetry between services without app changes.</p></div>
+      </div>
+      <details>
+        <summary>The 12-Factor App — the design guidelines underneath</summary>
+        <p>Cloud-native services usually follow the <strong>12-Factor</strong> methodology: config in the environment, stateless processes, treat backing services as attached resources, disposability (fast start/graceful stop), dev/prod parity, logs as event streams, and more. These are what make a service safe to scale horizontally and replace at will.</p>
+      </details>
+    </section>
+
+    <section id="code">
+      <h2><span class="pill">Concretely</span> &nbsp;A container + declarative orchestration</h2>
+      <p>The two most emblematic artifacts: a <strong>Dockerfile</strong> that builds the immutable image, and a Kubernetes <strong>Deployment</strong> that declares the desired state. Switch tabs; hit <em>Copy</em>.</p>
+      <div class="code-wrap" data-tabs>
+        <div class="tabs" role="tablist" aria-label="Dockerfile vs Kubernetes">
+          <button class="tab" role="tab" aria-selected="true" data-target="cn-docker">Dockerfile</button>
+          <button class="tab" role="tab" aria-selected="false" data-target="cn-k8s">deployment.yaml</button>
+        </div>
+        <div class="code-head"><span class="label">package &amp; run a service</span><button class="copy">Copy</button></div>
+<pre id="cn-docker" role="tabpanel"><code><span class="cmt"># Package the app + dependencies into a portable, immutable image.</span>
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+CMD ["python", "main.py"]        <span class="cmt"># the same image runs on any cloud</span></code></pre>
+<pre id="cn-k8s" role="tabpanel" hidden><code><span class="cmt"># Declare the DESIRED STATE; Kubernetes continuously makes reality match.</span>
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  replicas: 3                    <span class="cmt"># run 3 copies; reschedule any that die</span>
+  selector:
+    matchLabels: { app: api }
+  template:
+    metadata:
+      labels: { app: api }
+    spec:
+      containers:
+        - name: api
+          image: myrepo/api:1.4.0
+          ports:
+            - containerPort: 8080</code></pre>
+      </div>
+      <div class="callout"><strong>Declarative &amp; self-healing.</strong> You don't script "start a server" — you <em>declare</em> "I want 3 healthy copies of this image," and the orchestrator schedules, monitors and replaces them to keep that true.</div>
+    </section>
+
+    <section id="benefits">
+      <h2><span class="pill">Why</span> &nbsp;What it delivers</h2>
+      <div class="cards">
+        <div class="card"><h4>📈 Scalability</h4><p>Scale services out and back in with demand — automatically — instead of over-provisioning fixed servers.</p></div>
+        <div class="card"><h4>🩹 Resilience</h4><p>Self-healing: failed containers are restarted/rescheduled; no single box takes the app down.</p></div>
+        <div class="card"><h4>⚡ Agility</h4><p>Small services + CI/CD mean teams ship independently and often, with fast rollbacks.</p></div>
+        <div class="card"><h4>🌍 Portability</h4><p>Containers + Kubernetes run the same across clouds and on-prem — less lock-in.</p></div>
+        <div class="card"><h4>💸 Efficiency</h4><p>Elastic, pay-for-what-you-use resource use rather than idle capacity.</p></div>
+      </div>
+    </section>
+
+    <section id="limits">
+      <h2><span class="pill">The trade-offs</span> &nbsp;Limitations</h2>
+      <article class="svc">
+        <h3>What to weigh before adopting</h3>
+        <p><span class="tag limit">Complexity</span> <strong>Kubernetes and the CNCF stack are hard.</strong> A steep learning curve and a sprawling toolbox mean real investment before you're productive.</p>
+        <p><span class="tag limit">Distributed systems</span> Splitting into services makes <strong>networking, debugging, latency and data consistency</strong> harder than in a monolith — failures are partial and hard to trace.</p>
+        <p><span class="tag limit">Operational overhead</span> Clusters, pipelines, meshes and observability all need <strong>running and securing</strong> — that's a platform team, or a managed service you pay for.</p>
+        <p><span class="tag limit">Security surface</span> More moving parts (containers, registries, cluster APIs, service-to-service traffic) means <strong>more to secure</strong>.</p>
+        <p><span class="tag limit">Over-engineering</span> For a <strong>small or stable app</strong>, all this is overkill — you pay complexity for scale you don't need.</p>
+      </article>
+      <div class="callout"><strong>Net:</strong> cloud native buys scale, resilience and speed — at the cost of significant complexity. It pays off for large, evolving systems; it's a burden on simple ones.</div>
+    </section>
+
+    <section id="when">
+      <h2>When (not) to adopt it — and the alternatives</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Approach</th><th>What it is</th><th>Best when</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Traditional monolith</strong> (VMs)</td><td>One app on managed servers</td><td>Small, stable apps; small teams; simplicity wins</td></tr>
+            <tr><td><strong>Cloud native</strong> (containers + K8s)</td><td>Microservices, orchestrated</td><td>Large, evolving, high-scale systems; many teams shipping often</td></tr>
+            <tr><td><strong>Serverless</strong></td><td>Functions/managed services, no servers</td><td>Event-driven, spiky, or low-ops workloads (a cloud-native style taken further)</td></tr>
+            <tr><td><strong>PaaS</strong></td><td>Push code, platform runs it</td><td>Fast delivery of standard web apps without managing infra</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><strong>Rule of thumb.</strong> Reach for cloud native when <em>scale, resilience and independent-team velocity</em> justify the complexity. For a simple app, a monolith, PaaS or serverless will get you there faster with far less to operate. You can also adopt it <em>incrementally</em> — containerize first, orchestrate later.</div>
+    </section>
+
+    <section id="cheatsheet">
+      <h2>Cheat sheet</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Question</th><th>Short answer</th></tr></thead>
+          <tbody>
+            <tr><td>What is cloud native?</td><td>Building apps to fully exploit the cloud — containers, microservices, orchestration, automation.</td></tr>
+            <tr><td>The core pillars?</td><td>Containers, microservices, orchestration (K8s), CI/CD, observability (+ service mesh).</td></tr>
+            <tr><td>What runs the containers at scale?</td><td>Kubernetes — declaratively, with self-healing.</td></tr>
+            <tr><td>Main benefits?</td><td>Scalability, resilience, agility, portability, efficiency.</td></tr>
+            <tr><td>Biggest cost?</td><td>Complexity — K8s + distributed systems + ops overhead.</td></tr>
+            <tr><td>When to skip it?</td><td>Small/stable apps — a monolith, PaaS or serverless is simpler.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions on cloud native. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="b">
+          <p>1. What does "cloud native" mean?</p>
+          <label><input type="radio" name="q1" value="a"> Any app that happens to run on a cloud server</label>
+          <label><input type="radio" name="q1" value="b"> Building apps to fully exploit the cloud — containers, microservices, orchestration, automation</label>
+          <label><input type="radio" name="q1" value="c"> A single product you install</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>2. What orchestrates containers at scale (scheduling, self-healing, rollouts)?</p>
+          <label><input type="radio" name="q2" value="a"> A Dockerfile</label>
+          <label><input type="radio" name="q2" value="b"> A load balancer</label>
+          <label><input type="radio" name="q2" value="c"> Kubernetes</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>3. Why are containers central to cloud native?</p>
+          <label><input type="radio" name="q3" value="a"> They package an app + dependencies into a portable, immutable image that runs the same everywhere</label>
+          <label><input type="radio" name="q3" value="b"> They eliminate the need for any code</label>
+          <label><input type="radio" name="q3" value="c"> They make apps slower but cheaper</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>4. A Kubernetes Deployment is <em>declarative</em> — meaning…</p>
+          <label><input type="radio" name="q4" value="a"> You script every step to start servers</label>
+          <label><input type="radio" name="q4" value="b"> You declare the desired state (e.g. 3 replicas) and K8s keeps reality matching it</label>
+          <label><input type="radio" name="q4" value="c"> It only runs once and stops</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>5. What is the biggest cost of going cloud native?</p>
+          <label><input type="radio" name="q5" value="a"> You can't scale</label>
+          <label><input type="radio" name="q5" value="b"> It only works on one cloud</label>
+          <label><input type="radio" name="q5" value="c"> Complexity — Kubernetes, distributed systems, and operational overhead</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. You have a small, stable app and a tiny team. Best call?</p>
+          <label><input type="radio" name="q6" value="a"> Adopt full Kubernetes microservices immediately</label>
+          <label><input type="radio" name="q6" value="b"> A monolith, PaaS or serverless is likely simpler and faster</label>
+          <label><input type="radio" name="q6" value="c"> Avoid the cloud entirely</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>☁️ AWS services</h4><p><a href="aws-services.html">Cloud building blocks</a> — ECS/EKS/Fargate, Lambda and the rest, cloud-native on AWS.</p></div>
+        <div class="card"><h4>🔀 REST vs GraphQL vs gRPC</h4><p><a href="rest-graphql-grpc.html">How microservices talk</a> — the API styles between cloud-native services.</p></div>
+        <div class="card"><h4>📡 IoT × Agents</h4><p><a href="iot-agent.html">An event-driven system</a> — cloud services reacting to the real world.</p></div>
+        <div class="card"><h4>📓 All tutorials</h4><p><a href="index.html">The hub</a> — LLMs, embeddings, agents, protocols, cloud &amp; more.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  Cloud native — what it is, its pillars, benefits and trade-offs. The ecosystem moves fast; confirm tools against the CNCF landscape. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) { root.setAttribute("data-theme", t); tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 "; tLabel.textContent = t === "dark" ? "Light" : "Dark"; }
+  var saved = null;
+  try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () { var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark"; applyTheme(next); try { localStorage.setItem("theme", next); } catch (e) {} });
+  var menuBtn = document.getElementById("menuToggle");
+  var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () { var open = side.classList.toggle("open"); menuBtn.setAttribute("aria-expanded", String(open)); });
+  side.addEventListener("click", function (e) { if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); } });
+  var bar = document.getElementById("progress");
+  function onScroll() { var h = document.documentElement; var max = h.scrollHeight - h.clientHeight; bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%"; }
+  document.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a"));
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) { entries.forEach(function (en) { if (en.isIntersecting) { links.forEach(function (a) { a.classList.remove("active"); }); if (map[en.target.id]) map[en.target.id].classList.add("active"); } }); }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+  document.querySelectorAll("[data-tabs]").forEach(function (wrap) {
+    var tabs = wrap.querySelectorAll(".tab");
+    tabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        tabs.forEach(function (t) { t.setAttribute("aria-selected", "false"); var p = document.getElementById(t.dataset.target); if (p) p.hidden = true; });
+        tab.setAttribute("aria-selected", "true");
+        document.getElementById(tab.dataset.target).hidden = false;
+      });
+    });
+  });
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var wrap = btn.closest(".code-wrap");
+      var pre = wrap.querySelector("pre:not([hidden])");
+      var text = pre ? pre.innerText : "";
+      var done = function () { var o = btn.textContent; btn.textContent = "Copied!"; setTimeout(function () { btn.textContent = o; }, 1400); };
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, done); }
+      else { var ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch (e) {} document.body.removeChild(ta); done(); }
+    });
+  });
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q");
+    var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      var correctLabel = q.querySelector('input[value="' + answer + '"]').parentNode;
+      correctLabel.classList.add("correct");
+      if (chosen) { if (chosen.value === answer) { score++; } else { chosen.parentNode.classList.add("wrong"); } }
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length + (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>
