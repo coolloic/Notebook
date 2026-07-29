@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧩</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Build MCP from scratch — the problem it solves, then a from-scratch MCP server (the app that exposes tools/resources/prompts) and an MCP client/task that consumes them, each with a code example and when-to-use scenario, plus how to run and connect them.">
+<title>Build MCP From Scratch — Server (App) &amp; Client (Task)</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f5f7fa;
+    --bg-code: #1a1840;      /* deep indigo ink */
+    --text: #1a2130;
+    --text-soft: #55617a;
+    --border: #e2e8f0;
+    --accent: #4338ca;       /* indigo-700 (AA on white) */
+    --ink: #3730a3;
+    --solve: #15803d;
+    --limit: #b45309;
+    --choose: #1e40af;
+    --solve-bg: #dcfce7;
+    --limit-bg: #fef3c7;
+    --choose-bg: #dbeafe;
+    --radius: 12px;
+    --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #0f172a;
+    --bg-soft: #17233d;
+    --bg-code: #14122e;
+    --text: #e6ecf7;
+    --text-soft: #9fb0cc;
+    --border: #263450;
+    --accent: #a5b4fc;
+    --ink: #c7d2fe;
+    --solve: #86efac;
+    --limit: #fcd34d;
+    --choose: #93c5fd;
+    --solve-bg: #14351f;
+    --limit-bg: #3a2a0c;
+    --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: var(--font); color: var(--text); background: var(--bg); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  .skip-link { position: absolute; left: -999px; top: 0; background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100; }
+  .skip-link:focus { left: 0; }
+  #progress { position: fixed; top: 0; left: 0; height: 4px; width: 0%; background: linear-gradient(90deg, var(--accent), var(--ink)); z-index: 60; transition: width .1s linear; }
+  header.top { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; padding: .6rem 1rem; }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; }
+  header.top .brand span { color: var(--accent); }
+  header.top .spacer { flex: 1; }
+  .btn { font: inherit; cursor: pointer; border: 1px solid var(--border); background: var(--bg-soft); color: var(--text); border-radius: 999px; padding: .5rem .9rem; min-height: 44px; display: inline-flex; align-items: center; gap: .4rem; }
+  .btn:hover { border-color: var(--accent); }
+  #menuToggle { display: none; }
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side { position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px); overflow-y: auto; padding: 1.25rem 0; font-size: .93rem; }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a { display: block; padding: .45rem .75rem; border-radius: 8px; color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent; }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); }
+  nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.12rem; margin: 1.6rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; }
+  .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; }
+  .callout strong { color: var(--accent); }
+  .callout.tip { border-left-color: var(--solve); }
+  .callout.tip strong { color: var(--solve); }
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 1.25rem 0; }
+  .flow .node { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: .5rem .8rem; font-size: .88rem; font-weight: 600; }
+  .flow .node.hot { border-color: var(--accent); color: var(--accent); }
+  .flow .arrow { color: var(--text-soft); font-weight: 700; }
+  .svc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-soft); padding: 1rem 1.2rem; margin: 1.1rem 0; }
+  .svc h3 { margin: 0 0 .5rem; }
+  .svc p { margin: .4rem 0; font-size: .95rem; }
+  .tag { display: inline-block; min-width: 5rem; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .12rem .5rem; border-radius: 6px; margin-right: .5rem; text-align: center; }
+  .tag.use  { background: var(--solve-bg); color: var(--solve); }
+  .tag.scene { background: var(--choose-bg); color: var(--choose); }
+  .code-wrap { margin: 1.1rem 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  pre { margin: 0; background: var(--bg-code); color: #e8e7fb; padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .84rem; line-height: 1.6; }
+  pre code { font-family: inherit; }
+  .code-head { display: flex; align-items: center; justify-content: space-between; background: var(--bg-code); padding: .35rem .6rem .35rem 1rem; }
+  .code-head .label { color: #a6a4d8; font-size: .78rem; font-family: var(--mono); }
+  .copy { font: inherit; cursor: pointer; background: #302c66; color: #e8e7fb; border: none; border-radius: 6px; padding: .35rem .7rem; min-height: 36px; font-size: .8rem; }
+  .copy:hover { background: #3d3880; }
+  .cmt { color: #918dc4; }
+  code.inline { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; }
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-soft); }
+  /* server/client diagram */
+  .mc-wrap { overflow-x: auto; margin: 1.3rem 0; }
+  .mc { width: 100%; min-width: 640px; max-width: 720px; height: auto; display: block; margin: 0 auto; font-family: var(--font); }
+  .mc-box { fill: var(--bg-soft); stroke: var(--accent); stroke-width: 1.8; }
+  .mc-plain { fill: var(--bg-soft); stroke: var(--border); stroke-width: 1.5; }
+  .mc-line { fill: none; stroke: var(--text-soft); stroke-width: 1.6; }
+  .mc-ah { fill: var(--text-soft); }
+  .mc-t { fill: var(--text); font-size: 12px; font-weight: 700; }
+  .mc-sub { fill: var(--text-soft); font-size: 10.5px; }
+  .mc-lbl { fill: var(--accent); font-size: 11px; font-weight: 700; }
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; }
+  .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); }
+  .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; }
+  [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; }
+  #score { font-weight: 700; margin-left: 1rem; }
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; }
+    #menuToggle { display: inline-flex; }
+    main { padding-top: .5rem; }
+    .tag { min-width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <a class="btn home" href="index.html" aria-label="Back to all tutorials">← All tutorials</a>
+  <div class="brand">Build <span>MCP</span> from scratch</div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#problem">1 · The problem it solves</a></li>
+      <li><a href="#sides">2 · The two sides you build</a></li>
+      <li><a href="#server">3 · Build the server (the app)</a></li>
+      <li><a href="#client">4 · Build the client (the task)</a></li>
+      <li><a href="#run">5 · Run &amp; connect them</a></li>
+      <li><a href="#choose">6 · Which to build when</a></li>
+      <li><a href="#cheatsheet">Cheat sheet</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>Build MCP from scratch — the app &amp; the task</h1>
+      <p class="lede">The Model Context Protocol has two halves you can build. The <strong>MCP server</strong> (the "app") <em>exposes</em> capabilities — tools, data and prompts. The <strong>MCP client / task</strong> <em>consumes</em> them to get a job done. This tutorial builds each from scratch, with a runnable example and a when-to-use scenario for both.</p>
+      <div class="flow">
+        <span class="node hot">MCP server (your app)</span><span class="arrow">— exposes tools —</span>
+        <span class="node">MCP protocol</span><span class="arrow">— consumed by —</span>
+        <span class="node hot">MCP client (your task)</span>
+      </div>
+      <div class="callout"><strong>New to MCP?</strong> Read <a href="api-mcp.html">APIs vs MCP</a> first for the <em>why</em>. This guide is the hands-on <em>how</em>.</div>
+    </section>
+
+    <!-- ============ 1 · PROBLEM ============ -->
+    <section id="problem">
+      <h2><span class="pill">Why</span> &nbsp;The problem it solves</h2>
+      <p>Wiring <strong>M</strong> AI apps to <strong>N</strong> tools directly needs up to <strong>M×N</strong> bespoke integrations, and the model can't <em>discover</em> a tool at runtime — someone hand-codes each one for each assistant. MCP is one open protocol that collapses this to <strong>M+N</strong>: expose a tool <em>once</em> as a server, and any MCP-aware client (Claude Desktop, an IDE, your agent) can discover and call it.</p>
+      <div class="callout"><strong>So "building MCP" means one of two things:</strong> writing a <em>server</em> to make a capability available to every AI host, or writing a <em>client/task</em> that uses those servers to accomplish something. You'll do both below.</div>
+    </section>
+
+    <!-- ============ 2 · SIDES ============ -->
+    <section id="sides">
+      <h2><span class="pill">Architecture</span> &nbsp;The two sides you build</h2>
+      <div class="mc-wrap">
+        <svg class="mc" viewBox="0 0 720 210" role="img" aria-labelledby="mc-title mc-desc">
+          <title id="mc-title">MCP client and server</title>
+          <desc id="mc-desc">Your task (an MCP client, inside a host) and your app (an MCP server exposing tools, resources and prompts) talk over the MCP protocol; the server calls the real API, database or files behind it.</desc>
+          <defs>
+            <marker id="mc-a" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" class="mc-ah"/></marker>
+          </defs>
+          <rect class="mc-box" x="20" y="66" width="230" height="58" rx="10"/>
+          <text class="mc-t" x="135" y="90" text-anchor="middle">MCP client — your task</text>
+          <text class="mc-sub" x="135" y="108" text-anchor="middle">in a host: agent · IDE · Claude Desktop</text>
+          <rect class="mc-box" x="440" y="66" width="260" height="58" rx="10"/>
+          <text class="mc-t" x="570" y="90" text-anchor="middle">MCP server — your app</text>
+          <text class="mc-sub" x="570" y="108" text-anchor="middle">tools · resources · prompts</text>
+          <path class="mc-line" d="M250,86 L440,86" marker-end="url(#mc-a)"/>
+          <path class="mc-line" d="M440,104 L250,104" marker-end="url(#mc-a)"/>
+          <text class="mc-lbl" x="345" y="76" text-anchor="middle">MCP · JSON-RPC</text>
+          <text class="mc-sub" x="345" y="122" text-anchor="middle">stdio or HTTP</text>
+          <rect class="mc-plain" x="480" y="158" width="180" height="38" rx="9"/>
+          <text class="mc-t" x="570" y="181" text-anchor="middle">API · DB · files · code</text>
+          <path class="mc-line" d="M570,124 L570,158" marker-end="url(#mc-a)"/>
+        </svg>
+      </div>
+      <p>A server offers three <strong>primitives</strong>, and the client discovers them at runtime:</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Primitive</th><th>What</th><th>Controlled by</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Tools</strong></td><td>Actions the model can invoke (with typed inputs)</td><td>Model</td></tr>
+            <tr><td><strong>Resources</strong></td><td>Read-only data/context the host can load</td><td>App</td></tr>
+            <tr><td><strong>Prompts</strong></td><td>Reusable prompt templates a user can trigger</td><td>User</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 3 · SERVER ============ -->
+    <section id="server">
+      <h2><span class="pill">Part A</span> &nbsp;Build the MCP server (the app)</h2>
+      <p>The official Python SDK includes <strong>FastMCP</strong> — declare a server, decorate functions as tools/resources/prompts, and run. That's the whole thing.</p>
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">server.py &nbsp;·&nbsp; pip install "mcp[cli]"</span><button class="copy">Copy</button></div>
+<pre><code>from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("weather")                 <span class="cmt"># your MCP app (server)</span>
+
+@mcp.tool()
+def get_forecast(city: str) -&gt; str:
+    """Get the weather forecast for a city."""   <span class="cmt"># docstring → shown to the model</span>
+    # ...call a real weather API here...
+    return f"Sunny, 24°C in {city}."
+
+@mcp.resource("config://units")
+def units() -&gt; str:
+    """The unit system this server uses."""       <span class="cmt"># read-only data (a resource)</span>
+    return "metric"
+
+@mcp.prompt()
+def trip(city: str) -&gt; str:
+    """A ready-made prompt users can invoke."""
+    return f"Plan a day trip to {city} using the weather tools."
+
+if __name__ == "__main__":
+    mcp.run()                            <span class="cmt"># speaks MCP over stdio</span></code></pre>
+      </div>
+      <article class="svc">
+        <h3>Example &amp; when to use</h3>
+        <p><span class="tag use">Build a server when</span> you have a capability or data source — an internal API, a database, a filesystem, a SaaS tool — and you want <em>any</em> AI host to use it, or you're publishing a tool for others' assistants.</p>
+        <p><span class="tag scene">Scenario</span> "Let support staff query our ticketing system from Claude." You write a <code class="inline">tickets</code> MCP server once (tools: <code class="inline">search_tickets</code>, <code class="inline">get_ticket</code>, <code class="inline">add_note</code>) — and every teammate's assistant, plus your own agents, can use it. Write once, reuse everywhere.</p>
+      </article>
+    </section>
+
+    <!-- ============ 4 · CLIENT ============ -->
+    <section id="client">
+      <h2><span class="pill">Part B</span> &nbsp;Build the MCP client (the task)</h2>
+      <p>A client <em>connects</em> to a server, <em>discovers</em> its tools, and <em>calls</em> them. At its simplest:</p>
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">client.py &nbsp;·&nbsp; connect · discover · call</span><button class="copy">Copy</button></div>
+<pre><code>import asyncio
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+async def main():
+    params = StdioServerParameters(command="python", args=["server.py"])
+    async with stdio_client(params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            tools = await session.list_tools()                <span class="cmt"># runtime discovery</span>
+            print("tools:", [t.name for t in tools.tools])
+            out = await session.call_tool("get_forecast", {"city": "Wellington"})
+            print(out.content[0].text)
+
+asyncio.run(main())</code></pre>
+      </div>
+      <p>Usually the "task" is <em>agentic</em>: you hand the server's tools to an LLM and let it decide when to call them. Most agent frameworks load MCP servers directly:</p>
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">agent_task.py &nbsp;·&nbsp; MCP tools → an LLM (conceptual; APIs vary)</span><button class="copy">Copy</button></div>
+<pre><code><span class="cmt"># The model gets the server's tools and calls them itself to finish the task.</span>
+from your_agent_framework import Agent, MCPServer
+
+agent = Agent(
+    model="claude-opus-4-8",
+    mcp_servers=[MCPServer(command="python", args=["server.py"])],
+)
+agent.run("What should I pack for Wellington tomorrow?")   <span class="cmt"># calls get_forecast on its own</span></code></pre>
+      </div>
+      <article class="svc">
+        <h3>Example &amp; when to use</h3>
+        <p><span class="tag use">Build a client/task when</span> you're building the AI app or automation that needs to <em>use</em> tools — orchestrating one or more MCP servers to accomplish a goal.</p>
+        <p><span class="tag scene">Scenario</span> A nightly job: read new issues from the <em>GitHub</em> MCP server, summarize them with an LLM, and post to the <em>Slack</em> MCP server. Your task wires several ready-made servers together — you write the goal, the agent calls the tools.</p>
+      </article>
+    </section>
+
+    <!-- ============ 5 · RUN ============ -->
+    <section id="run">
+      <h2><span class="pill">Wire it up</span> &nbsp;Run &amp; connect them</h2>
+      <h3>Test the server on its own</h3>
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">MCP Inspector — poke your server in a browser UI</span><button class="copy">Copy</button></div>
+<pre><code>mcp dev server.py         <span class="cmt"># opens the Inspector: list &amp; call tools, view resources</span></code></pre>
+      </div>
+      <h3>Connect it to a host (e.g. Claude Desktop)</h3>
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">claude_desktop_config.json</span><button class="copy">Copy</button></div>
+<pre><code>{
+  "mcpServers": {
+    "weather": { "command": "python", "args": ["/abs/path/to/server.py"] }
+  }
+}
+<span class="cmt">// restart the host → your tools appear, ready for the model to call.</span></code></pre>
+      </div>
+      <div class="callout"><strong>Transports.</strong> <code class="inline">stdio</code> is simplest for local servers (the host launches your script). For remote/shared servers, run over <strong>HTTP</strong> (streamable HTTP / SSE) with authentication. Same code, different <code class="inline">run</code> transport.</div>
+    </section>
+
+    <!-- ============ 6 · CHOOSE ============ -->
+    <section id="choose">
+      <h2>Which to build when</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th></th><th>MCP server (app)</th><th>MCP client (task)</th></tr></thead>
+          <tbody>
+            <tr><td><strong>You have…</strong></td><td>a capability/data to expose</td><td>a goal to accomplish with tools</td></tr>
+            <tr><td><strong>You write…</strong></td><td>tools, resources, prompts</td><td>connect → discover → call (often via an agent)</td></tr>
+            <tr><td><strong>Reused by…</strong></td><td>every MCP host &amp; agent</td><td>you — it drives the servers</td></tr>
+            <tr><td><strong>Example</strong></td><td>a "tickets" or "weather" server</td><td>a nightly GitHub→Slack summarizer</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout tip"><strong>Often you build both:</strong> a server to expose your system, and a task/agent that combines it with other servers. And remember — a server is usually a thin adapter over a plain <a href="rest-graphql-grpc.html">API</a>; MCP standardizes the <em>exposure</em>, not the implementation.</div>
+    </section>
+
+    <!-- ============ CHEAT SHEET ============ -->
+    <section id="cheatsheet">
+      <h2>Cheat sheet</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Question</th><th>Short answer</th></tr></thead>
+          <tbody>
+            <tr><td>What is an MCP server?</td><td>The "app" — it exposes tools, resources &amp; prompts over MCP.</td></tr>
+            <tr><td>What is an MCP client?</td><td>The consumer — it connects, discovers tools, and calls them (often an agent).</td></tr>
+            <tr><td>Build a server with?</td><td>FastMCP (Python SDK): decorate functions as <code class="inline">@mcp.tool()</code> etc.</td></tr>
+            <tr><td>The three primitives?</td><td>Tools (model), Resources (app data), Prompts (user).</td></tr>
+            <tr><td>How to test a server?</td><td>The MCP Inspector — <code class="inline">mcp dev server.py</code>.</td></tr>
+            <tr><td>Transports?</td><td>stdio (local) or HTTP/SSE (remote, with auth).</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ QUIZ ============ -->
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions on building MCP. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="b">
+          <p>1. What does an MCP <em>server</em> do?</p>
+          <label><input type="radio" name="q1" value="a"> Consumes tools from other servers</label>
+          <label><input type="radio" name="q1" value="b"> Exposes capabilities — tools, resources &amp; prompts — over MCP</label>
+          <label><input type="radio" name="q1" value="c"> Trains a model</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>2. What does an MCP <em>client / task</em> do?</p>
+          <label><input type="radio" name="q2" value="a"> Nothing — it's optional</label>
+          <label><input type="radio" name="q2" value="b"> Replaces the model</label>
+          <label><input type="radio" name="q2" value="c"> Connects to servers, discovers tools, and calls them (often via an agent)</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>3. In FastMCP, how do you expose a function as a tool?</p>
+          <label><input type="radio" name="q3" value="a"> Decorate it with <code>@mcp.tool()</code></label>
+          <label><input type="radio" name="q3" value="b"> Rename the file</label>
+          <label><input type="radio" name="q3" value="c"> Add it to a database</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>4. What are MCP's three primitives?</p>
+          <label><input type="radio" name="q4" value="a"> GET, POST, DELETE</label>
+          <label><input type="radio" name="q4" value="b"> Tools, Resources, Prompts</label>
+          <label><input type="radio" name="q4" value="c"> Train, Val, Predict</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>5. You have an internal ticketing system you want every assistant to use. You build…</p>
+          <label><input type="radio" name="q5" value="a"> A client task</label>
+          <label><input type="radio" name="q5" value="b"> A new language model</label>
+          <label><input type="radio" name="q5" value="c"> An MCP server (the app) exposing ticketing tools</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. How do you quickly test an MCP server on its own?</p>
+          <label><input type="radio" name="q6" value="a"> Deploy it to production first</label>
+          <label><input type="radio" name="q6" value="b"> The MCP Inspector (mcp dev server.py)</label>
+          <label><input type="radio" name="q6" value="c"> You can't test it</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>🔌 APIs vs MCP</h4><p><a href="api-mcp.html">The why</a> — the M×N problem and how MCP compares to plain APIs.</p></div>
+        <div class="card"><h4>🕸️ WebMCP &amp; A2A</h4><p><a href="webmcp-a2a.html">What's next</a> — MCP in the browser and agent-to-agent protocols.</p></div>
+        <div class="card"><h4>🧰 Agent Development Kits</h4><p><a href="adk.html">Build agents</a> that consume your MCP servers as tools.</p></div>
+        <div class="card"><h4>📓 All tutorials</h4><p><a href="index.html">The hub</a> — LLMs, agents, APIs, cloud &amp; more.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  Build MCP from scratch — an MCP server (the app) and an MCP client (the task). MCP evolves fast; confirm APIs against modelcontextprotocol.io. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) { root.setAttribute("data-theme", t); tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 "; tLabel.textContent = t === "dark" ? "Light" : "Dark"; }
+  var saved = null;
+  try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () { var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark"; applyTheme(next); try { localStorage.setItem("theme", next); } catch (e) {} });
+  var menuBtn = document.getElementById("menuToggle");
+  var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () { var open = side.classList.toggle("open"); menuBtn.setAttribute("aria-expanded", String(open)); });
+  side.addEventListener("click", function (e) { if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); } });
+  var bar = document.getElementById("progress");
+  function onScroll() { var h = document.documentElement; var max = h.scrollHeight - h.clientHeight; bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%"; }
+  document.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a"));
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) { entries.forEach(function (en) { if (en.isIntersecting) { links.forEach(function (a) { a.classList.remove("active"); }); if (map[en.target.id]) map[en.target.id].classList.add("active"); } }); }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var wrap = btn.closest(".code-wrap");
+      var pre = wrap.querySelector("pre");
+      var text = pre ? pre.innerText : "";
+      var done = function () { var o = btn.textContent; btn.textContent = "Copied!"; setTimeout(function () { btn.textContent = o; }, 1400); };
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, done); }
+      else { var ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch (e) {} document.body.removeChild(ta); done(); }
+    });
+  });
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q");
+    var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      var correctLabel = q.querySelector('input[value="' + answer + '"]').parentNode;
+      correctLabel.classList.add("correct");
+      if (chosen) { if (chosen.value === answer) { score++; } else { chosen.parentNode.classList.add("wrong"); } }
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length + (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>

@@ -33,6 +33,7 @@
     --loop: #475569;  /* slate   */
     --net: #4d7c0f;   /* lime    */
     --api: #0369a1;   /* sky     */
+    --mcp: #4338ca;   /* indigo (build MCP) */
     --web: #a21caf;   /* fuchsia */
     --sec: #3730a3;   /* indigo (security) */
     --owp: #065f46;   /* dark emerald (OWASP) */
@@ -68,6 +69,7 @@
     --loop: #94a3b8;
     --net: #a3e635;
     --api: #7dd3fc;
+    --mcp: #c7d2fe;
     --web: #f0abfc;
     --sec: #818cf8;
     --owp: #34d399;
@@ -152,6 +154,7 @@
   .tile.loop { --tile: var(--loop); }
   .tile.net { --tile: var(--net); }
   .tile.api { --tile: var(--api); }
+  .tile.mcp { --tile: var(--mcp); }
   .tile.web { --tile: var(--web); }
   .tile.sec { --tile: var(--sec); }
   .tile.owp { --tile: var(--owp); }
@@ -193,6 +196,7 @@
   .path li.loop { --step: var(--loop); }
   .path li.net { --step: var(--net); }
   .path li.api { --step: var(--api); }
+  .path li.mcp { --step: var(--mcp); }
   .path li.web { --step: var(--web); }
   .path li.sec { --step: var(--sec); }
   .path li.owp { --step: var(--owp); }
@@ -242,7 +246,7 @@
   <div class="hero">
     <p class="eyebrow">Interactive tutorials</p>
     <h1>Build with LLMs, agents &amp; AWS</h1>
-    <p>Twenty-four self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
+    <p>Twenty-five self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
   </div>
 
   <div class="search" role="search">
@@ -357,6 +361,13 @@
         <h3>APIs vs MCP</h3>
         <p>How agents connect to tools: the M×N integration problem MCP solves, how it works (hosts, clients, servers, tools/resources/prompts), a direct API-vs-MCP comparison, and when to use which.</p>
         <span class="go">Wire it up</span>
+      </a>
+
+      <a class="tile mcp" href="mcp-build.html">
+        <div class="top"><span class="ico">🧩</span><span class="kicker">MCP hands-on</span></div>
+        <h3>Build MCP From Scratch</h3>
+        <p>The hands-on companion: build an MCP server (the app that exposes tools/resources/prompts) and an MCP client/task that consumes them — with runnable examples, when-to-use scenarios, and how to run &amp; connect them.</p>
+        <span class="go">Build it</span>
       </a>
 
       <a class="tile web" href="webmcp-a2a.html">
@@ -493,6 +504,10 @@
         <h3><a href="api-mcp.html">APIs vs MCP</a></h3>
         <p>How those agents reach the outside world — and why MCP standardizes connecting them to tools.</p>
       </li>
+      <li class="mcp">
+        <h3><a href="mcp-build.html">Build MCP From Scratch</a></h3>
+        <p>Get hands-on — build an MCP server (app) and an MCP client (task), with examples and scenarios.</p>
+      </li>
       <li class="web">
         <h3><a href="webmcp-a2a.html">WebMCP &amp; A2A</a></h3>
         <p>Where it's heading: tools in the browser, and agents that discover and delegate to each other.</p>
@@ -534,7 +549,7 @@
 </main>
 
 <footer>
-  Twenty-four interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
+  Twenty-five interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
 </footer>
 
 <script>
