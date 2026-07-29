@@ -526,6 +526,7 @@ Runnable scaffolds for each agentic AI design pattern (from Google Cloud's *Choo
 - **[Agent Development Kits Compared](adk.html)** — Google ADK vs AWS Strands + Bedrock AgentCore vs LangGraph: what problem each solves, its limits, and when to choose it.
 - **[Anthropic Agent Architectures](anthropic-agents.html)** — from *Building Effective Agents*: the augmented LLM, the five workflow patterns, and the autonomous agent loop, with when to use each.
 - **[Google Agent Design Patterns](google-agent-patterns.html)** — Google Cloud's taxonomy by who decides the route: predetermined (sequential/parallel/loop) vs dynamic (coordinator/hierarchical/swarm), plus human-in-the-loop.
+- **[Getting Started with Loops](loops.html)** — loop engineering: agents that repeat cycles until a stop condition — the anatomy (trigger/stop/primitive), the four loop types (turn/goal/time/proactive), and best practices.
 - **[IoT × Agents: a self-restocking fridge](iot-agent.html)** — an end-to-end example wiring AWS IoT Core to a Strands agent on Bedrock AgentCore, with architecture, code, and the guardrails auto-purchasing needs.
 - LangChain docs — https://python.langchain.com / https://js.langchain.com
 - LangGraph docs — https://langchain-ai.github.io/langgraph/

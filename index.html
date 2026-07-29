@@ -28,6 +28,7 @@
     --adk: #0f766e;   /* teal    */
     --ant: #a3502a;   /* clay (Anthropic) */
     --goo: #2563eb;   /* blue (Google)    */
+    --loop: #475569;  /* slate   */
     --net: #4d7c0f;   /* lime    */
     --api: #0369a1;   /* sky     */
     --web: #a21caf;   /* fuchsia */
@@ -56,6 +57,7 @@
     --adk: #5eead4;
     --ant: #f4b48f;
     --goo: #60a5fa;
+    --loop: #94a3b8;
     --net: #a3e635;
     --api: #7dd3fc;
     --web: #f0abfc;
@@ -133,6 +135,7 @@
   .tile.adk { --tile: var(--adk); }
   .tile.ant { --tile: var(--ant); }
   .tile.goo { --tile: var(--goo); }
+  .tile.loop { --tile: var(--loop); }
   .tile.net { --tile: var(--net); }
   .tile.api { --tile: var(--api); }
   .tile.web { --tile: var(--web); }
@@ -167,6 +170,7 @@
   .path li.adk { --step: var(--adk); }
   .path li.ant { --step: var(--ant); }
   .path li.goo { --step: var(--goo); }
+  .path li.loop { --step: var(--loop); }
   .path li.net { --step: var(--net); }
   .path li.api { --step: var(--api); }
   .path li.web { --step: var(--web); }
@@ -214,7 +218,7 @@
   <div class="hero">
     <p class="eyebrow">Interactive tutorials</p>
     <h1>Build with LLMs, agents &amp; AWS</h1>
-    <p>Seventeen self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
+    <p>Eighteen self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
   </div>
 
   <div class="search" role="search">
@@ -294,6 +298,13 @@
         <h3>Google Agent Design Patterns</h3>
         <p>Google Cloud's taxonomy organized by who decides the route: predetermined (sequential, parallel, loop) vs dynamic (coordinator, hierarchical, swarm), plus human-in-the-loop — and how to choose.</p>
         <span class="go">Compare patterns</span>
+      </a>
+
+      <a class="tile loop" href="loops.html">
+        <div class="top"><span class="ico">🔄</span><span class="kicker">Loop engineering</span></div>
+        <h3>Getting Started with Loops</h3>
+        <p>Designing agents that repeat cycles of work until a stop condition: the anatomy (trigger · stop · primitive), the four loop types (turn / goal / time / proactive), a worked example, and best practices.</p>
+        <span class="go">Engineer loops</span>
       </a>
 
       <a class="tile net" href="rest-graphql-grpc.html">
@@ -396,6 +407,10 @@
         <h3><a href="google-agent-patterns.html">Google Agent Design Patterns</a></h3>
         <p>The complementary taxonomy — predetermined vs dynamic routing, and the multi-agent topologies.</p>
       </li>
+      <li class="loop">
+        <h3><a href="loops.html">Getting Started with Loops</a></h3>
+        <p>Put agents to work unattended — trigger, verify, stop — with the four loop types and their guardrails.</p>
+      </li>
       <li class="net">
         <h3><a href="rest-graphql-grpc.html">REST vs GraphQL vs gRPC</a></h3>
         <p>How services actually talk over the network — the API-design choices beneath every app and agent.</p>
@@ -429,7 +444,7 @@
 </main>
 
 <footer>
-  Seventeen interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
+  Eighteen interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
 </footer>
 
 <script>

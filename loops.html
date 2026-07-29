@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔄</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Loop engineering — agents that repeat cycles of work until a stop condition. The anatomy of a loop (trigger, stop, primitive), the four loop types (turn-based, goal-based, time-based, proactive), a worked example, and best practices.">
+<title>Loop Engineering — Getting Started with Loops</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f5f7fa;
+    --bg-code: #1e293b;      /* slate ink */
+    --text: #1a2130;
+    --text-soft: #55617a;
+    --border: #e2e8f0;
+    --accent: #475569;       /* slate-600 (AA on white) */
+    --ink: #334155;          /* slate-700 */
+    --solve: #15803d;
+    --limit: #b45309;
+    --choose: #1e40af;
+    --solve-bg: #dcfce7;
+    --limit-bg: #fef3c7;
+    --choose-bg: #dbeafe;
+    --radius: 12px;
+    --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #0f172a;
+    --bg-soft: #17233d;
+    --bg-code: #111a2b;
+    --text: #e6ecf7;
+    --text-soft: #9fb0cc;
+    --border: #263450;
+    --accent: #94a3b8;
+    --ink: #cbd5e1;
+    --solve: #86efac;
+    --limit: #fcd34d;
+    --choose: #93c5fd;
+    --solve-bg: #14351f;
+    --limit-bg: #3a2a0c;
+    --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: var(--font); color: var(--text); background: var(--bg); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  .skip-link { position: absolute; left: -999px; top: 0; background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100; }
+  .skip-link:focus { left: 0; }
+  #progress { position: fixed; top: 0; left: 0; height: 4px; width: 0%; background: linear-gradient(90deg, var(--accent), var(--ink)); z-index: 60; transition: width .1s linear; }
+  header.top { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; padding: .6rem 1rem; }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; }
+  header.top .brand span { color: var(--accent); }
+  header.top .spacer { flex: 1; }
+  .btn { font: inherit; cursor: pointer; border: 1px solid var(--border); background: var(--bg-soft); color: var(--text); border-radius: 999px; padding: .5rem .9rem; min-height: 44px; display: inline-flex; align-items: center; gap: .4rem; }
+  .btn:hover { border-color: var(--accent); }
+  #menuToggle { display: none; }
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side { position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px); overflow-y: auto; padding: 1.25rem 0; font-size: .93rem; }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a { display: block; padding: .45rem .75rem; border-radius: 8px; color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent; }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); }
+  nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.15rem; margin: 1.75rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; }
+  .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .card .count { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; }
+  .callout strong { color: var(--accent); }
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 1.25rem 0; }
+  .flow .node { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: .5rem .8rem; font-size: .88rem; font-weight: 600; }
+  .flow .node.hot { border-color: var(--accent); color: var(--accent); }
+  .flow .arrow { color: var(--text-soft); font-weight: 700; }
+  .svc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-soft); padding: 1rem 1.2rem; margin: 1.1rem 0; }
+  .svc h3 { margin: 0 0 .6rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
+  .svc h3 .full { font-size: .82rem; font-weight: 500; color: var(--text-soft); font-family: var(--mono); }
+  .svc p { margin: .4rem 0; font-size: .95rem; }
+  .tag { display: inline-block; min-width: 5.2rem; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .12rem .5rem; border-radius: 6px; margin-right: .5rem; text-align: center; }
+  .tag.trig { background: var(--choose-bg); color: var(--choose); }
+  .tag.stop { background: var(--limit-bg); color: var(--limit); }
+  .tag.use  { background: var(--solve-bg); color: var(--solve); }
+  .code-wrap { margin: 1.1rem 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  pre { margin: 0; background: var(--bg-code); color: #e6ecf7; padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .86rem; line-height: 1.6; }
+  pre code { font-family: inherit; }
+  .code-head { display: flex; align-items: center; justify-content: space-between; background: var(--bg-code); padding: .35rem .6rem .35rem 1rem; }
+  .code-head .label { color: #94a3b8; font-size: .78rem; font-family: var(--mono); }
+  .copy { font: inherit; cursor: pointer; background: #334155; color: #e6ecf7; border: none; border-radius: 6px; padding: .35rem .7rem; min-height: 36px; font-size: .8rem; }
+  .copy:hover { background: #475569; }
+  .cmt { color: #8593a8; }
+  code.inline { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; }
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-soft); }
+  /* Loop-types ladder diagram */
+  .ld-wrap { overflow-x: auto; margin: 1.3rem 0; }
+  .ld { width: 100%; min-width: 660px; max-width: 760px; height: auto; display: block; margin: 0 auto; font-family: var(--font); }
+  .ld-box { fill: var(--bg-soft); stroke: var(--border); stroke-width: 1.5; }
+  .ld-cap { fill: var(--accent); }
+  .ld-axis { stroke: var(--text-soft); stroke-width: 1.5; fill: none; }
+  .ld-arrowhead { fill: var(--text-soft); }
+  .ld-t { fill: var(--text); font-size: 13px; font-weight: 700; }
+  .ld-sub { fill: var(--text-soft); font-size: 11px; }
+  .ld-axt { fill: var(--text-soft); font-size: 11.5px; font-weight: 700; }
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); }
+  details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; }
+  .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); }
+  .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; }
+  [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; }
+  #score { font-weight: 700; margin-left: 1rem; }
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; }
+    #menuToggle { display: inline-flex; }
+    main { padding-top: .5rem; }
+    .tag { min-width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <a class="btn home" href="index.html" aria-label="Back to all tutorials">← All tutorials</a>
+  <div class="brand">Loop <span>Engineering</span></div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#anatomy">1 · Anatomy of a loop</a></li>
+      <li><a href="#types">2 · The four loop types</a></li>
+      <li><a href="#primitives">3 · The primitives</a></li>
+      <li><a href="#example">4 · A worked example</a></li>
+      <li><a href="#start">5 · Getting started</a></li>
+      <li><a href="#practices">6 · Best practices &amp; limits</a></li>
+      <li><a href="#cheatsheet">Cheat sheet</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>Loop engineering — getting started with loops</h1>
+      <p class="lede">A <strong>loop</strong> is an agent repeating cycles of work until a stop condition is met. It's a shift from one-shot <em>prompting</em> toward <em>designing</em> automated workflows that iterate on their own — gathering context, acting, verifying, and going again until they're done.</p>
+      <div class="flow">
+        <span class="node">trigger</span><span class="arrow">→</span>
+        <span class="node hot">gather → act → verify</span><span class="arrow">↺</span>
+        <span class="node">repeat until…</span><span class="arrow">→</span>
+        <span class="node">stop</span>
+      </div>
+      <div class="callout"><strong>Why loops.</strong> Single turns need you between every step. Loops move <em>you</em> out of the inner cycle — handing off the triggering, the verification, and the stopping — so the agent iterates on complex or recurring work without you as the bottleneck.</div>
+    </section>
+
+    <section id="anatomy">
+      <h2><span class="pill">Framing</span> &nbsp;Anatomy of a loop</h2>
+      <p>Every loop is defined by three choices. Nail these and you've designed the loop:</p>
+      <div class="cards">
+        <div class="card"><h4>▶️ Trigger</h4><p>What starts a cycle — a <em>manual prompt</em>, a <em>schedule</em>, an <em>event</em>, or a <em>goal</em> being defined.</p></div>
+        <div class="card"><h4>🛑 Stop criteria</h4><p>What ends it — a <em>user action</em>, a <em>goal achieved</em>, a <em>turn limit</em>, or <em>external completion</em>.</p></div>
+        <div class="card"><h4>🧩 Primitive</h4><p>Which Claude Code capability powers it — <em>skills</em>, <em>auto mode</em>, or <em>dynamic workflows</em>.</p></div>
+      </div>
+      <div class="callout"><strong>Design tip.</strong> Prefer <em>deterministic</em> stop criteria — "tests pass," "score ≥ 0.9," "no new items" — over subjective judgments. They're what make a loop safe to run unattended.</div>
+    </section>
+
+    <section id="types">
+      <h2><span class="pill">The taxonomy</span> &nbsp;The four loop types</h2>
+      <p>Loops fall into four kinds, along a ladder of increasing autonomy:</p>
+
+      <div class="ld-wrap">
+        <svg class="ld" viewBox="0 0 760 210" role="img" aria-labelledby="ld-title ld-desc">
+          <title id="ld-title">The four loop types by autonomy</title>
+          <desc id="ld-desc">From least to most autonomous: turn-based (manual prompt, you direct each turn), goal-based (/goal, stops when criteria met), time-based (/loop and /schedule, runs on a schedule), and proactive (fully autonomous routines combining schedule, goals and workflows).</desc>
+          <g>
+            <rect class="ld-box" x="20" y="40" width="165" height="96" rx="9"/>
+            <rect class="ld-cap" x="20" y="40" width="165" height="5" rx="2"/>
+            <text class="ld-t" x="102" y="72" text-anchor="middle">Turn-based</text>
+            <text class="ld-sub" x="102" y="94" text-anchor="middle">manual prompt</text>
+            <text class="ld-sub" x="102" y="112" text-anchor="middle">you direct each turn</text>
+          </g>
+          <g>
+            <rect class="ld-box" x="205" y="40" width="165" height="96" rx="9"/>
+            <rect class="ld-cap" x="205" y="40" width="165" height="5" rx="2"/>
+            <text class="ld-t" x="287" y="72" text-anchor="middle">Goal-based</text>
+            <text class="ld-sub" x="287" y="94" text-anchor="middle">/goal</text>
+            <text class="ld-sub" x="287" y="112" text-anchor="middle">stops when criteria met</text>
+          </g>
+          <g>
+            <rect class="ld-box" x="390" y="40" width="165" height="96" rx="9"/>
+            <rect class="ld-cap" x="390" y="40" width="165" height="5" rx="2"/>
+            <text class="ld-t" x="472" y="72" text-anchor="middle">Time-based</text>
+            <text class="ld-sub" x="472" y="94" text-anchor="middle">/loop · /schedule</text>
+            <text class="ld-sub" x="472" y="112" text-anchor="middle">runs on a schedule</text>
+          </g>
+          <g>
+            <rect class="ld-box" x="575" y="40" width="165" height="96" rx="9"/>
+            <rect class="ld-cap" x="575" y="40" width="165" height="5" rx="2"/>
+            <text class="ld-t" x="657" y="72" text-anchor="middle">Proactive</text>
+            <text class="ld-sub" x="657" y="94" text-anchor="middle">autonomous routine</text>
+            <text class="ld-sub" x="657" y="112" text-anchor="middle">schedule + goal + flows</text>
+          </g>
+          <defs>
+            <marker id="ld-ar" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" class="ld-arrowhead"/></marker>
+          </defs>
+          <path class="ld-axis" d="M20,168 L740,168" marker-end="url(#ld-ar)"/>
+          <text class="ld-axt" x="20" y="190" text-anchor="start">less autonomy · more control</text>
+          <text class="ld-axt" x="740" y="190" text-anchor="end">more autonomy</text>
+        </svg>
+      </div>
+
+      <article class="svc">
+        <h3>① Turn-based <span class="full">manual, one cycle at a time</span></h3>
+        <p><span class="tag trig">Trigger</span> A manual prompt. <span class="tag stop">Stops</span> when you take the next action. <span class="tag use">Use for</span> exploratory or high-touch work where you steer every turn.</p>
+      </article>
+      <article class="svc">
+        <h3>② Goal-based <span class="full">/goal — iterate to a target</span></h3>
+        <p><span class="tag trig">Trigger</span> You define success criteria. <span class="tag stop">Stops</span> when an evaluator confirms the goal is met (with a turn cap as a backstop). <span class="tag use">Use for</span> "make the tests pass," "get the score above X."</p>
+      </article>
+      <article class="svc">
+        <h3>③ Time-based <span class="full">/loop · /schedule — recurring</span></h3>
+        <p><span class="tag trig">Trigger</span> A schedule / interval. <span class="tag stop">Stops</span> per run (or on your cancel). <span class="tag use">Use for</span> recurring work — "summarize the #eng Slack every morning," monitoring an external system that changes over time.</p>
+      </article>
+      <article class="svc">
+        <h3>④ Proactive <span class="full">fully autonomous routines</span></h3>
+        <p><span class="tag trig">Trigger</span> Schedule/event, combined with goals + workflows + auto mode. <span class="tag stop">Stops</span> on goal completion or external completion. <span class="tag use">Use for</span> well-defined work: bug triage, issue handling, migrations, dependency upgrades.</p>
+      </article>
+    </section>
+
+    <section id="primitives">
+      <h2><span class="pill">The toolbox</span> &nbsp;The primitives that power loops</h2>
+      <div class="cards">
+        <div class="card"><h4>📋 Skills</h4><p>Verification standards encoded as <code class="inline">SKILL.md</code> files, so the agent can <em>self-check</em> its work against your criteria.</p></div>
+        <div class="card"><h4>⚙️ Dynamic workflows</h4><p>Orchestrate multiple agents in parallel to decompose and cover a task (a research-preview capability).</p></div>
+        <div class="card"><h4>⚡ Auto mode</h4><p>Execute steps without pausing for permission — removes approval delays inside the loop.</p></div>
+        <div class="card"><h4>🧑‍🔧 Subagents</h4><p>Specialized agents for focused sub-tasks (e.g. an independent reviewer) within a larger loop.</p></div>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">loops as slash commands (illustrative)</span><button class="copy">Copy</button></div>
+<pre><code><span class="cmt"># Time-based: recurring summary</span>
+/loop 24h   summarize yesterday's #eng Slack and post the highlights
+
+<span class="cmt"># Goal-based: iterate until a deterministic criterion is met</span>
+/goal       make the failing tests in tests/ pass   <span class="cmt"># evaluator checks; turn cap as backstop</span>
+
+<span class="cmt"># Proactive routine: schedule + goal + workflow + auto mode</span>
+/schedule 1h  triage new bug reports, fix, open a PR, and request review
+
+<span class="cmt"># Keep an eye on cost &amp; progress</span>
+/usage       ·   /workflows   ·   /goal   (metrics &amp; dashboards)</code></pre>
+      </div>
+    </section>
+
+    <section id="example">
+      <h2><span class="pill">In practice</span> &nbsp;A worked example — proactive bug triage</h2>
+      <p>A single proactive loop can own a recurring chore end to end by combining the primitives:</p>
+      <div class="flow">
+        <span class="node">⏱ /schedule 1h</span><span class="arrow">→</span>
+        <span class="node hot">check for new bug reports</span><span class="arrow">→</span>
+        <span class="node">⚙️ workflow: triage · fix · review (parallel)</span><span class="arrow">→</span>
+        <span class="node">📋 goal + skills verify</span><span class="arrow">→</span>
+        <span class="node">open PR</span>
+      </div>
+      <p>Here <code class="inline">/schedule</code> checks for new reports hourly (trigger), <code class="inline">/goal</code> plus a verification <em>skill</em> defines "done" (stop), <em>dynamic workflows</em> triage, fix and review in parallel, and <em>auto mode</em> removes approval delays. You review the PRs — not every step.</p>
+    </section>
+
+    <section id="start">
+      <h2><span class="pill">How to begin</span> &nbsp;Getting started</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Step</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Identify a task where <strong>you</strong> are the bottleneck.</td></tr>
+            <tr><td>2</td><td>Decide what you could <strong>hand off</strong> — the verification, the stop condition, the triggering.</td></tr>
+            <tr><td>3</td><td>Pick the <strong>loop type</strong> that matches (turn / goal / time / proactive).</td></tr>
+            <tr><td>4</td><td>Run it and <strong>observe</strong> where it stalls or over-reaches.</td></tr>
+            <tr><td>5</td><td><strong>Iterate</strong> on the design — tighten criteria, adjust cadence, add a review subagent.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><strong>Start small.</strong> Not every task needs a complex loop — begin with the simplest type that removes you from the cycle, and climb toward proactive only as trust and criteria firm up.</div>
+    </section>
+
+    <section id="practices">
+      <h2><span class="pill">Guardrails</span> &nbsp;Best practices &amp; limits</h2>
+      <article class="svc">
+        <h3>Keep loops trustworthy</h3>
+        <p><span class="tag use">Do</span> Keep the codebase clean (the agent follows existing patterns), encode verification standards in <strong>skills</strong>, keep docs accessible, and deploy a <strong>secondary agent for independent review</strong>.</p>
+      </article>
+      <article class="svc">
+        <h3>Manage cost &amp; runaway</h3>
+        <p><span class="tag use">Do</span> Match primitives and models to task complexity; use <strong>deterministic scripts</strong> for routine work instead of reasoning; align schedule intervals with how often things actually change; pilot dynamic workflows before scaling; and monitor with <code class="inline">/usage</code>, <code class="inline">/goal</code> metrics and the <code class="inline">/workflows</code> dashboard.</p>
+        <p><span class="tag stop">Watch</span> Token cost scales with agent complexity and frequency; <strong>turn caps</strong> prevent runaway iterations but need calibration; subjective stop criteria are unreliable — prefer measurable ones.</p>
+      </article>
+      <div class="callout"><strong>The mindset shift.</strong> Loop engineering is less about writing a clever prompt and more about <em>designing a system</em>: what triggers it, how it verifies itself, and when it stops. Get those right and the agent does the loop; you do the review.</div>
+    </section>
+
+    <section id="cheatsheet">
+      <h2>Cheat sheet</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Question</th><th>Short answer</th></tr></thead>
+          <tbody>
+            <tr><td>What is a loop?</td><td>An agent repeating cycles of work until a stop condition is met.</td></tr>
+            <tr><td>What defines a loop?</td><td>Its trigger, its stop criteria, and the primitive that powers it.</td></tr>
+            <tr><td>The four types?</td><td>Turn-based, Goal-based (/goal), Time-based (/loop · /schedule), Proactive.</td></tr>
+            <tr><td>The primitives?</td><td>Skills, dynamic workflows, auto mode, subagents.</td></tr>
+            <tr><td>Best kind of stop criteria?</td><td>Deterministic (tests pass, score threshold) over subjective judgment.</td></tr>
+            <tr><td>How to start?</td><td>Find where you're the bottleneck; hand off verification &amp; stopping; start simple.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions on loop engineering. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="b">
+          <p>1. What is a "loop"?</p>
+          <label><input type="radio" name="q1" value="a"> A single clever prompt</label>
+          <label><input type="radio" name="q1" value="b"> An agent repeating cycles of work until a stop condition is met</label>
+          <label><input type="radio" name="q1" value="c"> A type of vector database</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>2. Which three choices define a loop?</p>
+          <label><input type="radio" name="q2" value="a"> Model, temperature, tokens</label>
+          <label><input type="radio" name="q2" value="b"> Frontend, backend, database</label>
+          <label><input type="radio" name="q2" value="c"> Trigger, stop criteria, and the primitive that powers it</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>3. A loop that iterates until an evaluator confirms success criteria are met is…</p>
+          <label><input type="radio" name="q3" value="a"> Goal-based (/goal)</label>
+          <label><input type="radio" name="q3" value="b"> Turn-based</label>
+          <label><input type="radio" name="q3" value="c"> Time-based</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>4. "Summarize the team Slack every morning" is which type of loop?</p>
+          <label><input type="radio" name="q4" value="a"> Proactive</label>
+          <label><input type="radio" name="q4" value="b"> Time-based (/loop · /schedule)</label>
+          <label><input type="radio" name="q4" value="c"> Turn-based</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>5. What kind of stop criteria are recommended for unattended loops?</p>
+          <label><input type="radio" name="q5" value="a"> Subjective, vibe-based judgments</label>
+          <label><input type="radio" name="q5" value="b"> None — let it run forever</label>
+          <label><input type="radio" name="q5" value="c"> Deterministic (tests pass, score threshold)</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. What's the recommended way to start with loops?</p>
+          <label><input type="radio" name="q6" value="a"> Build the most autonomous proactive routine first</label>
+          <label><input type="radio" name="q6" value="b"> Find where you're the bottleneck, hand off verification/stopping, and start with the simplest type</label>
+          <label><input type="radio" name="q6" value="c"> Avoid loops entirely</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>📄 The blog post</h4><p><a href="https://claude.com/blog/getting-started-with-loops" target="_blank" rel="noopener">Getting started with loops</a> — the original Claude Code write-up this guide is based on.</p></div>
+        <div class="card"><h4>🔁 Anthropic architectures</h4><p><a href="anthropic-agents.html">Workflows &amp; the agent loop</a> — the inner cycle a loop repeats.</p></div>
+        <div class="card"><h4>🧭 Google agent patterns</h4><p><a href="google-agent-patterns.html">Multi-agent topologies</a> — how dynamic workflows coordinate agents.</p></div>
+        <div class="card"><h4>📓 All tutorials</h4><p><a href="index.html">The hub</a> — LLMs, agents, protocols, cloud &amp; more.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  Loop engineering — designing agents that iterate until done. Based on Anthropic's "Getting started with loops"; product features evolve, confirm against current docs. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) { root.setAttribute("data-theme", t); tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 "; tLabel.textContent = t === "dark" ? "Light" : "Dark"; }
+  var saved = null;
+  try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () { var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark"; applyTheme(next); try { localStorage.setItem("theme", next); } catch (e) {} });
+  var menuBtn = document.getElementById("menuToggle");
+  var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () { var open = side.classList.toggle("open"); menuBtn.setAttribute("aria-expanded", String(open)); });
+  side.addEventListener("click", function (e) { if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); } });
+  var bar = document.getElementById("progress");
+  function onScroll() { var h = document.documentElement; var max = h.scrollHeight - h.clientHeight; bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%"; }
+  document.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a"));
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) { entries.forEach(function (en) { if (en.isIntersecting) { links.forEach(function (a) { a.classList.remove("active"); }); if (map[en.target.id]) map[en.target.id].classList.add("active"); } }); }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var wrap = btn.closest(".code-wrap");
+      var pre = wrap.querySelector("pre");
+      var text = pre ? pre.innerText : "";
+      var done = function () { var o = btn.textContent; btn.textContent = "Copied!"; setTimeout(function () { btn.textContent = o; }, 1400); };
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, done); }
+      else { var ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch (e) {} document.body.removeChild(ta); done(); }
+    });
+  });
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q");
+    var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      var correctLabel = q.querySelector('input[value="' + answer + '"]').parentNode;
+      correctLabel.classList.add("correct");
+      if (chosen) { if (chosen.value === answer) { score++; } else { chosen.parentNode.classList.add("wrong"); } }
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length + (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>
