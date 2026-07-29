@@ -523,6 +523,8 @@ Runnable scaffolds for each agentic AI design pattern (from Google Cloud's *Choo
 - **[Cloud Native](cloud-native.html)** — building apps to fully exploit the cloud: the pillars (containers, microservices, Kubernetes, CI/CD, observability), the benefits, the complexity cost, and when (not) to adopt it.
 - **[AWS Services Field Guide](aws-services.html)** — an architect's tour of 40 core AWS services: the problem each one solves, its real limits and quotas, and when to choose it (pairs with Bedrock for LLM apps).
 - **[Agent Development Kits Compared](adk.html)** — Google ADK vs AWS Strands + Bedrock AgentCore vs LangGraph: what problem each solves, its limits, and when to choose it.
+- **[Anthropic Agent Architectures](anthropic-agents.html)** — from *Building Effective Agents*: the augmented LLM, the five workflow patterns, and the autonomous agent loop, with when to use each.
+- **[Google Agent Design Patterns](google-agent-patterns.html)** — Google Cloud's taxonomy by who decides the route: predetermined (sequential/parallel/loop) vs dynamic (coordinator/hierarchical/swarm), plus human-in-the-loop.
 - **[IoT × Agents: a self-restocking fridge](iot-agent.html)** — an end-to-end example wiring AWS IoT Core to a Strands agent on Bedrock AgentCore, with architecture, code, and the guardrails auto-purchasing needs.
 - LangChain docs — https://python.langchain.com / https://js.langchain.com
 - LangGraph docs — https://langchain-ai.github.io/langgraph/

@@ -25,6 +25,8 @@
     --rag: #be185d;   /* rose    */
     --lci: #a16207;   /* gold    */
     --adk: #0f766e;   /* teal    */
+    --ant: #a3502a;   /* clay (Anthropic) */
+    --goo: #2563eb;   /* blue (Google)    */
     --net: #4d7c0f;   /* lime    */
     --api: #0369a1;   /* sky     */
     --web: #a21caf;   /* fuchsia */
@@ -50,6 +52,8 @@
     --rag: #f472b6;
     --lci: #fbbf24;
     --adk: #5eead4;
+    --ant: #f4b48f;
+    --goo: #60a5fa;
     --net: #a3e635;
     --api: #7dd3fc;
     --web: #f0abfc;
@@ -124,6 +128,8 @@
   .tile.rag { --tile: var(--rag); }
   .tile.lci { --tile: var(--lci); }
   .tile.adk { --tile: var(--adk); }
+  .tile.ant { --tile: var(--ant); }
+  .tile.goo { --tile: var(--goo); }
   .tile.net { --tile: var(--net); }
   .tile.api { --tile: var(--api); }
   .tile.web { --tile: var(--web); }
@@ -155,6 +161,8 @@
   .path li.rag { --step: var(--rag); }
   .path li.lci { --step: var(--lci); }
   .path li.adk { --step: var(--adk); }
+  .path li.ant { --step: var(--ant); }
+  .path li.goo { --step: var(--goo); }
   .path li.net { --step: var(--net); }
   .path li.api { --step: var(--api); }
   .path li.web { --step: var(--web); }
@@ -202,7 +210,7 @@
   <div class="hero">
     <p class="eyebrow">Interactive tutorials</p>
     <h1>Build with LLMs, agents &amp; AWS</h1>
-    <p>Fourteen self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
+    <p>Sixteen self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
   </div>
 
   <div class="search" role="search">
@@ -261,6 +269,20 @@
         <h3>Agent Development Kits</h3>
         <p>Google ADK vs AWS Strands + Bedrock AgentCore vs LangGraph — what problem each solves, its limits, and when to choose it, in a clear Problem → Solution → Limits format.</p>
         <span class="go">Compare kits</span>
+      </a>
+
+      <a class="tile ant" href="anthropic-agents.html">
+        <div class="top"><span class="ico">🔁</span><span class="kicker">Agent architecture</span></div>
+        <h3>Anthropic Agent Architectures</h3>
+        <p>From <em>Building Effective Agents</em>: the augmented LLM, the five workflow patterns (chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer), and the autonomous agent loop — with when to use each.</p>
+        <span class="go">See the loops</span>
+      </a>
+
+      <a class="tile goo" href="google-agent-patterns.html">
+        <div class="top"><span class="ico">🧭</span><span class="kicker">Agent patterns</span></div>
+        <h3>Google Agent Design Patterns</h3>
+        <p>Google Cloud's taxonomy organized by who decides the route: predetermined (sequential, parallel, loop) vs dynamic (coordinator, hierarchical, swarm), plus human-in-the-loop — and how to choose.</p>
+        <span class="go">Compare patterns</span>
       </a>
 
       <a class="tile net" href="rest-graphql-grpc.html">
@@ -351,6 +373,14 @@
         <h3><a href="adk.html">Agent Development Kits</a></h3>
         <p>Now zoom out: how the frameworks for <em>building</em> agents differ, and how to pick one for the job.</p>
       </li>
+      <li class="ant">
+        <h3><a href="anthropic-agents.html">Anthropic Agent Architectures</a></h3>
+        <p>The architectural vocabulary — workflows vs agents, the five patterns, and the agent loop.</p>
+      </li>
+      <li class="goo">
+        <h3><a href="google-agent-patterns.html">Google Agent Design Patterns</a></h3>
+        <p>The complementary taxonomy — predetermined vs dynamic routing, and the multi-agent topologies.</p>
+      </li>
       <li class="net">
         <h3><a href="rest-graphql-grpc.html">REST vs GraphQL vs gRPC</a></h3>
         <p>How services actually talk over the network — the API-design choices beneath every app and agent.</p>
@@ -384,7 +414,7 @@
 </main>
 
 <footer>
-  Fourteen interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
+  Sixteen interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
 </footer>
 
 <script>

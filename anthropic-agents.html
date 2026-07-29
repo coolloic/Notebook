@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔁</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Anthropic's agent architectures — the augmented LLM, workflow patterns (prompt chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer), and the autonomous agent loop, plus when to use each.">
+<title>Anthropic Agent Architectures — Workflows &amp; the Agent Loop</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f5f7fa;
+    --bg-code: #241206;      /* deep clay ink */
+    --text: #1a2130;
+    --text-soft: #55617a;
+    --border: #e2e8f0;
+    --accent: #a3502a;       /* clay / terracotta (AA on white) */
+    --ink: #7c3d20;
+    --solve: #15803d;
+    --limit: #b45309;
+    --choose: #1e40af;
+    --solve-bg: #dcfce7;
+    --limit-bg: #fef3c7;
+    --choose-bg: #dbeafe;
+    --radius: 12px;
+    --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #0f172a;
+    --bg-soft: #17233d;
+    --bg-code: #1f1004;
+    --text: #e6ecf7;
+    --text-soft: #9fb0cc;
+    --border: #263450;
+    --accent: #f4b48f;
+    --ink: #f8c9ab;
+    --solve: #86efac;
+    --limit: #fcd34d;
+    --choose: #93c5fd;
+    --solve-bg: #14351f;
+    --limit-bg: #3a2a0c;
+    --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: var(--font); color: var(--text); background: var(--bg); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  .skip-link { position: absolute; left: -999px; top: 0; background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100; }
+  .skip-link:focus { left: 0; }
+  #progress { position: fixed; top: 0; left: 0; height: 4px; width: 0%; background: linear-gradient(90deg, var(--accent), var(--ink)); z-index: 60; transition: width .1s linear; }
+  header.top { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; padding: .6rem 1rem; }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; }
+  header.top .brand span { color: var(--accent); }
+  header.top .spacer { flex: 1; }
+  .btn { font: inherit; cursor: pointer; border: 1px solid var(--border); background: var(--bg-soft); color: var(--text); border-radius: 999px; padding: .5rem .9rem; min-height: 44px; display: inline-flex; align-items: center; gap: .4rem; }
+  .btn:hover { border-color: var(--accent); }
+  #menuToggle { display: none; }
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side { position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px); overflow-y: auto; padding: 1.25rem 0; font-size: .93rem; }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a { display: block; padding: .45rem .75rem; border-radius: 8px; color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent; }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); }
+  nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.15rem; margin: 1.75rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; }
+  .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .card .count { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; }
+  .callout strong { color: var(--accent); }
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 1.25rem 0; }
+  .flow .node { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: .5rem .8rem; font-size: .88rem; font-weight: 600; }
+  .flow .node.hot { border-color: var(--accent); color: var(--accent); }
+  .flow .arrow { color: var(--text-soft); font-weight: 700; }
+  .svc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-soft); padding: 1rem 1.2rem; margin: 1.1rem 0; }
+  .svc h3 { margin: 0 0 .6rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
+  .svc h3 .full { font-size: .82rem; font-weight: 500; color: var(--text-soft); font-family: var(--mono); }
+  .svc p { margin: .4rem 0; font-size: .95rem; }
+  .tag { display: inline-block; min-width: 5.6rem; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .12rem .5rem; border-radius: 6px; margin-right: .5rem; text-align: center; }
+  .tag.solve  { background: var(--solve-bg);  color: var(--solve); }
+  .tag.limit  { background: var(--limit-bg);  color: var(--limit); }
+  .tag.choose { background: var(--choose-bg); color: var(--choose); }
+  .code-wrap { margin: 1.1rem 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  pre { margin: 0; background: var(--bg-code); color: #f8e6d8; padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .86rem; line-height: 1.6; }
+  pre code { font-family: inherit; }
+  .code-head { display: flex; align-items: center; justify-content: space-between; background: var(--bg-code); padding: .35rem .6rem .35rem 1rem; }
+  .code-head .label { color: #cba889; font-size: .78rem; font-family: var(--mono); }
+  .copy { font: inherit; cursor: pointer; background: #4d2e18; color: #f8e6d8; border: none; border-radius: 6px; padding: .35rem .7rem; min-height: 36px; font-size: .8rem; }
+  .copy:hover { background: #653d20; }
+  .cmt { color: #b6906f; }
+  code.inline { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; }
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-soft); }
+  /* Agent loop diagram */
+  .lp-wrap { overflow-x: auto; margin: 1.3rem 0; }
+  .lp { width: 100%; min-width: 620px; max-width: 720px; height: auto; display: block; margin: 0 auto; font-family: var(--font); }
+  .lp-box { fill: var(--bg-soft); stroke: var(--border); stroke-width: 1.5; }
+  .lp-hot { fill: var(--bg-soft); stroke: var(--accent); stroke-width: 2; }
+  .lp-done { fill: var(--solve-bg); stroke: var(--solve); stroke-width: 1.8; }
+  .lp-line { fill: none; stroke: var(--text-soft); stroke-width: 1.6; }
+  .lp-loop { fill: none; stroke: var(--accent); stroke-width: 1.8; }
+  .lp-arrowhead { fill: var(--text-soft); }
+  .lp-arrowhot { fill: var(--accent); }
+  .lp-t { fill: var(--text); font-size: 12px; font-weight: 600; }
+  .lp-lbl { fill: var(--accent); font-size: 11.5px; font-weight: 700; }
+  .lp-lbl2 { fill: var(--text-soft); font-size: 11.5px; font-weight: 700; }
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); }
+  details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; }
+  .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); }
+  .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; }
+  [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; }
+  #score { font-weight: 700; margin-left: 1rem; }
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; }
+    #menuToggle { display: inline-flex; }
+    main { padding-top: .5rem; }
+    .tag { min-width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <a class="btn home" href="index.html" aria-label="Back to all tutorials">← All tutorials</a>
+  <div class="brand">Anthropic <span>Agent Architectures</span></div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#augmented">1 · The augmented LLM</a></li>
+      <li><a href="#workflows">2 · Workflow patterns</a></li>
+      <li><a href="#agent">3 · The agent loop</a></li>
+      <li><a href="#choose">4 · Choosing — start simple</a></li>
+      <li><a href="#cheatsheet">Cheat sheet</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>Anthropic's agent architectures — workflows &amp; the loop</h1>
+      <p class="lede">In <em>Building Effective Agents</em>, Anthropic draws one crucial line: <strong>workflows</strong> orchestrate LLMs and tools along <em>predefined</em> code paths, while <strong>agents</strong> let the LLM <em>dynamically direct its own process</em> in a loop. Both are built from one primitive — the augmented LLM — and the whole art is choosing the simplest structure that works.</p>
+
+      <div class="flow">
+        <span class="node hot">workflows</span>
+        <span class="arrow">— code defines the path —</span>
+        <span class="node">predictable</span>
+        <span class="arrow">vs</span>
+        <span class="node hot">agents</span>
+        <span class="arrow">— the model decides —</span>
+        <span class="node">flexible</span>
+      </div>
+
+      <div class="callout"><strong>The headline advice.</strong> Don't build an agent when a single well-crafted prompt or a simple workflow will do. Add autonomy (and its cost, latency and unpredictability) only when the task genuinely needs it.</div>
+    </section>
+
+    <section id="augmented">
+      <h2><span class="pill">Building block</span> &nbsp;The augmented LLM</h2>
+      <p>Everything is composed from an <strong>augmented LLM</strong> — a model enhanced with three capabilities it can use itself:</p>
+      <div class="cards">
+        <div class="card"><h4>🔎 Retrieval</h4><p>Pull in relevant external knowledge on demand (RAG) to ground its answers.</p></div>
+        <div class="card"><h4>🛠️ Tools</h4><p>Call functions/APIs to act on the world and get real results back.</p></div>
+        <div class="card"><h4>🧠 Memory</h4><p>Retain context across steps and turns so it can build on prior work.</p></div>
+      </div>
+      <p>Workflows and agents differ only in <em>how</em> these augmented calls are arranged — by your code, or by the model.</p>
+    </section>
+
+    <section id="workflows">
+      <h2><span class="pill">Predefined paths</span> &nbsp;Workflow patterns</h2>
+      <p>Five composable patterns cover most workflow needs — the code, not the model, decides the route:</p>
+
+      <article class="svc">
+        <h3>① Prompt chaining <span class="full">sequential steps</span></h3>
+        <p><span class="tag solve">Shape</span> Decompose a task into a fixed sequence of LLM calls, each acting on the previous output — with optional programmatic <em>gates</em> to check progress between steps.</p>
+        <p><span class="tag choose">Use when</span> The task cleanly splits into predictable subtasks (e.g. outline → draft → polish); trading latency for accuracy.</p>
+      </article>
+      <article class="svc">
+        <h3>② Routing <span class="full">classify, then specialize</span></h3>
+        <p><span class="tag solve">Shape</span> Classify the input and send it to a specialized prompt or tool tuned for that category.</p>
+        <p><span class="tag choose">Use when</span> Inputs fall into distinct kinds that are each handled better separately (e.g. refund vs. technical vs. sales).</p>
+      </article>
+      <article class="svc">
+        <h3>③ Parallelization <span class="full">sectioning &amp; voting</span></h3>
+        <p><span class="tag solve">Shape</span> Run LLM calls in parallel — either <em>sectioning</em> (split into independent subtasks) or <em>voting</em> (run the same task several times for diverse takes / consensus).</p>
+        <p><span class="tag choose">Use when</span> Subtasks are independent (speed), or multiple attempts improve confidence (e.g. guardrail checks, majority vote).</p>
+      </article>
+      <article class="svc">
+        <h3>④ Orchestrator–workers <span class="full">dynamic delegation</span></h3>
+        <p><span class="tag solve">Shape</span> A central orchestrator LLM breaks a task into subtasks <em>at runtime</em>, delegates them to worker LLMs, and synthesizes the results.</p>
+        <p><span class="tag choose">Use when</span> You can't predict the subtasks up front (e.g. multi-file code changes, research over many sources).</p>
+      </article>
+      <article class="svc">
+        <h3>⑤ Evaluator–optimizer <span class="full">generate → critique → refine</span></h3>
+        <p><span class="tag solve">Shape</span> One LLM generates, another evaluates against criteria and gives feedback; loop until it passes.</p>
+        <p><span class="tag choose">Use when</span> You have clear evaluation criteria and iterative refinement measurably helps (e.g. translation, literary polish).</p>
+      </article>
+
+      <div class="callout"><strong>All runnable here.</strong> The <a href="llm-apps.html#experiments">experiments</a> folder has working scaffolds for these (sequential, parallel, loop, review &amp; critique, iterative refinement) on the LangChain/LangGraph stack.</div>
+    </section>
+
+    <section id="agent">
+      <h2><span class="pill">The model decides</span> &nbsp;The agent loop</h2>
+      <p>An <strong>agent</strong> drops the predefined path. Given a task, the LLM plans, calls a tool, observes the result, and <strong>loops</strong> — repeating until it decides it's done (or hits a stopping condition / human checkpoint). Its trajectory isn't fixed in advance.</p>
+
+      <div class="lp-wrap">
+        <svg class="lp" viewBox="0 0 720 250" role="img" aria-labelledby="lp-title lp-desc">
+          <title id="lp-title">The autonomous agent loop</title>
+          <desc id="lp-desc">A task goes to the LLM, which plans and calls a tool, observes the result, and loops back to plan again until it decides the task is done.</desc>
+          <defs>
+            <marker id="lp-ar" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" class="lp-arrowhead"/></marker>
+            <marker id="lp-arh" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" class="lp-arrowhot"/></marker>
+          </defs>
+          <!-- loop back (drawn under) -->
+          <path class="lp-loop" d="M620,95 C620,40 255,40 255,95" marker-end="url(#lp-arh)"/>
+          <text class="lp-lbl" x="437" y="34" text-anchor="middle">not done → loop</text>
+          <!-- straight arrows -->
+          <path class="lp-line" d="M140,117 L190,117" marker-end="url(#lp-ar)"/>
+          <path class="lp-line" d="M320,117 L370,117" marker-end="url(#lp-ar)"/>
+          <path class="lp-line" d="M500,117 L550,117" marker-end="url(#lp-ar)"/>
+          <path class="lp-line" d="M255,139 L255,196" marker-end="url(#lp-ar)"/>
+          <text class="lp-lbl2" x="286" y="176" text-anchor="start">done?</text>
+          <!-- nodes -->
+          <rect class="lp-box" x="30" y="95" width="110" height="44" rx="10"/><text class="lp-t" x="85" y="121" text-anchor="middle">Task</text>
+          <rect class="lp-hot" x="190" y="95" width="130" height="44" rx="10"/><text class="lp-t" x="255" y="115" text-anchor="middle">LLM reasons</text><text class="lp-t" x="255" y="130" text-anchor="middle">/ plans</text>
+          <rect class="lp-box" x="370" y="95" width="130" height="44" rx="10"/><text class="lp-t" x="435" y="121" text-anchor="middle">Act — call a tool</text>
+          <rect class="lp-box" x="550" y="95" width="140" height="44" rx="10"/><text class="lp-t" x="620" y="121" text-anchor="middle">Observe result</text>
+          <rect class="lp-done" x="200" y="196" width="110" height="40" rx="10"/><text class="lp-t" x="255" y="221" text-anchor="middle">Done ✓</text>
+        </svg>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">the loop, conceptually</span><button class="copy">Copy</button></div>
+<pre><code><span class="cmt"># An agent is a loop: reason → act (tool) → observe → repeat, until done.</span>
+messages = [user_task]
+while True:
+    reply = llm(messages, tools=TOOLS)        <span class="cmt"># reason / plan</span>
+    if reply.tool_calls:
+        results = run_tools(reply.tool_calls)  <span class="cmt"># act</span>
+        messages += [reply, results]           <span class="cmt"># observe, then loop</span>
+    else:
+        return reply                           <span class="cmt"># no tool call → done</span></code></pre>
+      </div>
+      <div class="callout"><strong>Use agents for open-ended tasks</strong> where the number of steps can't be predicted and you can't (or don't want to) hard-code the path — with guardrails: tool-call limits, stopping conditions, and human checkpoints for high-stakes actions.</div>
+    </section>
+
+    <section id="choose">
+      <h2>Choosing — start simple</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>If the task…</th><th>Reach for…</th></tr></thead>
+          <tbody>
+            <tr><td>Fits one well-crafted prompt</td><td>Just the <strong>augmented LLM</strong> — no orchestration</td></tr>
+            <tr><td>Splits into fixed, ordered steps</td><td><strong>Prompt chaining</strong></td></tr>
+            <tr><td>Falls into distinct categories</td><td><strong>Routing</strong></td></tr>
+            <tr><td>Has independent subtasks / needs consensus</td><td><strong>Parallelization</strong></td></tr>
+            <tr><td>Has unpredictable subtasks decided at runtime</td><td><strong>Orchestrator–workers</strong></td></tr>
+            <tr><td>Needs iterative refinement against criteria</td><td><strong>Evaluator–optimizer</strong></td></tr>
+            <tr><td>Is open-ended with an unknown number of steps</td><td>An <strong>agent</strong> (the loop)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><strong>Rule of thumb.</strong> Increase autonomy only as the task demands it. More autonomy means more capability but also more latency, cost and unpredictability — so climb this ladder one rung at a time, and measure.</div>
+    </section>
+
+    <section id="cheatsheet">
+      <h2>Cheat sheet</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Question</th><th>Short answer</th></tr></thead>
+          <tbody>
+            <tr><td>Workflow vs agent?</td><td>Workflow = code defines the path; agent = the LLM decides at runtime.</td></tr>
+            <tr><td>The base building block?</td><td>The augmented LLM (retrieval + tools + memory).</td></tr>
+            <tr><td>The five workflow patterns?</td><td>Prompt chaining, routing, parallelization, orchestrator–workers, evaluator–optimizer.</td></tr>
+            <tr><td>What is an agent, mechanically?</td><td>A loop: reason → act (tool) → observe → repeat until done.</td></tr>
+            <tr><td>Core advice?</td><td>Start simple; add autonomy only when the task needs it.</td></tr>
+            <tr><td>Agent guardrails?</td><td>Tool-call limits, stopping conditions, human checkpoints.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions on Anthropic's agent architectures. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="b">
+          <p>1. What is the key distinction Anthropic draws?</p>
+          <label><input type="radio" name="q1" value="a"> Cheap models vs expensive models</label>
+          <label><input type="radio" name="q1" value="b"> Workflows (code defines the path) vs agents (the LLM decides at runtime)</label>
+          <label><input type="radio" name="q1" value="c"> Python vs JavaScript</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>2. What is the "augmented LLM"?</p>
+          <label><input type="radio" name="q2" value="a"> A bigger model</label>
+          <label><input type="radio" name="q2" value="b"> A model with no tools</label>
+          <label><input type="radio" name="q2" value="c"> An LLM enhanced with retrieval, tools and memory</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>3. Inputs fall into distinct categories each handled better separately. Which pattern?</p>
+          <label><input type="radio" name="q3" value="a"> Routing</label>
+          <label><input type="radio" name="q3" value="b"> Parallelization</label>
+          <label><input type="radio" name="q3" value="c"> Evaluator–optimizer</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>4. Subtasks can't be predicted up front and must be decided at runtime. Which pattern?</p>
+          <label><input type="radio" name="q4" value="a"> Prompt chaining</label>
+          <label><input type="radio" name="q4" value="b"> Orchestrator–workers</label>
+          <label><input type="radio" name="q4" value="c"> Routing</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>5. Mechanically, an agent is…</p>
+          <label><input type="radio" name="q5" value="a"> A single prompt</label>
+          <label><input type="radio" name="q5" value="b"> A fixed chain of two calls</label>
+          <label><input type="radio" name="q5" value="c"> A loop: reason → act (tool) → observe → repeat until done</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. What is Anthropic's core piece of advice?</p>
+          <label><input type="radio" name="q6" value="a"> Always build the most autonomous agent possible</label>
+          <label><input type="radio" name="q6" value="b"> Start simple; add autonomy only when the task genuinely needs it</label>
+          <label><input type="radio" name="q6" value="c"> Never use tools</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>🧭 Google agent patterns</h4><p><a href="google-agent-patterns.html">The other taxonomy</a> — Google Cloud's design patterns, organized by who decides the route.</p></div>
+        <div class="card"><h4>🧰 Agent Development Kits</h4><p><a href="adk.html">Build these patterns</a> — the frameworks (Google ADK, Strands, LangGraph) that implement them.</p></div>
+        <div class="card"><h4>🧪 Runnable experiments</h4><p><a href="llm-apps.html#experiments">Scaffolds for each pattern</a> — sequential, parallel, loop, review &amp; critique, and more.</p></div>
+        <div class="card"><h4>📓 All tutorials</h4><p><a href="index.html">The hub</a> — LLMs, agents, protocols, cloud &amp; more.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  Anthropic's agent architectures — workflows and the agent loop. Based on <em>Building Effective Agents</em>; confirm details against the current write-up. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) { root.setAttribute("data-theme", t); tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 "; tLabel.textContent = t === "dark" ? "Light" : "Dark"; }
+  var saved = null;
+  try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () { var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark"; applyTheme(next); try { localStorage.setItem("theme", next); } catch (e) {} });
+  var menuBtn = document.getElementById("menuToggle");
+  var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () { var open = side.classList.toggle("open"); menuBtn.setAttribute("aria-expanded", String(open)); });
+  side.addEventListener("click", function (e) { if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); } });
+  var bar = document.getElementById("progress");
+  function onScroll() { var h = document.documentElement; var max = h.scrollHeight - h.clientHeight; bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%"; }
+  document.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a"));
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) { entries.forEach(function (en) { if (en.isIntersecting) { links.forEach(function (a) { a.classList.remove("active"); }); if (map[en.target.id]) map[en.target.id].classList.add("active"); } }); }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var wrap = btn.closest(".code-wrap");
+      var pre = wrap.querySelector("pre");
+      var text = pre ? pre.innerText : "";
+      var done = function () { var o = btn.textContent; btn.textContent = "Copied!"; setTimeout(function () { btn.textContent = o; }, 1400); };
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, done); }
+      else { var ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch (e) {} document.body.removeChild(ta); done(); }
+    });
+  });
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q");
+    var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      var correctLabel = q.querySelector('input[value="' + answer + '"]').parentNode;
+      correctLabel.classList.add("correct");
+      if (chosen) { if (chosen.value === answer) { score++; } else { chosen.parentNode.classList.add("wrong"); } }
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length + (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>
