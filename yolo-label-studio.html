@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="How Ultralytics YOLO and Label Studio work — YOLO's one-pass detection architecture (backbone, neck, head, NMS) and the Ultralytics API, Label Studio's labeling config, annotations and YOLO export, and the label↔train loop that connects them.">
+<title>How Ultralytics YOLO &amp; Label Studio Work</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f5f7fa;
+    --bg-code: #211436;      /* deep violet ink */
+    --text: #1a2130;
+    --text-soft: #55617a;
+    --border: #e2e8f0;
+    --accent: #7c3aed;       /* violet-600 (AA on white) */
+    --ink: #6d28d9;
+    --solve: #15803d;
+    --limit: #b45309;
+    --choose: #1e40af;
+    --solve-bg: #dcfce7;
+    --limit-bg: #fef3c7;
+    --choose-bg: #dbeafe;
+    --radius: 12px;
+    --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #0f172a;
+    --bg-soft: #17233d;
+    --bg-code: #1a1030;
+    --text: #e6ecf7;
+    --text-soft: #9fb0cc;
+    --border: #263450;
+    --accent: #a78bfa;
+    --ink: #c4b5fd;
+    --solve: #86efac;
+    --limit: #fcd34d;
+    --choose: #93c5fd;
+    --solve-bg: #14351f;
+    --limit-bg: #3a2a0c;
+    --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: var(--font); color: var(--text); background: var(--bg); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  .skip-link { position: absolute; left: -999px; top: 0; background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100; }
+  .skip-link:focus { left: 0; }
+  #progress { position: fixed; top: 0; left: 0; height: 4px; width: 0%; background: linear-gradient(90deg, var(--accent), var(--ink)); z-index: 60; transition: width .1s linear; }
+  header.top { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; padding: .6rem 1rem; }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; }
+  header.top .brand span { color: var(--accent); }
+  header.top .spacer { flex: 1; }
+  .btn { font: inherit; cursor: pointer; border: 1px solid var(--border); background: var(--bg-soft); color: var(--text); border-radius: 999px; padding: .5rem .9rem; min-height: 44px; display: inline-flex; align-items: center; gap: .4rem; }
+  .btn:hover { border-color: var(--accent); }
+  #menuToggle { display: none; }
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side { position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px); overflow-y: auto; padding: 1.25rem 0; font-size: .93rem; }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a { display: block; padding: .45rem .75rem; border-radius: 8px; color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent; }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); }
+  nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+  nav.side .grp { font-size: .74rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-soft); padding: .8rem .75rem .2rem; }
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.12rem; margin: 1.6rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; }
+  .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; }
+  .callout strong { color: var(--accent); }
+  .callout.tip { border-left-color: var(--solve); }
+  .callout.tip strong { color: var(--solve); }
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 1.25rem 0; }
+  .flow .node { background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: .5rem .8rem; font-size: .88rem; font-weight: 600; }
+  .flow .node.hot { border-color: var(--accent); color: var(--accent); }
+  .flow .arrow { color: var(--text-soft); font-weight: 700; }
+  .code-wrap { margin: 1.1rem 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  pre { margin: 0; background: var(--bg-code); color: #ece7fb; padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .84rem; line-height: 1.6; }
+  pre code { font-family: inherit; }
+  .code-head { display: flex; align-items: center; justify-content: space-between; background: var(--bg-code); padding: .35rem .6rem .35rem 1rem; }
+  .code-head .label { color: #b3a4d8; font-size: .78rem; font-family: var(--mono); }
+  .copy { font: inherit; cursor: pointer; background: #3a2a63; color: #ece7fb; border: none; border-radius: 6px; padding: .35rem .7rem; min-height: 36px; font-size: .8rem; }
+  .copy:hover { background: #4a3780; }
+  .cmt { color: #9d8ec4; }
+  code.inline { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; }
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-soft); }
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); }
+  details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+  /* YOLO pipeline diagram */
+  .yp-wrap { overflow-x: auto; margin: 1.3rem 0; }
+  .yp { width: 100%; min-width: 680px; max-width: 762px; height: auto; display: block; margin: 0 auto; font-family: var(--font); }
+  .yp-box { fill: var(--bg-soft); stroke: var(--border); stroke-width: 1.5; }
+  .yp-cap { fill: var(--accent); }
+  .yp-line { fill: none; stroke: var(--text-soft); stroke-width: 1.6; }
+  .yp-ah { fill: var(--text-soft); }
+  .yp-t { fill: var(--text); font-size: 12.5px; font-weight: 700; }
+  .yp-sub { fill: var(--text-soft); font-size: 10.5px; }
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; }
+  .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); }
+  .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; }
+  [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; }
+  #score { font-weight: 700; margin-left: 1rem; }
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; }
+    #menuToggle { display: inline-flex; }
+    main { padding-top: .5rem; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <a class="btn home" href="index.html" aria-label="Back to all tutorials">← All tutorials</a>
+  <div class="brand">YOLO <span>&amp; Label Studio</span></div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li class="grp">Ultralytics YOLO</li>
+      <li><a href="#what-yolo">1 · What YOLO is</a></li>
+      <li><a href="#how-yolo">2 · How YOLO works</a></li>
+      <li><a href="#ultralytics">3 · The Ultralytics library</a></li>
+      <li class="grp">Label Studio</li>
+      <li><a href="#what-ls">4 · What Label Studio is</a></li>
+      <li><a href="#how-ls">5 · How it works</a></li>
+      <li><a href="#ml-backend">6 · ML backend &amp; pre-labeling</a></li>
+      <li class="grp">Together</li>
+      <li><a href="#loop">7 · The label ↔ train loop</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>How Ultralytics YOLO &amp; Label Studio work</h1>
+      <p class="lede">These two tools are the two halves of building a custom object detector: <strong>Label Studio</strong> is where you <em>create the labeled examples</em>, and <strong>Ultralytics YOLO</strong> is what <em>learns from them and detects</em>. This guide opens up how each one works internally, then shows the loop that connects them.</p>
+      <div class="flow">
+        <span class="node hot">Label Studio</span><span class="arrow">— produces labels →</span>
+        <span class="node hot">Ultralytics YOLO</span><span class="arrow">— produces detections →</span>
+        <span class="node">your app</span>
+      </div>
+      <div class="callout"><strong>Where you've seen them.</strong> The <a href="license-ml-lab.html">licence-recognizer lab</a> uses both end to end. This tutorial is the "how do they actually work?" companion.</div>
+    </section>
+
+    <!-- ============ 1 · WHAT YOLO ============ -->
+    <section id="what-yolo">
+      <h2><span class="pill">Ultralytics YOLO</span> &nbsp;What YOLO is</h2>
+      <p><strong>YOLO — "You Only Look Once"</strong> — is a family of <em>single-stage</em> object detectors. Where older detectors scanned an image in two stages (propose regions, then classify each), YOLO predicts <em>all</em> the bounding boxes and their classes in <strong>one forward pass</strong> of a neural network. That's what makes it fast enough for real-time.</p>
+      <p><strong>Ultralytics</strong> is the company/library that maintains the modern YOLO versions (YOLOv8, YOLO11, …) and wraps them in one friendly Python + CLI API — so you train, evaluate, predict and export without touching the network internals.</p>
+      <div class="callout"><strong>One look, many boxes.</strong> The model divides the image into a grid and, for every location and scale, predicts "is there an object here, where exactly, and what is it?" — then a cleanup step removes duplicates. No sliding windows, no region proposals.</div>
+    </section>
+
+    <!-- ============ 2 · HOW YOLO ============ -->
+    <section id="how-yolo">
+      <h2><span class="pill">Ultralytics YOLO</span> &nbsp;How YOLO works</h2>
+      <p>Inside, a YOLO model is three parts plus a post-processing step:</p>
+      <div class="yp-wrap">
+        <svg class="yp" viewBox="0 0 762 190" role="img" aria-labelledby="yp-title yp-desc">
+          <title id="yp-title">The YOLO detection pipeline</title>
+          <desc id="yp-desc">An input image passes through a backbone that extracts features, a neck that fuses them across scales, and a head that predicts boxes and classes on a grid; then non-max suppression removes overlapping duplicates to give final detections.</desc>
+          <defs>
+            <marker id="yp-a" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" class="yp-ah"/></marker>
+          </defs>
+          <g>
+            <rect class="yp-box" x="16" y="52" width="130" height="60" rx="9"/><rect class="yp-cap" x="16" y="52" width="130" height="5" rx="2"/>
+            <text class="yp-t" x="81" y="80" text-anchor="middle">Input image</text>
+            <text class="yp-sub" x="81" y="98" text-anchor="middle">e.g. 640×640</text>
+          </g>
+          <g>
+            <rect class="yp-box" x="166" y="52" width="130" height="60" rx="9"/><rect class="yp-cap" x="166" y="52" width="130" height="5" rx="2"/>
+            <text class="yp-t" x="231" y="80" text-anchor="middle">Backbone</text>
+            <text class="yp-sub" x="231" y="98" text-anchor="middle">extract features</text>
+          </g>
+          <g>
+            <rect class="yp-box" x="316" y="52" width="130" height="60" rx="9"/><rect class="yp-cap" x="316" y="52" width="130" height="5" rx="2"/>
+            <text class="yp-t" x="381" y="80" text-anchor="middle">Neck</text>
+            <text class="yp-sub" x="381" y="98" text-anchor="middle">fuse scales (FPN/PAN)</text>
+          </g>
+          <g>
+            <rect class="yp-box" x="466" y="52" width="130" height="60" rx="9"/><rect class="yp-cap" x="466" y="52" width="130" height="5" rx="2"/>
+            <text class="yp-t" x="531" y="80" text-anchor="middle">Head</text>
+            <text class="yp-sub" x="531" y="98" text-anchor="middle">boxes + classes / grid</text>
+          </g>
+          <g>
+            <rect class="yp-box" x="616" y="52" width="130" height="60" rx="9"/><rect class="yp-cap" x="616" y="52" width="130" height="5" rx="2"/>
+            <text class="yp-t" x="681" y="80" text-anchor="middle">NMS</text>
+            <text class="yp-sub" x="681" y="98" text-anchor="middle">remove overlaps</text>
+          </g>
+          <path class="yp-line" d="M146,82 L166,82" marker-end="url(#yp-a)"/>
+          <path class="yp-line" d="M296,82 L316,82" marker-end="url(#yp-a)"/>
+          <path class="yp-line" d="M446,82 L466,82" marker-end="url(#yp-a)"/>
+          <path class="yp-line" d="M596,82 L616,82" marker-end="url(#yp-a)"/>
+          <text class="yp-sub" x="381" y="150" text-anchor="middle">one forward pass predicts everything · NMS then keeps the best, non-overlapping boxes</text>
+        </svg>
+      </div>
+      <div class="cards">
+        <div class="card"><h4>🧱 Backbone</h4><p>A convolutional network that turns pixels into feature maps — edges → shapes → objects, at several resolutions.</p></div>
+        <div class="card"><h4>🔗 Neck</h4><p>Fuses features across scales (FPN/PAN) so the model detects both tiny and large objects well.</p></div>
+        <div class="card"><h4>🎯 Head</h4><p>For each grid cell &amp; scale, predicts a box (x,y,w,h), an objectness score, and class probabilities. Modern YOLO is <em>anchor-free</em>.</p></div>
+        <div class="card"><h4>🧹 NMS</h4><p>Non-Max Suppression: many cells fire for one object, so keep the highest-confidence box and drop others that overlap it (by IoU).</p></div>
+      </div>
+      <details>
+        <summary>How it learns: the loss &amp; training</summary>
+        <p>During training the model compares its predictions to your labeled boxes and computes a <strong>loss</strong> with three parts: <em>box</em> loss (how far off the coordinates are), <em>classification</em> loss (right class?), and <em>objectness/DFL</em> loss (is something here?). Back-propagation nudges the weights to reduce that loss over many <em>epochs</em>. Starting from pretrained weights (<em>transfer learning</em>) means it already knows general vision, so it converges on your classes with little data.</p>
+      </details>
+    </section>
+
+    <!-- ============ 3 · ULTRALYTICS ============ -->
+    <section id="ultralytics">
+      <h2><span class="pill">Ultralytics YOLO</span> &nbsp;The Ultralytics library</h2>
+      <p>One class, four verbs — the whole lifecycle:</p>
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">the entire API surface</span><button class="copy">Copy</button></div>
+<pre><code>from ultralytics import YOLO
+
+model = YOLO("yolo11n.pt")                 <span class="cmt"># load a pretrained model</span>
+model.train(data="data.yaml", epochs=100, imgsz=640)   <span class="cmt"># train on your data</span>
+model.val()                                <span class="cmt"># evaluate (precision, recall, mAP)</span>
+results = model("image.jpg")               <span class="cmt"># predict on new images</span>
+model.export(format="onnx")                <span class="cmt"># export for deployment</span>
+
+<span class="cmt"># read the predictions</span>
+for box, cls, conf in zip(results[0].boxes.xyxy,
+                          results[0].boxes.cls,
+                          results[0].boxes.conf):
+    print(model.names[int(cls)], float(conf), box.tolist())</code></pre>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Choose</th><th>Options</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Task</strong></td><td><code class="inline">detect</code> (boxes) · <code class="inline">segment</code> (masks) · <code class="inline">classify</code> · <code class="inline">pose</code> (keypoints) · <code class="inline">obb</code> (rotated boxes)</td></tr>
+            <tr><td><strong>Model size</strong></td><td><code class="inline">n</code> nano → <code class="inline">s</code> → <code class="inline">m</code> → <code class="inline">l</code> → <code class="inline">x</code> extra-large: bigger = more accurate, slower</td></tr>
+            <tr><td><strong>Weights</strong></td><td><code class="inline">yolo11n.pt</code> (pretrained, transfer learning) or <code class="inline">yolo11n.yaml</code> (from scratch)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Your data is described by a <code class="inline">data.yaml</code> (train/val folders + class names), and labels are one <code class="inline">.txt</code> per image with normalized <code class="inline">class x_center y_center w h</code> lines. Ultralytics also auto-augments (mosaic, flips, HSV) during training — free robustness.</p>
+    </section>
+
+    <!-- ============ 4 · WHAT LS ============ -->
+    <section id="what-ls">
+      <h2><span class="pill">Label Studio</span> &nbsp;What Label Studio is</h2>
+      <p><strong>Label Studio</strong> is an open-source data-labeling platform. It gives you a browser UI to draw boxes (or polygons, keypoints, transcriptions, spans…) on your data and save them as structured <strong>annotations</strong> — the ground-truth examples a model like YOLO trains on. It handles images, text, audio, video and more, supports teams, and exports to the formats trainers expect (including YOLO).</p>
+      <div class="callout"><strong>Why a dedicated tool.</strong> Good labels are the highest-leverage part of a model. Label Studio gives you consistent classes, a fast keyboard-driven UI, review workflows, and clean exports — far better than home-grown scripts.</div>
+    </section>
+
+    <!-- ============ 5 · HOW LS ============ -->
+    <section id="how-ls">
+      <h2><span class="pill">Label Studio</span> &nbsp;How it works</h2>
+      <p>Four concepts:</p>
+      <div class="cards">
+        <div class="card"><h4>📁 Project</h4><p>A labeling job: its data, its label schema (config), and its annotations.</p></div>
+        <div class="card"><h4>🧾 Labeling config</h4><p>An XML-like template that defines the UI &amp; the labels — what you can draw and tag.</p></div>
+        <div class="card"><h4>🗂️ Tasks</h4><p>Each data item (an image) is a "task" to be annotated.</p></div>
+        <div class="card"><h4>✏️ Annotations</h4><p>The saved answers — boxes with class labels — for each task.</p></div>
+      </div>
+      <p>The <strong>labeling config</strong> is the heart of it. For bounding-box detection you declare an image and the rectangle-labels:</p>
+      <div class="code-wrap">
+        <div class="code-head"><span class="label">labeling config — bounding boxes</span><button class="copy">Copy</button></div>
+<pre><code>&lt;View&gt;
+  &lt;Image name="img" value="$image"/&gt;
+  &lt;RectangleLabels name="label" toName="img"&gt;
+    &lt;Label value="card_nz"      background="#22c55e"/&gt;
+    &lt;Label value="f_dob"        background="#3b82f6"/&gt;
+    &lt;Label value="f_licence_no" background="#a855f7"/&gt;
+  &lt;/RectangleLabels&gt;
+&lt;/View&gt;</code></pre>
+      </div>
+      <p>Then: <strong>import</strong> your images → <strong>annotate</strong> (draw a box, press the class hotkey, repeat) → <strong>export</strong>. Choose the <strong>YOLO</strong> export and you get the exact <code class="inline">images/</code> + <code class="inline">labels/*.txt</code> + <code class="inline">classes</code> layout Ultralytics trains on.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Label type (config tag)</th><th>For</th></tr></thead>
+          <tbody>
+            <tr><td><code class="inline">RectangleLabels</code></td><td>Object detection (bounding boxes) → YOLO</td></tr>
+            <tr><td><code class="inline">PolygonLabels</code> / <code class="inline">BrushLabels</code></td><td>Segmentation masks</td></tr>
+            <tr><td><code class="inline">KeyPointLabels</code></td><td>Pose / landmarks</td></tr>
+            <tr><td><code class="inline">Choices</code></td><td>Whole-image classification</td></tr>
+            <tr><td><code class="inline">Labels</code> (on Text)</td><td>NER / span tagging</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 6 · ML BACKEND ============ -->
+    <section id="ml-backend">
+      <h2><span class="pill">Label Studio</span> &nbsp;ML backend &amp; pre-labeling</h2>
+      <p>Label Studio can connect to a model (an <strong>ML backend</strong>) that <em>pre-annotates</em> tasks. Instead of drawing every box from scratch, labelers <strong>correct</strong> the model's predictions — much faster. Connect your <em>trained YOLO</em> as the backend and each new image arrives already boxed, needing only fixes.</p>
+      <div class="flow">
+        <span class="node">new image</span><span class="arrow">→</span>
+        <span class="node hot">ML backend (YOLO) pre-labels</span><span class="arrow">→</span>
+        <span class="node">human corrects</span><span class="arrow">→</span>
+        <span class="node">annotation</span>
+      </div>
+      <div class="callout tip"><strong>Active learning.</strong> Route the model's <em>least-confident</em> predictions to humans first — you label the examples that teach the model the most, so accuracy climbs fastest per hour of labeling.</div>
+    </section>
+
+    <!-- ============ 7 · LOOP ============ -->
+    <section id="loop">
+      <h2><span class="pill">Together</span> &nbsp;The label ↔ train loop</h2>
+      <p>The two tools form a flywheel that keeps improving your detector:</p>
+      <div class="flow">
+        <span class="node">raw images</span><span class="arrow">→</span>
+        <span class="node hot">Label Studio: annotate</span><span class="arrow">→</span>
+        <span class="node">export YOLO</span><span class="arrow">→</span>
+        <span class="node hot">Ultralytics: train</span><span class="arrow">→</span>
+        <span class="node">weights .pt</span><span class="arrow">↺</span>
+        <span class="node">back as ML backend</span>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Step</th><th>Tool</th><th>What happens</th></tr></thead>
+          <tbody>
+            <tr><td>1. Annotate</td><td>Label Studio</td><td>Draw boxes + classes on your images</td></tr>
+            <tr><td>2. Export</td><td>Label Studio</td><td>Emit YOLO-format <code class="inline">images/</code> + <code class="inline">labels/</code> + <code class="inline">data.yaml</code></td></tr>
+            <tr><td>3. Train</td><td>Ultralytics</td><td><code class="inline">model.train(...)</code> → <code class="inline">best.pt</code> weights</td></tr>
+            <tr><td>4. Pre-label</td><td>both</td><td>Connect <code class="inline">best.pt</code> as the ML backend to pre-annotate new data</td></tr>
+            <tr><td>5. Correct → retrain</td><td>both</td><td>Humans fix the hard cases; re-export &amp; re-train. Repeat.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><strong>The payoff.</strong> Early on you label everything by hand; once YOLO is decent, it does most of the drawing and you just correct — so each round is faster <em>and</em> raises accuracy. That's the whole game of building a custom detector.</div>
+    </section>
+
+    <!-- ============ QUIZ ============ -->
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions on YOLO &amp; Label Studio. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="b">
+          <p>1. What does "You Only Look Once" mean?</p>
+          <label><input type="radio" name="q1" value="a"> You can only train the model once</label>
+          <label><input type="radio" name="q1" value="b"> It predicts all boxes &amp; classes in a single forward pass (single-stage)</label>
+          <label><input type="radio" name="q1" value="c"> It only works on one image</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>2. What are the three main parts of a YOLO model?</p>
+          <label><input type="radio" name="q2" value="a"> Frontend, backend, database</label>
+          <label><input type="radio" name="q2" value="b"> Train, val, predict</label>
+          <label><input type="radio" name="q2" value="c"> Backbone (features), neck (fuse scales), head (predictions)</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>3. What does Non-Max Suppression (NMS) do?</p>
+          <label><input type="radio" name="q3" value="a"> Keeps the best box per object and removes overlapping duplicates</label>
+          <label><input type="radio" name="q3" value="b"> Trains the model</label>
+          <label><input type="radio" name="q3" value="c"> Labels the data</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>4. In Ultralytics, what does the model size letter (n/s/m/l/x) trade off?</p>
+          <label><input type="radio" name="q4" value="a"> Colour vs grayscale</label>
+          <label><input type="radio" name="q4" value="b"> Accuracy vs speed/size (bigger = more accurate, slower)</label>
+          <label><input type="radio" name="q4" value="c"> Nothing — they're identical</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>5. What is the Label Studio "labeling config"?</p>
+          <label><input type="radio" name="q5" value="a"> The list of users</label>
+          <label><input type="radio" name="q5" value="b"> The trained weights</label>
+          <label><input type="radio" name="q5" value="c"> An XML-like template defining the labeling UI and the available labels</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. How do the two tools connect into a loop?</p>
+          <label><input type="radio" name="q6" value="a"> They don't — you pick one</label>
+          <label><input type="radio" name="q6" value="b"> Label Studio exports YOLO-format labels → Ultralytics trains → the model pre-labels new data back in Label Studio</label>
+          <label><input type="radio" name="q6" value="c"> YOLO labels the data and Label Studio trains</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>🪪 The licence lab</h4><p><a href="license-ml-lab.html">Use both end to end</a> — train a real detector that reads driver-licence fields.</p></div>
+        <div class="card"><h4>🔥 PyTorch</h4><p><a href="pytorch.html">What's underneath</a> — YOLO is built on PyTorch; see the framework that runs it.</p></div>
+        <div class="card"><h4>🧬 Embedding models</h4><p><a href="embeddings.html">Vectors from data</a> — the idea behind end-to-end document-AI models.</p></div>
+        <div class="card"><h4>📓 All tutorials</h4><p><a href="index.html">The hub</a> — ML, LLMs, agents, cloud &amp; more.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  How Ultralytics YOLO and Label Studio work — architecture, APIs, and the label↔train loop. Tools evolve fast; confirm against their current docs. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) { root.setAttribute("data-theme", t); tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 "; tLabel.textContent = t === "dark" ? "Light" : "Dark"; }
+  var saved = null;
+  try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () { var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark"; applyTheme(next); try { localStorage.setItem("theme", next); } catch (e) {} });
+  var menuBtn = document.getElementById("menuToggle");
+  var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () { var open = side.classList.toggle("open"); menuBtn.setAttribute("aria-expanded", String(open)); });
+  side.addEventListener("click", function (e) { if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); } });
+  var bar = document.getElementById("progress");
+  function onScroll() { var h = document.documentElement; var max = h.scrollHeight - h.clientHeight; bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%"; }
+  document.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a"));
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) { entries.forEach(function (en) { if (en.isIntersecting) { links.forEach(function (a) { a.classList.remove("active"); }); if (map[en.target.id]) map[en.target.id].classList.add("active"); } }); }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var wrap = btn.closest(".code-wrap");
+      var pre = wrap.querySelector("pre");
+      var text = pre ? pre.innerText : "";
+      var done = function () { var o = btn.textContent; btn.textContent = "Copied!"; setTimeout(function () { btn.textContent = o; }, 1400); };
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, done); }
+      else { var ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch (e) {} document.body.removeChild(ta); done(); }
+    });
+  });
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q");
+    var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      var correctLabel = q.querySelector('input[value="' + answer + '"]').parentNode;
+      correctLabel.classList.add("correct");
+      if (chosen) { if (chosen.value === answer) { score++; } else { chosen.parentNode.classList.add("wrong"); } }
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length + (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>

@@ -23,6 +23,7 @@
     --tf:  #ea580c;   /* orange (TensorFlow) */
     --pt:  #be123c;   /* crimson (PyTorch)   */
     --lab: #9a3412;   /* rust (CV lab)       */
+    --yolo: #7c3aed;  /* violet (YOLO/LS)    */
     --rag: #be185d;   /* rose    */
     --vdb: #7e22ce;   /* purple  */
     --lci: #a16207;   /* gold    */
@@ -34,8 +35,10 @@
     --api: #0369a1;   /* sky     */
     --web: #a21caf;   /* fuchsia */
     --sec: #3730a3;   /* indigo (security) */
+    --owp: #065f46;   /* dark emerald (OWASP) */
     --n8n: #dc2626;   /* red     */
     --cn:  #0e7490;   /* cyan    */
+    --conc: #db2777;  /* pink (concurrency) */
     --aws: #d9701a;   /* orange  */
     --iot: #6d28d9;   /* violet  */
     --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -54,6 +57,7 @@
     --tf:  #fb923c;
     --pt:  #fb7185;
     --lab: #fdba74;
+    --yolo: #a78bfa;
     --rag: #f472b6;
     --vdb: #d8b4fe;
     --lci: #fbbf24;
@@ -65,8 +69,10 @@
     --api: #7dd3fc;
     --web: #f0abfc;
     --sec: #818cf8;
+    --owp: #34d399;
     --n8n: #f87171;
     --cn:  #67e8f9;
+    --conc: #f9a8d4;
     --aws: #f0a35e;
     --iot: #c4b5fd;
   }
@@ -134,6 +140,7 @@
   .tile.tf  { --tile: var(--tf); }
   .tile.pt  { --tile: var(--pt); }
   .tile.lab { --tile: var(--lab); }
+  .tile.yolo { --tile: var(--yolo); }
   .tile.rag { --tile: var(--rag); }
   .tile.vdb { --tile: var(--vdb); }
   .tile.lci { --tile: var(--lci); }
@@ -145,8 +152,10 @@
   .tile.api { --tile: var(--api); }
   .tile.web { --tile: var(--web); }
   .tile.sec { --tile: var(--sec); }
+  .tile.owp { --tile: var(--owp); }
   .tile.n8n { --tile: var(--n8n); }
   .tile.cn  { --tile: var(--cn); }
+  .tile.conc { --tile: var(--conc); }
   .tile.aws { --tile: var(--aws); }
   .tile.iot { --tile: var(--iot); }
   .tile .top { display: flex; align-items: center; gap: .6rem; }
@@ -171,6 +180,7 @@
   .path li.tf  { --step: var(--tf); }
   .path li.pt  { --step: var(--pt); }
   .path li.lab { --step: var(--lab); }
+  .path li.yolo { --step: var(--yolo); }
   .path li.rag { --step: var(--rag); }
   .path li.vdb { --step: var(--vdb); }
   .path li.lci { --step: var(--lci); }
@@ -182,8 +192,10 @@
   .path li.api { --step: var(--api); }
   .path li.web { --step: var(--web); }
   .path li.sec { --step: var(--sec); }
+  .path li.owp { --step: var(--owp); }
   .path li.n8n { --step: var(--n8n); }
   .path li.cn  { --step: var(--cn); }
+  .path li.conc { --step: var(--conc); }
   .path li.aws { --step: var(--aws); }
   .path li.iot { --step: var(--iot); }
   .path li:last-child { padding-bottom: .2rem; }
@@ -226,7 +238,7 @@
   <div class="hero">
     <p class="eyebrow">Interactive tutorials</p>
     <h1>Build with LLMs, agents &amp; AWS</h1>
-    <p>Twenty self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
+    <p>Twenty-three self-contained, hands-on guides — from your first LangChain chain to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
   </div>
 
   <div class="search" role="search">
@@ -271,6 +283,13 @@
         <h3>Lab: Train a Licence Recognizer</h3>
         <p>From scratch, no ML experience needed: label images, train YOLO weights, and read the fields off NZ/AU driver licences — with OCR, an API, and the privacy guardrails ID work demands.</p>
         <span class="go">Start the lab</span>
+      </a>
+
+      <a class="tile yolo" href="yolo-label-studio.html">
+        <div class="top"><span class="ico">🎯</span><span class="kicker">CV tooling</span></div>
+        <h3>How YOLO &amp; Label Studio Work</h3>
+        <p>The two tools behind the lab, opened up: YOLO's one-pass detection architecture (backbone → neck → head → NMS) and the Ultralytics API, Label Studio's config/annotate/export model, and the label ↔ train loop.</p>
+        <span class="go">See how they work</span>
       </a>
 
       <a class="tile rag" href="rag-cag.html">
@@ -350,6 +369,13 @@
         <span class="go">Harden it</span>
       </a>
 
+      <a class="tile owp" href="owasp.html">
+        <div class="top"><span class="ico">🔐</span><span class="kicker">OWASP</span></div>
+        <h3>OWASP — Top 10 &amp; Toolbox</h3>
+        <p>The de-facto language of app security: what OWASP is, the three Top 10 lists (Web, API, LLM) detailed, and the wider toolbox — ASVS, WSTG, Cheat Sheets, ZAP, Dependency-Check, SAMM &amp; Juice Shop — across the SDLC.</p>
+        <span class="go">Explore OWASP</span>
+      </a>
+
       <a class="tile n8n" href="n8n.html">
         <div class="top"><span class="ico">🔗</span><span class="kicker">Automation</span></div>
         <h3>n8n — Workflow Automation</h3>
@@ -362,6 +388,13 @@
         <h3>Cloud Native</h3>
         <p>Building apps to fully exploit the cloud: containers, microservices, Kubernetes orchestration, CI/CD and observability — the pillars, the benefits, the real complexity cost, and when (not) to adopt it.</p>
         <span class="go">Go cloud native</span>
+      </a>
+
+      <a class="tile conc" href="concurrency-design.html">
+        <div class="top"><span class="ico">🧵</span><span class="kicker">Scalability</span></div>
+        <h3>Concurrency Design</h3>
+        <p>Balance security, idempotency, latency &amp; capacity: architecture options and trade-offs, sizing with Little's Law, load-testing to the knee, retries for isolated failures, and AI-agent context isolation.</p>
+        <span class="go">Design for scale</span>
       </a>
 
       <a class="tile aws" href="aws-services.html">
@@ -409,6 +442,10 @@
         <h3><a href="license-ml-lab.html">Lab: Train a Licence Recognizer</a></h3>
         <p>Put it into practice — a full from-scratch computer-vision lab: label, train weights, detect, OCR, serve.</p>
       </li>
+      <li class="yolo">
+        <h3><a href="yolo-label-studio.html">How YOLO &amp; Label Studio Work</a></h3>
+        <p>Open up the two tools the lab uses — YOLO's detection architecture and Label Studio's labeling model.</p>
+      </li>
       <li class="rag">
         <h3><a href="rag-cag.html">RAG vs CAG vs GraphRAG</a></h3>
         <p>Go deep on grounding — how to get your data into the model reliably, and which retrieval method fits which corpus and question.</p>
@@ -453,6 +490,10 @@
         <h3><a href="web-ai-security.html">Web · API · AI Security</a></h3>
         <p>Secure everything you've built — transport, identity, web/API risks, and the new AI/agent attack surface.</p>
       </li>
+      <li class="owp">
+        <h3><a href="owasp.html">OWASP — Top 10 &amp; Toolbox</a></h3>
+        <p>The shared vocabulary of app security — the Top 10 risk lists and the standards/tools that operationalize them.</p>
+      </li>
       <li class="n8n">
         <h3><a href="n8n.html">n8n — Workflow Automation</a></h3>
         <p>Zoom out to the practical: wire apps and APIs into automated workflows — low-code, self-hosted, with code when you need it.</p>
@@ -460,6 +501,10 @@
       <li class="cn">
         <h3><a href="cloud-native.html">Cloud Native</a></h3>
         <p>The architectural approach beneath modern cloud apps — containers, microservices and orchestration, vendor-neutral.</p>
+      </li>
+      <li class="conc">
+        <h3><a href="concurrency-design.html">Concurrency Design</a></h3>
+        <p>Make it handle load safely — capacity, resilience, failure isolation, and per-run agent isolation.</p>
       </li>
       <li class="aws">
         <h3><a href="aws-services.html">AWS Services Field Guide</a></h3>
@@ -474,7 +519,7 @@
 </main>
 
 <footer>
-  Twenty interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
+  Twenty-three interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
 </footer>
 
 <script>
