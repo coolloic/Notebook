@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐘</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="PostgreSQL query performance — how the planner works, reading EXPLAIN ANALYZE, indexes &amp; statistics, common slow-query anti-patterns and their fixes, and the tools to find and monitor them.">
+<title>PostgreSQL Query Performance — Analyse &amp; Optimise</title>
+<style>
+  :root {
+    --bg: #ffffff; --bg-soft: #f2f6fb; --bg-code: #0e1b2b; --text: #17202e; --text-soft: #516074; --border: #dde6f0;
+    --accent: #336791; --ink: #24476b;
+    --solve: #15803d; --limit: #b45309; --choose: #1e40af; --solve-bg: #dcfce7; --limit-bg: #fef3c7; --choose-bg: #dbeafe;
+    --radius: 12px; --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #0d1522; --bg-soft: #152235; --bg-code: #0a1524; --text: #e4ecf7; --text-soft: #9fb0c8; --border: #253549;
+    --accent: #8ab4e0; --ink: #b3d1ef; --solve: #86efac; --limit: #fcd34d; --choose: #93c5fd; --solve-bg: #14351f; --limit-bg: #3a2a0c; --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; } html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: var(--font); color: var(--text); background: var(--bg); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  .skip-link { position: absolute; left: -999px; top: 0; background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100; } .skip-link:focus { left: 0; }
+  #progress { position: fixed; top: 0; left: 0; height: 4px; width: 0%; background: linear-gradient(90deg, var(--accent), var(--ink)); z-index: 60; transition: width .1s linear; }
+  header.top { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; padding: .6rem 1rem; }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; } header.top .brand span { color: var(--accent); } header.top .spacer { flex: 1; }
+  .btn { font: inherit; cursor: pointer; border: 1px solid var(--border); background: var(--bg-soft); color: var(--text); border-radius: 999px; padding: .5rem .9rem; min-height: 44px; display: inline-flex; align-items: center; gap: .4rem; }
+  .btn:hover { border-color: var(--accent); } #menuToggle { display: none; }
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side { position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px); overflow-y: auto; padding: 1.25rem 0; font-size: .93rem; }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a { display: block; padding: .45rem .75rem; border-radius: 8px; color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent; }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); } nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.12rem; margin: 1.6rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; } .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .card .count { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; } .callout strong { color: var(--accent); }
+  .callout.tip { border-left-color: var(--solve); } .callout.tip strong { color: var(--solve); }
+  .callout.warn { border-left-color: var(--limit); } .callout.warn strong { color: var(--limit); }
+  .svc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-soft); padding: 1rem 1.2rem; margin: 1.1rem 0; }
+  .svc h3 { margin: 0 0 .5rem; } .svc p { margin: .4rem 0; font-size: .95rem; }
+  .tag { display: inline-block; min-width: 5rem; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .12rem .5rem; border-radius: 6px; margin-right: .5rem; text-align: center; }
+  .tag.good { background: var(--solve-bg); color: var(--solve); } .tag.bad { background: var(--limit-bg); color: var(--limit); }
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; } table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; } th { background: var(--bg-soft); }
+  code.inline { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; color: var(--ink); }
+  pre { background: var(--bg-code); color: #e6eef7; border-radius: var(--radius); padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .85rem; line-height: 1.55; position: relative; }
+  pre .cp { position: absolute; top: .5rem; right: .5rem; font-size: .72rem; padding: .3rem .6rem; min-height: auto; background: rgba(255,255,255,.1); color: #e6eef7; border-color: rgba(255,255,255,.2); }
+  .kw { color: #93c5fd; } .fn { color: #86efac; } .str { color: #fca5a5; } .num { color: #fcd34d; } .cmt { color: #64748b; } .bad-l { color: #fca5a5; } .good-l { color: #86efac; }
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); } details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+  /* lifecycle diagram */
+  .lc-wrap { overflow-x: auto; margin: 1.3rem 0; }
+  .lc { width: 100%; min-width: 660px; max-width: 720px; height: auto; display: block; margin: 0 auto; font-family: var(--font); }
+  .lc-box { fill: var(--bg-soft); stroke: var(--accent); stroke-width: 1.6; }
+  .lc-alt { fill: var(--bg-soft); stroke: var(--border); stroke-width: 1.5; }
+  .lc-hot { fill: var(--bg-soft); stroke: var(--accent); stroke-width: 2.4; }
+  .lc-line { fill: none; stroke: var(--text-soft); stroke-width: 1.6; } .lc-ah { fill: var(--text-soft); }
+  .lc-t { fill: var(--text); font-size: 12px; font-weight: 700; } .lc-s { fill: var(--text-soft); font-size: 10.5px; }
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; } .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); } .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; } [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; } #score { font-weight: 700; margin-left: 1rem; }
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; } #menuToggle { display: inline-flex; } main { padding-top: .5rem; } .tag { min-width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <a class="btn home" href="index.html" aria-label="Back to all tutorials">← All tutorials</a>
+  <div class="brand">PostgreSQL <span>Performance</span></div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#planner">1 · How the planner works</a></li>
+      <li><a href="#explain">2 · EXPLAIN ANALYZE</a></li>
+      <li><a href="#reading">3 · Reading the plan</a></li>
+      <li><a href="#indexes">4 · Indexes</a></li>
+      <li><a href="#stats">5 · Statistics</a></li>
+      <li><a href="#antipatterns">6 · Slow-query anti-patterns</a></li>
+      <li><a href="#tools">7 · Finding &amp; monitoring</a></li>
+      <li><a href="#workflow">8 · The tuning loop</a></li>
+      <li><a href="#worked">Worked example</a></li>
+      <li><a href="#cheatsheet">Cheat sheet</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>PostgreSQL query performance</h1>
+      <p class="lede">A query that runs in 3&nbsp;ms on your laptop can take 8&nbsp;seconds in production once the table has ten million rows. The difference is almost never "Postgres is slow" — it's a plan you never looked at. This is how to <strong>read what Postgres is doing</strong>, find the slow part, and fix it methodically.</p>
+      <div class="callout"><strong>The core skill.</strong> Don't guess, and don't optimise by superstition. Run <code class="inline">EXPLAIN (ANALYZE, BUFFERS)</code>, read the plan, find the node that dominates the time, change one thing, and measure again. Every tip below is downstream of that loop.</div>
+    </section>
+
+    <section id="planner">
+      <h2><span class="pill">Foundations</span> &nbsp;How the planner works</h2>
+      <p>SQL is <em>declarative</em>: you say <em>what</em> you want, not <em>how</em> to get it. Postgres' <strong>cost-based optimiser</strong> decides the "how". Understanding its pipeline tells you where a query can go wrong.</p>
+      <div class="lc-wrap">
+        <svg class="lc" viewBox="0 0 720 170" role="img" aria-labelledby="lc-title lc-desc">
+          <title id="lc-title">The PostgreSQL query lifecycle</title>
+          <desc id="lc-desc">A query is parsed, rewritten, then the planner uses table statistics and cost estimates to choose the cheapest of many candidate plans, which the executor runs.</desc>
+          <defs><marker id="lc-a" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" class="lc-ah"/></marker></defs>
+          <rect class="lc-alt" x="12" y="40" width="110" height="48" rx="10"/><text class="lc-t" x="67" y="61" text-anchor="middle">Parse</text><text class="lc-s" x="67" y="78" text-anchor="middle">SQL → tree</text>
+          <path class="lc-line" d="M122,64 L152,64" marker-end="url(#lc-a)"/>
+          <rect class="lc-alt" x="152" y="40" width="110" height="48" rx="10"/><text class="lc-t" x="207" y="61" text-anchor="middle">Rewrite</text><text class="lc-s" x="207" y="78" text-anchor="middle">views, rules</text>
+          <path class="lc-line" d="M262,64 L292,64" marker-end="url(#lc-a)"/>
+          <rect class="lc-hot" x="292" y="34" width="150" height="60" rx="10"/><text class="lc-t" x="367" y="56" text-anchor="middle">Plan / Optimise</text><text class="lc-s" x="367" y="73" text-anchor="middle">cost each candidate,</text><text class="lc-s" x="367" y="86" text-anchor="middle">pick the cheapest</text>
+          <path class="lc-line" d="M442,64 L472,64" marker-end="url(#lc-a)"/>
+          <rect class="lc-box" x="472" y="40" width="110" height="48" rx="10"/><text class="lc-t" x="527" y="61" text-anchor="middle">Execute</text><text class="lc-s" x="527" y="78" text-anchor="middle">run the plan</text>
+          <path class="lc-line" d="M582,64 L612,64" marker-end="url(#lc-a)"/>
+          <rect class="lc-alt" x="612" y="40" width="96" height="48" rx="10"/><text class="lc-t" x="660" y="67" text-anchor="middle">Rows</text>
+          <rect class="lc-alt" x="292" y="118" width="150" height="40" rx="10"/><text class="lc-t" x="367" y="143" text-anchor="middle">📊 table statistics</text>
+          <path class="lc-line" d="M367,118 L367,94" marker-end="url(#lc-a)"/>
+        </svg>
+      </div>
+      <p>The planner assigns a <strong>cost</strong> (an abstract unit, not milliseconds) to each candidate plan and picks the cheapest. Cost is estimated from <strong>table statistics</strong> — how many rows a table has, how selective a filter is, how values are distributed. <em>Wrong statistics → wrong estimate → wrong plan.</em> That single sentence explains most mystery slow queries.</p>
+      <div class="callout tip"><strong>Mental model:</strong> your job isn't to write the fast plan by hand — it's to give the planner (a) the right <em>indexes</em> to choose from and (b) the right <em>statistics</em> to choose with. Then verify it actually chose well.</div>
+    </section>
+
+    <section id="explain">
+      <h2><span class="pill">The tool</span> &nbsp;EXPLAIN &amp; EXPLAIN ANALYZE</h2>
+      <p><code class="inline">EXPLAIN</code> shows the plan the planner <em>chose</em> and its <em>estimates</em>. <code class="inline">EXPLAIN ANALYZE</code> actually <strong>runs</strong> the query and adds the <em>real</em> timings and row counts, so you can compare estimate vs reality.</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="cmt">-- Estimate only (does NOT run the query):</span>
+<span class="kw">EXPLAIN</span> <span class="kw">SELECT</span> * <span class="kw">FROM</span> orders <span class="kw">WHERE</span> customer_id = <span class="num">42</span>;
+
+<span class="cmt">-- Run it and show real time, rows, and I/O — the one you want:</span>
+<span class="kw">EXPLAIN</span> (<span class="kw">ANALYZE</span>, <span class="kw">BUFFERS</span>, <span class="kw">VERBOSE</span>)
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> orders <span class="kw">WHERE</span> customer_id = <span class="num">42</span>;</code></pre>
+      <div class="callout warn"><strong>ANALYZE really executes the query</strong> — including <code class="inline">INSERT</code>/<code class="inline">UPDATE</code>/<code class="inline">DELETE</code>. To inspect a write safely, wrap it: <code class="inline">BEGIN; EXPLAIN ANALYZE UPDATE …; ROLLBACK;</code></div>
+      <p>Read a plan <strong>inside-out and bottom-up</strong>: the most indented nodes run first and feed their parents. Each node shows:</p>
+      <pre><button class="cp btn" type="button">Copy</button><code>Index Scan using orders_customer_id_idx on orders
+  (cost=0.43..8.45 <span class="cmt">rows=1</span> width=64)          <span class="cmt">← planner ESTIMATE</span>
+  (actual time=0.021..0.024 <span class="cmt">rows=1</span> loops=1)  <span class="cmt">← REALITY (ANALYZE)</span>
+  Index Cond: (customer_id = 42)
+  Buffers: shared hit=4                        <span class="cmt">← pages read from cache</span></code></pre>
+      <div class="callout tip"><strong>The #1 tell:</strong> compare <em>estimated</em> <code class="inline">rows</code> vs <em>actual</em> <code class="inline">rows</code>. A large gap (say estimate 1, actual 900,000) means the statistics are misleading the planner — that's your root cause, not the scan type. Paste plans into <a href="https://explain.dalibo.com" target="_blank" rel="noopener">explain.dalibo.com</a> to visualise them.</div>
+    </section>
+
+    <section id="reading">
+      <h2><span class="pill">Vocabulary</span> &nbsp;Reading the plan — scans &amp; joins</h2>
+      <h3>Scan nodes — how a table is read</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Node</th><th>What it means</th><th>Good / bad?</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Seq Scan</strong></td><td>Read every row in the table</td><td>Fine for small tables or when you need most rows; <em>bad</em> when filtering few rows from a big table (missing index)</td></tr>
+            <tr><td><strong>Index Scan</strong></td><td>Walk an index, fetch matching rows</td><td>Great when returning few rows</td></tr>
+            <tr><td><strong>Index Only Scan</strong></td><td>Answer entirely from the index (no table fetch)</td><td>Best — needs a covering index</td></tr>
+            <tr><td><strong>Bitmap Heap Scan</strong></td><td>Gather many index hits, then read the table in page order</td><td>Good for medium-selectivity filters</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>Join nodes — how two tables are combined</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Join</th><th>Best when</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Nested Loop</strong></td><td>One side is tiny and the other is indexed on the join key</td></tr>
+            <tr><td><strong>Hash Join</strong></td><td>Joining two large unsorted sets on equality (builds a hash table)</td></tr>
+            <tr><td><strong>Merge Join</strong></td><td>Both inputs are already sorted on the join key</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout warn"><strong>Red flags in a plan:</strong> a <em>Seq Scan</em> on a big table with a selective filter · a <em>Nested Loop</em> whose inner side runs thousands of <code class="inline">loops</code> · <code class="inline">rows</code> estimate wildly off from actual · a <em>Sort</em> or <em>Hash</em> that spills to disk (<code class="inline">Sort Method: external merge  Disk: …kB</code>) · <em>Rows Removed by Filter</em> in the millions.</div>
+    </section>
+
+    <section id="indexes">
+      <h2><span class="pill">Lever 1</span> &nbsp;Indexes</h2>
+      <p>The single biggest lever. An index is a sorted side-structure that lets Postgres find rows without scanning the whole table — at the cost of extra storage and slower writes.</p>
+      <article class="svc">
+        <h3>🅱️ B-tree (the default)</h3>
+        <p><span class="tag good">Use for</span> Equality and range on ordered data: <code class="inline">=</code>, <code class="inline">&lt;</code>, <code class="inline">&gt;</code>, <code class="inline">BETWEEN</code>, <code class="inline">ORDER BY</code>, and prefix <code class="inline">LIKE 'abc%'</code>. Covers the vast majority of needs.</p>
+      </article>
+      <article class="svc">
+        <h3>🧩 Composite &amp; covering</h3>
+        <p><span class="tag good">Use for</span> Filtering on several columns. <strong>Column order matters</strong> — a <code class="inline">(a, b)</code> index helps <code class="inline">WHERE a=… AND b=…</code> and <code class="inline">WHERE a=…</code>, but <em>not</em> <code class="inline">WHERE b=…</code> alone. Add <code class="inline">INCLUDE</code> columns to enable an <strong>Index Only Scan</strong>.</p>
+      </article>
+      <article class="svc">
+        <h3>🔬 Partial &amp; expression</h3>
+        <p><span class="tag good">Use for</span> Indexing a slice (<code class="inline">WHERE status = 'active'</code>) to keep the index small, or indexing a computed value (<code class="inline">lower(email)</code>) so a function in your filter is still SARGable.</p>
+      </article>
+      <article class="svc">
+        <h3>🗂️ GIN / GiST / BRIN</h3>
+        <p><span class="tag good">Use for</span> GIN → full-text search, <code class="inline">jsonb</code>, arrays. GiST → geometric / nearest-neighbour. BRIN → huge, naturally-ordered tables (time-series) where a tiny index is enough.</p>
+      </article>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="cmt">-- Composite index for: WHERE customer_id = ? AND status = ? ORDER BY created_at</span>
+<span class="kw">CREATE INDEX</span> idx_orders_cust_status
+  <span class="kw">ON</span> orders (customer_id, status, created_at <span class="kw">DESC</span>);
+
+<span class="cmt">-- Partial + covering: only active orders, answered from the index alone</span>
+<span class="kw">CREATE INDEX</span> idx_orders_active
+  <span class="kw">ON</span> orders (customer_id) <span class="kw">INCLUDE</span> (total)
+  <span class="kw">WHERE</span> status = <span class="str">'active'</span>;</code></pre>
+      <div class="callout warn"><strong>Indexes aren't free.</strong> Every index slows <code class="inline">INSERT</code>/<code class="inline">UPDATE</code>/<code class="inline">DELETE</code> and consumes disk &amp; cache. Drop unused ones (check <code class="inline">pg_stat_user_indexes.idx_scan = 0</code>), and don't index columns you never filter or join on.</div>
+    </section>
+
+    <section id="stats">
+      <h2><span class="pill">Lever 2</span> &nbsp;Statistics — why estimates go wrong</h2>
+      <p>The planner is only as good as its statistics. <code class="inline">ANALYZE</code> samples each table and stores distribution info in <code class="inline">pg_statistic</code> (readable via <code class="inline">pg_stats</code>). Autovacuum normally runs it — but after a big bulk load or data shift, stats can be stale.</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="cmt">-- Refresh statistics for one table (cheap, safe to run anytime):</span>
+<span class="kw">ANALYZE</span> orders;
+
+<span class="cmt">-- Correlated columns fool the planner; teach it they're related:</span>
+<span class="kw">CREATE STATISTICS</span> orders_city_state (dependencies)
+  <span class="kw">ON</span> city, state <span class="kw">FROM</span> orders;
+<span class="kw">ANALYZE</span> orders;</code></pre>
+      <div class="callout tip"><strong>When estimate ≫ or ≪ actual:</strong> first run <code class="inline">ANALYZE</code>. If a column is skewed, raise its sampling with <code class="inline">ALTER TABLE … ALTER COLUMN … SET STATISTICS 1000;</code>. For columns that vary together (city/state, brand/model), add <strong>extended statistics</strong> so the planner stops multiplying independent probabilities.</div>
+    </section>
+
+    <section id="antipatterns">
+      <h2><span class="pill">Fixes</span> &nbsp;Common slow-query anti-patterns</h2>
+      <p>Most slow queries are a handful of recurring mistakes. Each below has a tell in the plan and a concrete fix.</p>
+
+      <h3>1 · Non-SARGable filters (function on the column)</h3>
+      <p>Wrapping the indexed column in a function forces a Seq Scan — the index can't be used.</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="bad-l">-- ✗ index on created_at can't be used</span>
+<span class="kw">WHERE</span> <span class="fn">date</span>(created_at) = <span class="str">'2026-07-30'</span>;
+<span class="kw">WHERE</span> <span class="fn">lower</span>(email) = <span class="str">'a@b.com'</span>;   <span class="cmt">-- unless you indexed lower(email)</span>
+
+<span class="good-l">-- ✓ keep the column bare so the index applies</span>
+<span class="kw">WHERE</span> created_at &gt;= <span class="str">'2026-07-30'</span> <span class="kw">AND</span> created_at &lt; <span class="str">'2026-07-31'</span>;</code></pre>
+
+      <h3>2 · Leading wildcard &amp; OR</h3>
+      <p><code class="inline">LIKE '%term'</code> can't use a B-tree (use full-text/trigram GIN instead). A chain of <code class="inline">OR</code>s across columns often can't be indexed — rewrite as <code class="inline">UNION</code> or use the right multi-column strategy.</p>
+
+      <h3>3 · SELECT * and fat rows</h3>
+      <p>Fetching columns you don't need blocks Index Only Scans and bloats I/O. Select only what you use.</p>
+
+      <h3>4 · N+1 queries</h3>
+      <p>Running one query per row in application code. The plan for each looks fine — the problem is you issued 1,000 of them. Fix with a single <code class="inline">JOIN</code> or <code class="inline">WHERE id = ANY($1)</code>. See <a href="concurrency-design.html">concurrency design</a> for the app-side view.</p>
+
+      <h3>5 · OFFSET pagination on deep pages</h3>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="bad-l">-- ✗ OFFSET 100000 still scans &amp; discards 100k rows</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> orders <span class="kw">ORDER BY</span> id <span class="kw">LIMIT</span> <span class="num">20</span> <span class="kw">OFFSET</span> <span class="num">100000</span>;
+
+<span class="good-l">-- ✓ keyset ("seek") pagination — jumps straight there via the index</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> orders <span class="kw">WHERE</span> id &gt; <span class="num">100000</span> <span class="kw">ORDER BY</span> id <span class="kw">LIMIT</span> <span class="num">20</span>;</code></pre>
+
+      <details>
+        <summary>More quick wins</summary>
+        <p style="margin:.6rem 0 0;font-size:.93rem;">
+          • <strong>Implicit type casts</strong> (<code class="inline">where bigint_col = '42'</code> vs a text param) can disable an index — match types.<br>
+          • <strong>Missing join index</strong> — index foreign-key columns; they're not indexed automatically.<br>
+          • <strong>Sorting without an index</strong> that spills to disk — add an index matching the <code class="inline">ORDER BY</code>.<br>
+          • <strong>Over-wide <code class="inline">IN</code> lists</strong> — pass an array and let Postgres hash it.<br>
+          • <strong>Count(*) on huge tables</strong> — use an estimate from <code class="inline">pg_class.reltuples</code> when approximate is fine.
+        </p>
+      </details>
+    </section>
+
+    <section id="tools">
+      <h2><span class="pill">Observe</span> &nbsp;Finding &amp; monitoring slow queries</h2>
+      <p>You can't tune what you can't see. These built-ins find the queries worth your time — start from the aggregate view, not a hunch.</p>
+      <article class="svc">
+        <h3>📈 pg_stat_statements</h3>
+        <p><span class="tag good">Start here</span> The extension that aggregates every query by normalised shape — total time, calls, mean, rows, cache hit ratio. Sort by total time to find what actually hurts (often a "fast" query run a million times).</p>
+      </article>
+      <article class="svc">
+        <h3>🐢 auto_explain &amp; slow log</h3>
+        <p><span class="tag good">Catch offenders</span> <code class="inline">log_min_duration_statement = 500ms</code> logs slow statements; <code class="inline">auto_explain</code> logs their plans automatically — so you see the plan from the moment it was slow in production.</p>
+      </article>
+      <article class="svc">
+        <h3>🔍 pg_stat_activity</h3>
+        <p><span class="tag good">Right now</span> Live view of running queries — spot long-runners, lock waits (<code class="inline">wait_event</code>), and idle-in-transaction sessions holding things up.</p>
+      </article>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="cmt">-- The 10 queries costing the most total time across the whole DB:</span>
+<span class="kw">SELECT</span> <span class="fn">substring</span>(query, <span class="num">1</span>, <span class="num">60</span>) <span class="kw">AS</span> query,
+       calls,
+       <span class="fn">round</span>(total_exec_time) <span class="kw">AS</span> total_ms,
+       <span class="fn">round</span>(mean_exec_time, <span class="num">2</span>) <span class="kw">AS</span> mean_ms,
+       <span class="fn">round</span>(<span class="num">100.0</span> * shared_blks_hit /
+             <span class="fn">nullif</span>(shared_blks_hit + shared_blks_read, <span class="num">0</span>), <span class="num">1</span>) <span class="kw">AS</span> cache_pct
+<span class="kw">FROM</span> pg_stat_statements
+<span class="kw">ORDER BY</span> total_exec_time <span class="kw">DESC</span>
+<span class="kw">LIMIT</span> <span class="num">10</span>;</code></pre>
+    </section>
+
+    <section id="workflow">
+      <h2><span class="pill">Practice</span> &nbsp;The tuning loop</h2>
+      <p>Optimisation is a disciplined loop, not a bag of tricks. Change <strong>one thing</strong> at a time and re-measure:</p>
+      <ol>
+        <li><strong>Find</strong> the costly query — <code class="inline">pg_stat_statements</code> by total time, not gut feel.</li>
+        <li><strong>Reproduce</strong> with realistic data volume (a plan on 1k rows lies about 10M rows).</li>
+        <li><strong>Explain</strong> — <code class="inline">EXPLAIN (ANALYZE, BUFFERS)</code>; find the node dominating time.</li>
+        <li><strong>Diagnose</strong> — estimate vs actual gap? wrong scan? disk spill? missing index?</li>
+        <li><strong>Fix one thing</strong> — add/adjust an index, <code class="inline">ANALYZE</code>, rewrite the predicate, or restructure the query.</li>
+        <li><strong>Re-measure</strong> — confirm the plan changed <em>and</em> got faster; watch write cost.</li>
+        <li><strong>Repeat</strong> until it meets the target, then move to the next query.</li>
+      </ol>
+      <div class="callout tip"><strong>Golden rule:</strong> one change per measurement. If you add an index <em>and</em> rewrite the query at once, a speedup tells you nothing about which one helped — or whether one masked a regression in the other.</div>
+    </section>
+
+    <section id="worked">
+      <h2><span class="pill">End to end</span> &nbsp;Worked example: 4.2&nbsp;s → 0.3&nbsp;ms</h2>
+      <p>Let's walk the whole loop on one real query. An <code class="inline">orders</code> table has <strong>10&nbsp;million rows</strong>. The app shows a customer their most recent shipped orders:</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="kw">EXPLAIN</span> (<span class="kw">ANALYZE</span>, <span class="kw">BUFFERS</span>)
+<span class="kw">SELECT</span> id, total, created_at
+<span class="kw">FROM</span>   orders
+<span class="kw">WHERE</span>  customer_id = <span class="num">42</span>
+  <span class="kw">AND</span>  status = <span class="str">'shipped'</span>
+<span class="kw">ORDER BY</span> created_at <span class="kw">DESC</span>
+<span class="kw">LIMIT</span> <span class="num">20</span>;</code></pre>
+
+      <h3>Step 1 · Read the plan (before)</h3>
+      <pre><button class="cp btn" type="button">Copy</button><code>Limit  (cost=461889..461889 rows=20)
+       (<span class="bad-l">actual time=4218.6..4218.9 rows=20</span> loops=1)
+  -&gt; Sort  (cost=461889..462017 rows=51200 width=20)
+          (<span class="bad-l">actual time=4218.7..4218.8 rows=20</span> loops=1)
+        Sort Key: created_at DESC
+        <span class="bad-l">Sort Method: external merge  Disk: 41960kB</span>   <span class="cmt">← spilled to disk</span>
+        -&gt; <span class="bad-l">Seq Scan on orders</span>
+             (cost=0..449021 rows=51200 width=20)
+             (<span class="bad-l">actual time=0.03..4102.5 rows=48730</span> loops=1)
+             Filter: ((customer_id = 42) AND (status = 'shipped'))
+             <span class="bad-l">Rows Removed by Filter: 9951270</span>          <span class="cmt">← scanned ~10M, kept 48k</span>
+             Buffers: shared read=83334
+Planning Time: 0.20 ms
+<span class="bad-l">Execution Time: 4219.4 ms</span></code></pre>
+
+      <h3>Step 2 · Diagnose</h3>
+      <p>Three red flags, read bottom-up:</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Symptom in the plan</th><th>What it tells you</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Seq Scan</strong> + <code class="inline">Rows Removed by Filter: 9,951,270</code></td><td>No usable index — Postgres reads all 10M rows to keep 48k. This is 97% of the time.</td></tr>
+            <tr><td><strong>Sort Method: external merge · Disk: 41&nbsp;MB</strong></td><td>The <code class="inline">ORDER BY</code> can't be answered by an index, so it sorts 48k rows on disk.</td></tr>
+            <tr><td><code class="inline">Buffers: shared read=83334</code></td><td>~650&nbsp;MB read from disk (not cache) — pure I/O waste.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Root cause: <strong>no index supports this filter or its ordering.</strong> (Estimate 51,200 vs actual 48,730 is close, so statistics are fine here — the problem is a missing index, not bad stats.)</p>
+
+      <h3>Step 3 · Fix one thing</h3>
+      <p>Create a composite index whose columns match the equality filters first, then the sort column in the sort direction. That lets one index satisfy the filter <em>and</em> return rows already ordered.</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="kw">CREATE INDEX</span> idx_orders_cust_status_created
+  <span class="kw">ON</span> orders (customer_id, status, created_at <span class="kw">DESC</span>);
+
+<span class="kw">ANALYZE</span> orders;   <span class="cmt">-- refresh stats so the planner sees the new index</span></code></pre>
+      <p>Why this exact order? <code class="inline">customer_id</code> and <code class="inline">status</code> are equality predicates, so they go first (any order between them). <code class="inline">created_at DESC</code> goes last so the index is already in the <code class="inline">ORDER BY</code> order — Postgres reads the first 20 entries and stops, no sort needed.</p>
+
+      <h3>Step 4 · Re-measure (after)</h3>
+      <pre><button class="cp btn" type="button">Copy</button><code>Limit  (cost=0.56..8.63 rows=20)
+       (<span class="good-l">actual time=0.031..0.28 rows=20</span> loops=1)
+  -&gt; <span class="good-l">Index Scan</span> using idx_orders_cust_status_created on orders
+       (cost=0.56..20640 rows=51200 width=20)
+       (<span class="good-l">actual time=0.029..0.26 rows=20</span> loops=1)
+       Index Cond: ((customer_id = 42) AND (status = 'shipped'))
+       Buffers: shared hit=5                    <span class="cmt">← 5 pages, all cached</span>
+Planning Time: 0.14 ms
+<span class="good-l">Execution Time: 0.31 ms</span>   <span class="cmt">← ~13,000× faster</span></code></pre>
+      <div class="callout tip"><strong>What changed:</strong> Seq Scan → <strong>Index Scan</strong> (no more reading 10M rows), the on-disk <strong>Sort disappeared</strong> (the index is pre-sorted), and I/O dropped from 83,334 disk reads to <strong>5 cached pages</strong>. <code class="inline">LIMIT 20</code> now stops after 20 index entries. Result: <strong>4,219&nbsp;ms → 0.31&nbsp;ms.</strong></div>
+      <div class="callout warn"><strong>Then check the cost:</strong> re-run the write path — this index adds a little work to every <code class="inline">INSERT</code>/<code class="inline">UPDATE</code> on <code class="inline">orders</code>. Here it's an easy trade; confirm it's worth it and that no near-duplicate index already exists.</div>
+    </section>
+
+    <section id="cheatsheet">
+      <h2>Cheat sheet</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Question</th><th>Short answer</th></tr></thead>
+          <tbody>
+            <tr><td>First move on a slow query?</td><td><code class="inline">EXPLAIN (ANALYZE, BUFFERS)</code> — read it bottom-up.</td></tr>
+            <tr><td>#1 diagnostic signal?</td><td>Estimated <code class="inline">rows</code> vs actual <code class="inline">rows</code> — a big gap = bad statistics.</td></tr>
+            <tr><td>Seq Scan on a big table?</td><td>Likely a missing/unusable index — or a non-SARGable filter.</td></tr>
+            <tr><td>Function on an indexed column?</td><td>Kills the index — rewrite or add an expression index.</td></tr>
+            <tr><td>Composite index column order?</td><td>Left-to-right; leftmost columns must appear in the filter.</td></tr>
+            <tr><td>Deep pagination?</td><td>Keyset (<code class="inline">WHERE id &gt; ?</code>), not big <code class="inline">OFFSET</code>.</td></tr>
+            <tr><td>Which queries to tune?</td><td><code class="inline">pg_stat_statements</code> ordered by total time.</td></tr>
+            <tr><td>Estimates look wrong?</td><td>Run <code class="inline">ANALYZE</code>; raise statistics target; add extended stats.</td></tr>
+            <tr><td>Golden rule?</td><td>Change one thing, then re-measure.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="b">
+          <p>1. What's the difference between <code class="inline">EXPLAIN</code> and <code class="inline">EXPLAIN ANALYZE</code>?</p>
+          <label><input type="radio" name="q1" value="a"> Nothing — they're aliases</label>
+          <label><input type="radio" name="q1" value="b"> EXPLAIN shows the estimated plan; ANALYZE actually runs it and reports real time &amp; rows</label>
+          <label><input type="radio" name="q1" value="c"> ANALYZE only works on indexes</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>2. In a plan, the single most useful signal that statistics are misleading the planner is…</p>
+          <label><input type="radio" name="q2" value="a"> The word "Scan" appearing</label>
+          <label><input type="radio" name="q2" value="b"> A high cost number</label>
+          <label><input type="radio" name="q2" value="c"> A large gap between estimated rows and actual rows</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>3. Why does <code class="inline">WHERE date(created_at) = '2026-07-30'</code> often force a Seq Scan?</p>
+          <label><input type="radio" name="q3" value="a"> Dates can't be indexed</label>
+          <label><input type="radio" name="q3" value="b"> Wrapping the column in a function makes it non-SARGable, so the plain index can't be used</label>
+          <label><input type="radio" name="q3" value="c"> Postgres dislikes the equals sign</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>4. You have an index on <code class="inline">(customer_id, status)</code>. Which query can use it?</p>
+          <label><input type="radio" name="q4" value="a"> WHERE customer_id = 42</label>
+          <label><input type="radio" name="q4" value="b"> WHERE status = 'active' (alone)</label>
+          <label><input type="radio" name="q4" value="c"> Neither — composite indexes are unusable</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>5. Deep pagination with a large <code class="inline">OFFSET</code> is slow because…</p>
+          <label><input type="radio" name="q5" value="a"> OFFSET is disabled in Postgres</label>
+          <label><input type="radio" name="q5" value="b"> It always locks the table</label>
+          <label><input type="radio" name="q5" value="c"> Postgres still reads and discards all the skipped rows; keyset pagination seeks via the index instead</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. Which tool best tells you <em>which</em> queries are worth optimising?</p>
+          <label><input type="radio" name="q6" value="a"> Guessing from the app logs</label>
+          <label><input type="radio" name="q6" value="b"> pg_stat_statements, ordered by total execution time</label>
+          <label><input type="radio" name="q6" value="c"> Rebuilding every index nightly</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>🧵 Concurrency design</h4><p><a href="concurrency-design.html">The app side</a> — connection pools, N+1, idempotency &amp; capacity.</p></div>
+        <div class="card"><h4>🗄️ Vector databases</h4><p><a href="vector-databases.html">pgvector &amp; friends</a> — when your queries are similarity search.</p></div>
+        <div class="card"><h4>☸️ Cloud native</h4><p><a href="cloud-native.html">Where the DB runs</a> — scaling, replicas &amp; observability.</p></div>
+        <div class="card"><h4>📓 All tutorials</h4><p><a href="index.html">The hub</a> — LLMs, agents, data &amp; infra.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  PostgreSQL query performance — read the plan, fix the bottleneck, measure again. Don't guess; <code class="inline">EXPLAIN ANALYZE</code>. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) { root.setAttribute("data-theme", t); tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 "; tLabel.textContent = t === "dark" ? "Light" : "Dark"; }
+  var saved = null; try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () { var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark"; applyTheme(next); try { localStorage.setItem("theme", next); } catch (e) {} });
+  var menuBtn = document.getElementById("menuToggle"); var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () { var open = side.classList.toggle("open"); menuBtn.setAttribute("aria-expanded", String(open)); });
+  side.addEventListener("click", function (e) { if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); } });
+  var bar = document.getElementById("progress");
+  function onScroll() { var h = document.documentElement; var max = h.scrollHeight - h.clientHeight; bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%"; }
+  document.addEventListener("scroll", onScroll, { passive: true }); onScroll();
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a")); var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) { entries.forEach(function (en) { if (en.isIntersecting) { links.forEach(function (a) { a.classList.remove("active"); }); if (map[en.target.id]) map[en.target.id].classList.add("active"); } }); }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+  document.querySelectorAll("pre .cp").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var code = btn.parentNode.querySelector("code");
+      navigator.clipboard.writeText(code.innerText).then(function () { var old = btn.textContent; btn.textContent = "Copied!"; setTimeout(function () { btn.textContent = old; }, 1500); });
+    });
+  });
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q"); var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      q.querySelector('input[value="' + answer + '"]').parentNode.classList.add("correct");
+      if (chosen && chosen.value !== answer) chosen.parentNode.classList.add("wrong");
+      if (chosen && chosen.value === answer) score++;
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length + (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>
