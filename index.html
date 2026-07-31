@@ -49,6 +49,7 @@
     --pg:  #336791;   /* elephant blue (Postgres performance) */
     --aws: #d9701a;   /* orange  */
     --gcp: #1a73e8;   /* Google Cloud blue (GCP + IaC) */
+    --iac: #7b42bc;   /* Terraform purple (IaC tools) */
     --iot: #6d28d9;   /* violet  */
     --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
@@ -92,6 +93,7 @@
     --pg:  #8ab4e0;
     --aws: #f0a35e;
     --gcp: #8ab4f8;
+    --iac: #c4a5f0;
     --iot: #c4b5fd;
   }
   * { box-sizing: border-box; }
@@ -184,6 +186,7 @@
   .tile.pg { --tile: var(--pg); }
   .tile.aws { --tile: var(--aws); }
   .tile.gcp { --tile: var(--gcp); }
+  .tile.iac { --tile: var(--iac); }
   .tile.iot { --tile: var(--iot); }
   .tile .top { display: flex; align-items: center; gap: .6rem; }
   .tile .ico { font-size: 1.5rem; line-height: 1; }
@@ -233,6 +236,7 @@
   .path li.pg { --step: var(--pg); }
   .path li.aws { --step: var(--aws); }
   .path li.gcp { --step: var(--gcp); }
+  .path li.iac { --step: var(--iac); }
   .path li.iot { --step: var(--iot); }
   .path li:last-child { padding-bottom: .2rem; }
   .path h3 { margin: 0 0 .15rem; font-size: 1.05rem; }
@@ -274,7 +278,7 @@
   <div class="hero">
     <p class="eyebrow">Interactive tutorials</p>
     <h1>Build with LLMs, agents &amp; AWS</h1>
-    <p>Thirty-two self-contained, hands-on guides — from the transformer under the hood to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
+    <p>Thirty-four self-contained, hands-on guides — from the transformer under the hood to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
   </div>
 
   <div class="search" role="search">
@@ -489,6 +493,13 @@
         <span class="go">Tune queries</span>
       </a>
 
+      <a class="tile pg" href="postgres-vacuum.html">
+        <div class="top"><span class="ico">🧹</span><span class="kicker">Database</span></div>
+        <h3>PostgreSQL VACUUM</h3>
+        <p>Why MVCC leaves dead tuples behind, what VACUUM actually reclaims, <code style="font-size:.85em">VACUUM</code> vs <code style="font-size:.85em">VACUUM FULL</code>, tuning autovacuum, transaction-ID wraparound &amp; freezing, and detecting bloat — with a worked queue-table cleanup.</p>
+        <span class="go">Beat the bloat</span>
+      </a>
+
       <a class="tile aws" href="aws-services.html">
         <div class="top"><span class="ico">☁️</span><span class="kicker">Cloud</span></div>
         <h3>AWS Services Field Guide</h3>
@@ -501,6 +512,13 @@
         <h3>GCP Services &amp; Infrastructure as Code</h3>
         <p>A field guide to Google Cloud — the resource hierarchy, core services by category (Cloud Run, BigQuery, Cloud SQL, Pub/Sub…), a GCP↔AWS map — then an intro to Infrastructure as Code with a Terraform-on-GCP walkthrough.</p>
         <span class="go">Provision in code</span>
+      </a>
+
+      <a class="tile iac" href="terraform-pulumi-opentofu.html">
+        <div class="top"><span class="ico">🏗️</span><span class="kicker">IaC tools</span></div>
+        <h3>Terraform vs Pulumi vs OpenTofu</h3>
+        <p>Which IaC tool to build on: the model all three share, what each is, the 2023 licence change that forked OpenTofu from Terraform, the same stack written three ways, and a decision guide.</p>
+        <span class="go">Compare IaC tools</span>
       </a>
 
       <a class="tile iot" href="iot-agent.html">
@@ -637,6 +655,10 @@
         <h3><a href="postgres-performance.html">PostgreSQL Query Performance</a></h3>
         <p>Make the database keep up — read the query plan, add the right indexes, and fix the slow statements underneath it all.</p>
       </li>
+      <li class="pg">
+        <h3><a href="postgres-vacuum.html">PostgreSQL VACUUM</a></h3>
+        <p>Keep the database from bloating — reclaim dead tuples, tune autovacuum, and stay clear of transaction-ID wraparound.</p>
+      </li>
       <li class="aws">
         <h3><a href="aws-services.html">AWS Services Field Guide</a></h3>
         <p>Learn the cloud building blocks — compute, storage, messaging, Bedrock — that agents and apps actually run on.</p>
@@ -644,6 +666,10 @@
       <li class="gcp">
         <h3><a href="gcp-services.html">GCP Services &amp; Infrastructure as Code</a></h3>
         <p>The other major cloud — plus how to provision any of it in code with Terraform, not console clicks.</p>
+      </li>
+      <li class="iac">
+        <h3><a href="terraform-pulumi-opentofu.html">Terraform vs Pulumi vs OpenTofu</a></h3>
+        <p>Pick the IaC tool itself — the shared model, the licence fork behind OpenTofu, and Terraform vs Pulumi's real-language approach.</p>
       </li>
       <li class="iot">
         <h3><a href="iot-agent.html">IoT × Agents</a></h3>
@@ -654,7 +680,7 @@
 </main>
 
 <footer>
-  Thirty-two interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
+  Thirty-four interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
 </footer>
 
 <script>

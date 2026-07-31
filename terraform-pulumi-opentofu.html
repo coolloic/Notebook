@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏗️</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Terraform vs Pulumi vs OpenTofu — the shared IaC model, what each tool is, the 2023 licence change that forked OpenTofu, the same stack written three ways, and how to choose.">
+<title>Terraform vs Pulumi vs OpenTofu — Which IaC Tool?</title>
+<style>
+  :root {
+    --bg: #ffffff; --bg-soft: #f7f4fb; --bg-code: #1a1030; --text: #1e1a2b; --text-soft: #5b5570; --border: #e7e1f0;
+    --accent: #7b42bc; --ink: #5c2d91;
+    --solve: #15803d; --limit: #b45309; --choose: #1e40af; --solve-bg: #dcfce7; --limit-bg: #fef3c7; --choose-bg: #dbeafe;
+    --radius: 12px; --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #120c1e; --bg-soft: #1e1630; --bg-code: #150b28; --text: #ece6f7; --text-soft: #b1a6c8; --border: #302545; --accent: #c4a5f0; --ink: #d6c2f5; --solve: #86efac; --limit: #fcd34d; --choose: #93c5fd; --solve-bg: #14351f; --limit-bg: #3a2a0c; --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; } html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: var(--font); color: var(--text); background: var(--bg); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  .skip-link { position: absolute; left: -999px; top: 0; background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100; } .skip-link:focus { left: 0; }
+  #progress { position: fixed; top: 0; left: 0; height: 4px; width: 0%; background: linear-gradient(90deg, var(--accent), var(--ink)); z-index: 60; transition: width .1s linear; }
+  header.top { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; padding: .6rem 1rem; }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; } header.top .brand span { color: var(--accent); } header.top .spacer { flex: 1; }
+  .btn { font: inherit; cursor: pointer; border: 1px solid var(--border); background: var(--bg-soft); color: var(--text); border-radius: 999px; padding: .5rem .9rem; min-height: 44px; display: inline-flex; align-items: center; gap: .4rem; }
+  .btn:hover { border-color: var(--accent); } #menuToggle { display: none; }
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side { position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px); overflow-y: auto; padding: 1.25rem 0; font-size: .93rem; }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a { display: block; padding: .45rem .75rem; border-radius: 8px; color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent; }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); } nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.12rem; margin: 1.6rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; } .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .card .count { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; } .callout strong { color: var(--accent); }
+  .callout.tip { border-left-color: var(--solve); } .callout.tip strong { color: var(--solve); }
+  .callout.warn { border-left-color: var(--limit); } .callout.warn strong { color: var(--limit); }
+  .svc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-soft); padding: 1rem 1.2rem; margin: 1.1rem 0; border-top: 4px solid var(--accent); }
+  .svc h3 { margin: 0 0 .5rem; } .svc p { margin: .4rem 0; font-size: .95rem; }
+  .tag { display: inline-block; min-width: 5rem; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .12rem .5rem; border-radius: 6px; margin-right: .5rem; text-align: center; }
+  .tag.good { background: var(--solve-bg); color: var(--solve); } .tag.bad { background: var(--limit-bg); color: var(--limit); }
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; } table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; } th { background: var(--bg-soft); }
+  code.inline { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; color: var(--ink); }
+  pre { background: var(--bg-code); color: #ede6f7; border-radius: var(--radius); padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .85rem; line-height: 1.55; position: relative; }
+  pre .cp { position: absolute; top: .5rem; right: .5rem; font-size: .72rem; padding: .3rem .6rem; min-height: auto; background: rgba(255,255,255,.1); color: #ede6f7; border-color: rgba(255,255,255,.2); }
+  .lang { font-size: .7rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-soft); margin: 1rem 0 -.4rem; }
+  .kw { color: #c4b5fd; } .fn { color: #86efac; } .str { color: #fca5a5; } .num { color: #fcd34d; } .cmt { color: #6b7280; } .good-l { color: #86efac; } .bad-l { color: #fca5a5; }
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); } details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+  /* lineage diagram */
+  .ln-wrap { overflow-x: auto; margin: 1.3rem 0; }
+  .ln { width: 100%; min-width: 640px; max-width: 720px; height: auto; display: block; margin: 0 auto; font-family: var(--font); }
+  .ln-box { fill: var(--bg-soft); stroke: var(--accent); stroke-width: 1.8; }
+  .ln-alt { fill: var(--bg-soft); stroke: var(--border); stroke-width: 1.5; }
+  .ln-fork { fill: var(--bg-soft); stroke: var(--limit); stroke-width: 1.8; }
+  .ln-line { fill: none; stroke: var(--text-soft); stroke-width: 1.6; } .ln-ah { fill: var(--text-soft); }
+  .ln-dash { fill: none; stroke: var(--limit); stroke-width: 1.6; stroke-dasharray: 5 3; }
+  .ln-t { fill: var(--text); font-size: 12px; font-weight: 700; } .ln-s { fill: var(--text-soft); font-size: 10.5px; }
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; } .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); } .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; } [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; } #score { font-weight: 700; margin-left: 1rem; }
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; } #menuToggle { display: inline-flex; } main { padding-top: .5rem; } .tag { min-width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <a class="btn home" href="index.html" aria-label="Back to all tutorials">← All tutorials</a>
+  <div class="brand">Terraform · Pulumi · <span>OpenTofu</span></div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#shared">1 · The shared model</a></li>
+      <li><a href="#terraform">2 · Terraform</a></li>
+      <li><a href="#opentofu">3 · OpenTofu</a></li>
+      <li><a href="#pulumi">4 · Pulumi</a></li>
+      <li><a href="#compare">5 · Head-to-head</a></li>
+      <li><a href="#code">6 · Same stack, 3 ways</a></li>
+      <li><a href="#licence">7 · The licence story</a></li>
+      <li><a href="#choose">8 · How to choose</a></li>
+      <li><a href="#cheatsheet">Cheat sheet</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>Terraform vs Pulumi vs OpenTofu</h1>
+      <p class="lede">All three are <strong>Infrastructure as Code</strong> tools: you declare the cloud resources you want and the tool makes reality match. They share a model — but differ on <em>language</em>, <em>licence</em> and <em>governance</em>, and those differences are exactly what the 2023 Terraform licence change threw into sharp relief. This is how to tell them apart and pick one.</p>
+      <div class="callout"><strong>The 15-second version.</strong> <strong>Terraform</strong> is the incumbent (HCL, huge ecosystem, now source-available BSL licence). <strong>OpenTofu</strong> is the open-source (MPL) fork of Terraform — a near drop-in replacement under the Linux Foundation. <strong>Pulumi</strong> takes a different path: write your infra in a real programming language (TypeScript, Python, Go, C#…). New to IaC? Start with <a href="gcp-services.html#iac">what IaC is</a> first.</div>
+    </section>
+
+    <section id="shared">
+      <h2><span class="pill">Common ground</span> &nbsp;The shared model</h2>
+      <p>Despite the differences, all three work the same way underneath — learn this once and it transfers:</p>
+      <div class="cards">
+        <div class="card"><span class="count">Declarative</span><h4>Desired state</h4><p>You describe the end result, not the steps. The tool diffs your code against reality and reconciles.</p></div>
+        <div class="card"><span class="count">Providers</span><h4>Cloud plugins</h4><p>The same provider plugins (AWS, GCP, Azure, Kubernetes, …) — Pulumi and OpenTofu both build on Terraform's provider ecosystem.</p></div>
+        <div class="card"><span class="count">State</span><h4>A record of reality</h4><p>A state file maps your code to real resources so the tool can compute an accurate diff and safely delete what you removed.</p></div>
+        <div class="card"><span class="count">Plan → apply</span><h4>Preview, then act</h4><p>Show the diff (create/change/destroy), review it, then apply. Dependencies resolve as a graph (DAG).</p></div>
+      </div>
+      <div class="callout tip"><strong>Key insight:</strong> because Pulumi and OpenTofu reuse Terraform's provider model, the <em>concepts</em> (resources, state, plan/apply, modules) are portable. The real choice is <strong>how you express</strong> the config and <strong>who governs</strong> the tool — not a different mental model.</div>
+    </section>
+
+    <section id="terraform">
+      <h2><span class="pill">The incumbent</span> &nbsp;Terraform</h2>
+      <article class="svc">
+        <h3>🟣 Terraform (HashiCorp, 2014)</h3>
+        <p><span class="tag good">Strengths</span> The de-facto standard: the largest provider &amp; module ecosystem (Terraform Registry), the most jobs, docs, examples and Stack Overflow answers. Declarative <strong>HCL</strong> is purpose-built for config and easy to read. Mature tooling (Cloud/Enterprise, Sentinel policy, workspaces).</p>
+        <p><span class="tag bad">Trade-offs</span> HCL is a <em>domain-specific</em> language — loops (<code class="inline">for_each</code>), conditionals and abstraction can feel awkward vs a real language. Since Aug 2023 it's under the <strong>BSL</strong> (source-available, not open source), which alienated some users and vendors.</p>
+      </article>
+      <div class="callout"><strong>Licence flag:</strong> Terraform ≤ 1.5.5 was open source (MPL 2.0); from 1.6 it's <strong>BSL 1.1</strong>. Fine for the vast majority of users — the restriction targets companies offering a competing Terraform-as-a-service. This change is what spawned OpenTofu.</div>
+    </section>
+
+    <section id="opentofu">
+      <h2><span class="pill">The fork</span> &nbsp;OpenTofu</h2>
+      <article class="svc">
+        <h3>🐘 OpenTofu (Linux Foundation, 2023)</h3>
+        <p><span class="tag good">Strengths</span> A community fork of Terraform 1.5.5 created in response to the BSL change — <strong>open source (MPL 2.0)</strong>, vendor-neutral, governed by the Linux Foundation. Aims to be a <strong>near drop-in replacement</strong>: same HCL, same providers, state-compatible; often you just swap the <code class="inline">terraform</code> command for <code class="inline">tofu</code>. It's now adding features of its own (e.g. client-side <strong>state encryption</strong>, provider-defined functions, early variable evaluation).</p>
+        <p><span class="tag bad">Trade-offs</span> Younger, with a smaller (fast-growing) community; it is <strong>diverging</strong> from Terraform over time, so 100% parity isn't guaranteed forever. Some managed platforms and modules still assume the <code class="inline">terraform</code> binary.</p>
+      </article>
+      <div class="callout tip"><strong>Mental model:</strong> OpenTofu is to Terraform roughly what a community fork is to its upstream — same language and workflow, different licence &amp; steward. If the BSL licence is a blocker for you, OpenTofu is the low-friction escape hatch.</div>
+    </section>
+
+    <section id="pulumi">
+      <h2><span class="pill">The different path</span> &nbsp;Pulumi</h2>
+      <article class="svc">
+        <h3>🧬 Pulumi (2018)</h3>
+        <p><span class="tag good">Strengths</span> Write infrastructure in a <strong>general-purpose language</strong> — TypeScript, Python, Go, C#, Java — so you get real loops, functions, classes, packages, IDE autocomplete and unit tests. Great when infra is dynamic or your team already lives in that language. <strong>Apache 2.0</strong> licensed; reuses Terraform providers under the hood.</p>
+        <p><span class="tag bad">Trade-offs</span> A real language means real complexity — you <em>can</em> write tangled, imperative infra if undisciplined. Smaller ecosystem and talent pool than Terraform/HCL. State defaults to the hosted <strong>Pulumi Cloud</strong> (self-managed backends exist, e.g. object storage).</p>
+      </article>
+      <div class="callout"><strong>The core trade:</strong> HCL constrains you toward simple, declarative config (a feature <em>and</em> a limit). Pulumi gives you a full language (power <em>and</em> the rope to hang yourself). Pick based on how much programmability your infra genuinely needs.</div>
+    </section>
+
+    <section id="compare">
+      <h2><span class="pill">At a glance</span> &nbsp;Head-to-head</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th></th><th>Terraform</th><th>OpenTofu</th><th>Pulumi</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Language</strong></td><td>HCL (DSL)</td><td>HCL (DSL)</td><td>TS · Python · Go · C# · Java</td></tr>
+            <tr><td><strong>Licence</strong></td><td>BSL 1.1 (source-available)</td><td>MPL 2.0 (open source)</td><td>Apache 2.0 (open source)</td></tr>
+            <tr><td><strong>Governance</strong></td><td>HashiCorp (IBM)</td><td>Linux Foundation</td><td>Pulumi Corp</td></tr>
+            <tr><td><strong>Providers</strong></td><td>Terraform Registry</td><td>Terraform providers (own registry)</td><td>Terraform providers + native</td></tr>
+            <tr><td><strong>State</strong></td><td>File / TF Cloud / remote backends</td><td>Same + client-side encryption</td><td>Pulumi Cloud / self-managed</td></tr>
+            <tr><td><strong>CLI</strong></td><td><code class="inline">terraform</code></td><td><code class="inline">tofu</code></td><td><code class="inline">pulumi</code></td></tr>
+            <tr><td><strong>Testing</strong></td><td>Limited (native test framework, Terratest)</td><td>Same lineage</td><td>Native unit tests in your language</td></tr>
+            <tr><td><strong>Ecosystem / hiring</strong></td><td>Largest</td><td>Growing fast</td><td>Moderate</td></tr>
+            <tr><td><strong>Best when…</strong></td><td>You want the standard &amp; the BSL is fine</td><td>You want Terraform, open source</td><td>You want a real language &amp; programmability</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="code">
+      <h2><span class="pill">Show me</span> &nbsp;Same stack, three ways</h2>
+      <p>The exact same resource — a Google Cloud Storage bucket — in each tool. Note that Terraform and OpenTofu HCL are <strong>identical</strong>.</p>
+
+      <p class="lang">Terraform &amp; OpenTofu — <code class="inline">main.tf</code> (identical HCL)</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="kw">resource</span> <span class="str">"google_storage_bucket"</span> <span class="str">"assets"</span> {
+  name     = <span class="str">"shop-prod-assets"</span>
+  location = <span class="str">"US"</span>
+}</code></pre>
+
+      <p class="lang">Pulumi — TypeScript</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="kw">import</span> * <span class="kw">as</span> gcp <span class="kw">from</span> <span class="str">"@pulumi/gcp"</span>;
+
+<span class="kw">const</span> assets = <span class="kw">new</span> gcp.storage.<span class="fn">Bucket</span>(<span class="str">"assets"</span>, {
+  name: <span class="str">"shop-prod-assets"</span>,
+  location: <span class="str">"US"</span>,
+});</code></pre>
+
+      <p class="lang">Pulumi — Python</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="kw">import</span> pulumi_gcp <span class="kw">as</span> gcp
+
+assets = gcp.storage.<span class="fn">Bucket</span>(<span class="str">"assets"</span>,
+    name=<span class="str">"shop-prod-assets"</span>,
+    location=<span class="str">"US"</span>)</code></pre>
+
+      <p class="lang">The commands</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="cmt"># Terraform            # OpenTofu            # Pulumi</span>
+terraform init          tofu init            pulumi stack init
+terraform plan          tofu plan            pulumi preview
+terraform apply         tofu apply           pulumi up</code></pre>
+      <div class="callout tip"><strong>Where a real language pays off:</strong> creating ten buckets is a <code class="inline">for</code> loop and an array in Pulumi; in HCL it's <code class="inline">for_each</code> over a map — doable, but the more logic you need (conditionals, computed names, shared helpers), the more a general-purpose language starts to feel natural.</div>
+    </section>
+
+    <section id="licence">
+      <h2><span class="pill">The context</span> &nbsp;The licence story</h2>
+      <p>You can't understand this landscape without the 2023 timeline — it's why OpenTofu exists and why the choice is now partly about <em>governance</em>, not just tech.</p>
+      <div class="ln-wrap">
+        <svg class="ln" viewBox="0 0 720 210" role="img" aria-labelledby="ln-title ln-desc">
+          <title id="ln-title">Lineage of Terraform, OpenTofu and Pulumi</title>
+          <desc id="ln-desc">Terraform launched in 2014 under the open-source MPL licence. In August 2023 HashiCorp relicensed it to the source-available BSL, prompting a community fork, OpenTofu, under the Linux Foundation. Pulumi is a separate lineage from 2018, Apache-licensed.</desc>
+          <defs><marker id="ln-a" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" class="ln-ah"/></marker></defs>
+          <rect class="ln-box" x="16" y="40" width="150" height="48" rx="10"/><text class="ln-t" x="91" y="61" text-anchor="middle">Terraform 2014</text><text class="ln-s" x="91" y="78" text-anchor="middle">open source · MPL 2.0</text>
+          <path class="ln-line" d="M166,64 L300,64" marker-end="url(#ln-a)"/>
+          <rect class="ln-fork" x="300" y="40" width="170" height="48" rx="10"/><text class="ln-t" x="385" y="61" text-anchor="middle">Aug 2023: BSL 1.1</text><text class="ln-s" x="385" y="78" text-anchor="middle">source-available relicence</text>
+          <path class="ln-line" d="M470,64 L560,64" marker-end="url(#ln-a)"/>
+          <rect class="ln-box" x="560" y="40" width="148" height="48" rx="10"/><text class="ln-t" x="634" y="61" text-anchor="middle">Terraform 1.6+</text><text class="ln-s" x="634" y="78" text-anchor="middle">BSL, HashiCorp/IBM</text>
+          <path class="ln-dash" d="M385,88 L385,140" marker-end="url(#ln-a)"/><text class="ln-s" x="400" y="116" text-anchor="start">community fork</text>
+          <rect class="ln-box" x="300" y="140" width="170" height="48" rx="10"/><text class="ln-t" x="385" y="161" text-anchor="middle">OpenTofu 2023</text><text class="ln-s" x="385" y="178" text-anchor="middle">MPL 2.0 · Linux Foundation</text>
+          <rect class="ln-alt" x="16" y="140" width="150" height="48" rx="10"/><text class="ln-t" x="91" y="161" text-anchor="middle">Pulumi 2018</text><text class="ln-s" x="91" y="178" text-anchor="middle">Apache 2.0 · real langs</text>
+        </svg>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>When</th><th>What happened</th></tr></thead>
+          <tbody>
+            <tr><td>2014</td><td>HashiCorp releases Terraform under the open-source MPL 2.0.</td></tr>
+            <tr><td>Aug 2023</td><td>HashiCorp relicenses Terraform (and its other tools) to the <strong>BSL 1.1</strong> — source-available, restricting competing commercial use.</td></tr>
+            <tr><td>Sep 2023</td><td>The community forks Terraform 1.5.5 as <strong>OpenTofu</strong>; it joins the Linux Foundation, staying MPL 2.0.</td></tr>
+            <tr><td>2024→</td><td>IBM acquires HashiCorp. OpenTofu ships features Terraform lacks (state encryption); the two <strong>diverge</strong>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout warn"><strong>Does the BSL affect you?</strong> For almost all end users building their own infrastructure — <em>no</em>. It restricts offering a competing Terraform-as-a-service product. Still, some organisations choose OpenTofu on principle (open-source governance) or to avoid future licence risk. That's a policy call, not a technical one.</div>
+    </section>
+
+    <section id="choose">
+      <h2><span class="pill">Decide</span> &nbsp;How to choose</h2>
+      <div class="cards">
+        <div class="card"><span class="count">Pick</span><h4>🟣 Terraform</h4><p>You want the industry standard, the biggest ecosystem &amp; talent pool, and the BSL licence isn't a concern. The safe default.</p></div>
+        <div class="card"><span class="count">Pick</span><h4>🐘 OpenTofu</h4><p>You want everything Terraform offers but need a truly open-source licence &amp; vendor-neutral governance — or want its extras like state encryption.</p></div>
+        <div class="card"><span class="count">Pick</span><h4>🧬 Pulumi</h4><p>Your team prefers a general-purpose language, your infra needs real programmability, or you want first-class unit testing in-language.</p></div>
+      </div>
+      <div class="callout tip"><strong>Rules of thumb.</strong> Greenfield &amp; pragmatic → <strong>Terraform</strong>. Same, but open-source matters to you → <strong>OpenTofu</strong> (trivial to switch, HCL is identical). Devs who want code, loops &amp; tests over config files → <strong>Pulumi</strong>. And whichever you choose, apply the <a href="gcp-services.html#practices">IaC best practices</a>: remote locked state, plan-in-CI, no secrets in code.</div>
+      <details>
+        <summary>Can I migrate later?</summary>
+        <p style="margin:.6rem 0 0;font-size:.93rem;">Terraform ⇄ OpenTofu is usually near-trivial today (same HCL &amp; state) but gets harder as they diverge. Terraform/OpenTofu → Pulumi is a bigger lift (different language), though Pulumi provides converters and can adopt existing state. As always, the state file — not the code — is the thing you must migrate carefully.</p>
+      </details>
+    </section>
+
+    <section id="cheatsheet">
+      <h2>Cheat sheet</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Question</th><th>Short answer</th></tr></thead>
+          <tbody>
+            <tr><td>What do all three share?</td><td>Declarative desired-state, providers, state files, plan→apply, a dependency graph.</td></tr>
+            <tr><td>Terraform language / licence?</td><td>HCL · BSL 1.1 (source-available since v1.6).</td></tr>
+            <tr><td>What is OpenTofu?</td><td>Open-source (MPL) fork of Terraform under the Linux Foundation; near drop-in, CLI <code class="inline">tofu</code>.</td></tr>
+            <tr><td>What makes Pulumi different?</td><td>Write IaC in a real language (TS/Python/Go/C#/Java); Apache 2.0.</td></tr>
+            <tr><td>Why does OpenTofu exist?</td><td>The Aug 2023 Terraform BSL relicence prompted a community fork.</td></tr>
+            <tr><td>Does BSL affect most users?</td><td>No — it targets competing TF-as-a-service, not your own infra.</td></tr>
+            <tr><td>Safe default?</td><td>Terraform. Want open source? OpenTofu. Want a real language? Pulumi.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="b">
+          <p>1. What is OpenTofu?</p>
+          <label><input type="radio" name="q1" value="a"> A closed-source rewrite of Terraform in Go</label>
+          <label><input type="radio" name="q1" value="b"> An open-source (MPL) community fork of Terraform under the Linux Foundation</label>
+          <label><input type="radio" name="q1" value="c"> Pulumi's state backend</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>2. What most distinguishes Pulumi from Terraform/OpenTofu?</p>
+          <label><input type="radio" name="q2" value="a"> It doesn't use state</label>
+          <label><input type="radio" name="q2" value="b"> It can't talk to AWS</label>
+          <label><input type="radio" name="q2" value="c"> You write infrastructure in a general-purpose language (TS, Python, Go, C#…)</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>3. Why does OpenTofu exist?</p>
+          <label><input type="radio" name="q3" value="a"> HashiCorp relicensed Terraform to the source-available BSL in Aug 2023, prompting a community fork</label>
+          <label><input type="radio" name="q3" value="b"> Terraform was discontinued</label>
+          <label><input type="radio" name="q3" value="c"> To add a GUI to Terraform</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>4. For most engineers building their own infrastructure, the Terraform BSL licence…</p>
+          <label><input type="radio" name="q4" value="a"> Makes Terraform unusable</label>
+          <label><input type="radio" name="q4" value="b"> Doesn't restrict them — it targets competing Terraform-as-a-service offerings</label>
+          <label><input type="radio" name="q4" value="c"> Requires paying per resource</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>5. Terraform and OpenTofu configuration is written in…</p>
+          <label><input type="radio" name="q5" value="a"> Python</label>
+          <label><input type="radio" name="q5" value="b"> YAML only</label>
+          <label><input type="radio" name="q5" value="c"> HCL (and it's currently near-identical between the two)</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. Your team wants the largest ecosystem &amp; talent pool and is fine with the BSL. Best pick?</p>
+          <label><input type="radio" name="q6" value="a"> Pulumi</label>
+          <label><input type="radio" name="q6" value="b"> Terraform</label>
+          <label><input type="radio" name="q6" value="c"> None can do that</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>🌩️ GCP &amp; IaC</h4><p><a href="gcp-services.html">Intro to IaC + Terraform</a> — the foundations this comparison builds on.</p></div>
+        <div class="card"><h4>☁️ AWS services</h4><p><a href="aws-services.html">The AWS field guide</a> — resources you'll provision with any of these tools.</p></div>
+        <div class="card"><h4>☸️ Cloud native</h4><p><a href="cloud-native.html">Containers &amp; Kubernetes</a> — where much of this infrastructure runs.</p></div>
+        <div class="card"><h4>📓 All tutorials</h4><p><a href="index.html">The hub</a> — LLMs, agents, data &amp; infra.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  Terraform vs Pulumi vs OpenTofu — same IaC model, different language, licence &amp; governance. Pick for your team, then apply the best practices. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) { root.setAttribute("data-theme", t); tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 "; tLabel.textContent = t === "dark" ? "Light" : "Dark"; }
+  var saved = null; try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () { var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark"; applyTheme(next); try { localStorage.setItem("theme", next); } catch (e) {} });
+  var menuBtn = document.getElementById("menuToggle"); var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () { var open = side.classList.toggle("open"); menuBtn.setAttribute("aria-expanded", String(open)); });
+  side.addEventListener("click", function (e) { if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); } });
+  var bar = document.getElementById("progress");
+  function onScroll() { var h = document.documentElement; var max = h.scrollHeight - h.clientHeight; bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%"; }
+  document.addEventListener("scroll", onScroll, { passive: true }); onScroll();
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a")); var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) { entries.forEach(function (en) { if (en.isIntersecting) { links.forEach(function (a) { a.classList.remove("active"); }); if (map[en.target.id]) map[en.target.id].classList.add("active"); } }); }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+  document.querySelectorAll("pre .cp").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var code = btn.parentNode.querySelector("code");
+      navigator.clipboard.writeText(code.innerText).then(function () { var old = btn.textContent; btn.textContent = "Copied!"; setTimeout(function () { btn.textContent = old; }, 1500); });
+    });
+  });
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q"); var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      q.querySelector('input[value="' + answer + '"]').parentNode.classList.add("correct");
+      if (chosen && chosen.value !== answer) chosen.parentNode.classList.add("wrong");
+      if (chosen && chosen.value === answer) score++;
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length + (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>
