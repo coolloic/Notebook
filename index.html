@@ -36,6 +36,7 @@
     --goo: #2563eb;   /* blue (Google)    */
     --loop: #475569;  /* slate   */
     --eng: #57534e;   /* stone (agent engineering) */
+    --crew: #be185d;  /* rose (AutoGen vs CrewAI) */
     --net: #4d7c0f;   /* lime    */
     --api: #0369a1;   /* sky     */
     --mcp: #4338ca;   /* indigo (build MCP) */
@@ -80,6 +81,7 @@
     --goo: #60a5fa;
     --loop: #94a3b8;
     --eng: #a8a29e;
+    --crew: #f472b6;
     --net: #a3e635;
     --api: #7dd3fc;
     --mcp: #c7d2fe;
@@ -169,6 +171,7 @@
   .tile.lci { --tile: var(--lci); }
   .tile.eval { --tile: var(--eval); }
   .tile.adk { --tile: var(--adk); }
+  .tile.crew { --tile: var(--crew); }
   .tile.ant { --tile: var(--ant); }
   .tile.goo { --tile: var(--goo); }
   .tile.loop { --tile: var(--loop); }
@@ -219,6 +222,7 @@
   .path li.lci { --step: var(--lci); }
   .path li.eval { --step: var(--eval); }
   .path li.adk { --step: var(--adk); }
+  .path li.crew { --step: var(--crew); }
   .path li.ant { --step: var(--ant); }
   .path li.goo { --step: var(--goo); }
   .path li.loop { --step: var(--loop); }
@@ -278,7 +282,7 @@
   <div class="hero">
     <p class="eyebrow">Interactive tutorials</p>
     <h1>Build with LLMs, agents &amp; AWS</h1>
-    <p>Thirty-four self-contained, hands-on guides — from the transformer under the hood to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
+    <p>Thirty-six self-contained, hands-on guides — from the transformer under the hood to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
   </div>
 
   <div class="search" role="search">
@@ -386,6 +390,13 @@
         <h3>Agent Development Kits</h3>
         <p>Google ADK vs AWS Strands + Bedrock AgentCore vs LangGraph — what problem each solves, its limits, and when to choose it, in a clear Problem → Solution → Limits format.</p>
         <span class="go">Compare kits</span>
+      </a>
+
+      <a class="tile crew" href="autogen-crewai.html">
+        <div class="top"><span class="ico">🤝</span><span class="kicker">Multi-agent frameworks</span></div>
+        <h3>AutoGen vs CrewAI</h3>
+        <p>The two leading multi-agent frameworks compared: conversable agents vs role-based crews, their orchestration models, the same task coded both ways, a head-to-head table, and how to characterise the work to choose.</p>
+        <span class="go">Compare frameworks</span>
       </a>
 
       <a class="tile ant" href="anthropic-agents.html">
@@ -500,6 +511,13 @@
         <span class="go">Beat the bloat</span>
       </a>
 
+      <a class="tile pg" href="postgres-indexing.html">
+        <div class="top"><span class="ico">🗂️</span><span class="kicker">Database</span></div>
+        <h3>PostgreSQL Indexing Strategies</h3>
+        <p>Match the index to the query: how a B-tree works, the six index types and when to use each, multicolumn column order, covering &amp; partial &amp; expression indexes, building safely with <code style="font-size:.85em">CONCURRENTLY</code>, and auditing what to drop.</p>
+        <span class="go">Index deliberately</span>
+      </a>
+
       <a class="tile aws" href="aws-services.html">
         <div class="top"><span class="ico">☁️</span><span class="kicker">Cloud</span></div>
         <h3>AWS Services Field Guide</h3>
@@ -595,6 +613,10 @@
         <h3><a href="adk.html">Agent Development Kits</a></h3>
         <p>Now zoom out: how the frameworks for <em>building</em> agents differ, and how to pick one for the job.</p>
       </li>
+      <li class="crew">
+        <h3><a href="autogen-crewai.html">AutoGen vs CrewAI</a></h3>
+        <p>Two multi-agent frameworks head-to-head — conversation-first vs role-and-task-first, and which shape fits your work.</p>
+      </li>
       <li class="ant">
         <h3><a href="anthropic-agents.html">Anthropic Agent Architectures</a></h3>
         <p>The architectural vocabulary — workflows vs agents, the five patterns, and the agent loop.</p>
@@ -659,6 +681,10 @@
         <h3><a href="postgres-vacuum.html">PostgreSQL VACUUM</a></h3>
         <p>Keep the database from bloating — reclaim dead tuples, tune autovacuum, and stay clear of transaction-ID wraparound.</p>
       </li>
+      <li class="pg">
+        <h3><a href="postgres-indexing.html">PostgreSQL Indexing Strategies</a></h3>
+        <p>Make reads fast without over-taxing writes — pick the right index type, column order, and partial/covering shape for each query.</p>
+      </li>
       <li class="aws">
         <h3><a href="aws-services.html">AWS Services Field Guide</a></h3>
         <p>Learn the cloud building blocks — compute, storage, messaging, Bedrock — that agents and apps actually run on.</p>
@@ -680,7 +706,7 @@
 </main>
 
 <footer>
-  Thirty-four interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
+  Thirty-six interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
 </footer>
 
 <script>

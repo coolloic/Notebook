@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗂️</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="PostgreSQL indexing strategies — how a B-tree index works, the six index types and when to use each, multicolumn column order, covering &amp; partial &amp; expression indexes, building indexes safely in production, and auditing which to keep or drop.">
+<title>PostgreSQL Indexing Strategies — Choose the Right Index</title>
+<style>
+  :root {
+    --bg: #ffffff; --bg-soft: #f2f6fb; --bg-code: #0e1b2b; --text: #17202e; --text-soft: #516074; --border: #dde6f0;
+    --accent: #336791; --ink: #24476b;
+    --solve: #15803d; --limit: #b45309; --choose: #1e40af; --solve-bg: #dcfce7; --limit-bg: #fef3c7; --choose-bg: #dbeafe;
+    --radius: 12px; --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #0d1522; --bg-soft: #152235; --bg-code: #0a1524; --text: #e4ecf7; --text-soft: #9fb0c8; --border: #253549;
+    --accent: #8ab4e0; --ink: #b3d1ef; --solve: #86efac; --limit: #fcd34d; --choose: #93c5fd; --solve-bg: #14351f; --limit-bg: #3a2a0c; --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; } html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: var(--font); color: var(--text); background: var(--bg); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  .skip-link { position: absolute; left: -999px; top: 0; background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100; } .skip-link:focus { left: 0; }
+  #progress { position: fixed; top: 0; left: 0; height: 4px; width: 0%; background: linear-gradient(90deg, var(--accent), var(--ink)); z-index: 60; transition: width .1s linear; }
+  header.top { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; padding: .6rem 1rem; }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; } header.top .brand span { color: var(--accent); } header.top .spacer { flex: 1; }
+  .btn { font: inherit; cursor: pointer; border: 1px solid var(--border); background: var(--bg-soft); color: var(--text); border-radius: 999px; padding: .5rem .9rem; min-height: 44px; display: inline-flex; align-items: center; gap: .4rem; }
+  .btn:hover { border-color: var(--accent); } #menuToggle { display: none; }
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side { position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px); overflow-y: auto; padding: 1.25rem 0; font-size: .93rem; }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a { display: block; padding: .45rem .75rem; border-radius: 8px; color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent; }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); } nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.12rem; margin: 1.6rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; } .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .card .count { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; } .callout strong { color: var(--accent); }
+  .callout.tip { border-left-color: var(--solve); } .callout.tip strong { color: var(--solve); }
+  .callout.warn { border-left-color: var(--limit); } .callout.warn strong { color: var(--limit); }
+  .svc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-soft); padding: 1rem 1.2rem; margin: 1.1rem 0; }
+  .svc h3 { margin: 0 0 .5rem; } .svc p { margin: .4rem 0; font-size: .95rem; }
+  .tag { display: inline-block; min-width: 5rem; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .12rem .5rem; border-radius: 6px; margin-right: .5rem; text-align: center; }
+  .tag.good { background: var(--solve-bg); color: var(--solve); } .tag.bad { background: var(--limit-bg); color: var(--limit); }
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; } table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; } th { background: var(--bg-soft); }
+  code.inline { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; color: var(--ink); }
+  pre { background: var(--bg-code); color: #e6eef7; border-radius: var(--radius); padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .85rem; line-height: 1.55; position: relative; }
+  pre .cp { position: absolute; top: .5rem; right: .5rem; font-size: .72rem; padding: .3rem .6rem; min-height: auto; background: rgba(255,255,255,.1); color: #e6eef7; border-color: rgba(255,255,255,.2); }
+  .kw { color: #93c5fd; } .fn { color: #86efac; } .str { color: #fca5a5; } .num { color: #fcd34d; } .cmt { color: #64748b; } .bad-l { color: #fca5a5; } .good-l { color: #86efac; }
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); } details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+  /* lifecycle diagram */
+  .lc-wrap { overflow-x: auto; margin: 1.3rem 0; }
+  .lc { width: 100%; min-width: 660px; max-width: 720px; height: auto; display: block; margin: 0 auto; font-family: var(--font); }
+  .lc-box { fill: var(--bg-soft); stroke: var(--accent); stroke-width: 1.6; }
+  .lc-alt { fill: var(--bg-soft); stroke: var(--border); stroke-width: 1.5; }
+  .lc-hot { fill: var(--bg-soft); stroke: var(--accent); stroke-width: 2.4; }
+  .lc-line { fill: none; stroke: var(--text-soft); stroke-width: 1.6; } .lc-ah { fill: var(--text-soft); }
+  .lc-t { fill: var(--text); font-size: 12px; font-weight: 700; } .lc-s { fill: var(--text-soft); font-size: 10.5px; }
+  .lc-live { fill: var(--solve-bg); stroke: var(--solve); stroke-width: 1.6; }
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; } .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); } .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; } [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; } #score { font-weight: 700; margin-left: 1rem; }
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; } #menuToggle { display: inline-flex; } main { padding-top: .5rem; } .tag { min-width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <a class="btn home" href="index.html" aria-label="Back to all tutorials">← All tutorials</a>
+  <div class="brand">PostgreSQL <span>Indexing</span></div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#howto">1 · How a B-tree index works</a></li>
+      <li><a href="#types">2 · The six index types</a></li>
+      <li><a href="#multicolumn">3 · Multicolumn &amp; column order</a></li>
+      <li><a href="#covering">4 · Covering &amp; index-only scans</a></li>
+      <li><a href="#partial">5 · Partial indexes</a></li>
+      <li><a href="#expression">6 · Expression indexes</a></li>
+      <li><a href="#building">7 · Building safely</a></li>
+      <li><a href="#audit">8 · Auditing your indexes</a></li>
+      <li><a href="#antipatterns">9 · Anti-patterns</a></li>
+      <li><a href="#worked">Worked example</a></li>
+      <li><a href="#cheatsheet">Cheat sheet</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>PostgreSQL indexing strategies</h1>
+      <p class="lede">An index is a bet: you pay storage and slower writes on every row, wagering that reads will be so much faster it's worth it. Win the bet by matching the <strong>index shape to the query shape</strong> — the right <em>type</em>, the right <em>columns in the right order</em>, and no more indexes than you can justify. This is how to choose.</p>
+      <div class="callout"><strong>The strategy in one line.</strong> Index for the queries you actually run, cover the equality predicates first, add a range/sort column last, and delete anything nothing scans. An index the planner never uses is pure write tax.</div>
+    </section>
+
+    <section id="howto">
+      <h2><span class="pill">Foundations</span> &nbsp;How a B-tree index works</h2>
+      <p>The default index — and 95% of what you'll create — is a <strong>B-tree</strong>: a balanced, sorted tree. Walking from the root to a leaf takes a handful of page reads regardless of table size, and each leaf entry points at the row's physical location (a <strong>TID</strong>) in the heap.</p>
+      <div class="lc-wrap">
+        <svg class="lc" viewBox="0 0 720 210" role="img" aria-labelledby="lc-title lc-desc">
+          <title id="lc-title">B-tree index structure</title>
+          <desc id="lc-desc">A root node points to leaf pages of sorted keys, each leaf entry pointing at a row in the heap table. A lookup descends root to leaf in a few page reads.</desc>
+          <defs><marker id="lc-a" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" class="lc-ah"/></marker></defs>
+          <rect class="lc-hot" x="285" y="10" width="150" height="42" rx="10"/><text class="lc-t" x="360" y="30" text-anchor="middle">Root</text><text class="lc-s" x="360" y="45" text-anchor="middle">key ranges → children</text>
+          <path class="lc-line" d="M320,52 L200,86" marker-end="url(#lc-a)"/>
+          <path class="lc-line" d="M400,52 L520,86" marker-end="url(#lc-a)"/>
+          <rect class="lc-box" x="70" y="88" width="260" height="46" rx="10"/><text class="lc-t" x="200" y="108" text-anchor="middle">Leaf page (keys 1–5000)</text><text class="lc-s" x="200" y="124" text-anchor="middle">sorted keys + TID pointers →</text>
+          <rect class="lc-box" x="390" y="88" width="260" height="46" rx="10"/><text class="lc-t" x="520" y="108" text-anchor="middle">Leaf page (keys 5001–…)</text><text class="lc-s" x="520" y="124" text-anchor="middle">sorted keys + TID pointers →</text>
+          <path class="lc-line" d="M200,134 L200,166" marker-end="url(#lc-a)"/>
+          <path class="lc-line" d="M520,134 L520,166" marker-end="url(#lc-a)"/>
+          <rect class="lc-alt" x="70" y="168" width="580" height="36" rx="10"/><text class="lc-t" x="360" y="190" text-anchor="middle">🗃️ Heap — the actual table rows (unordered)</text>
+        </svg>
+      </div>
+      <p>Two consequences fall straight out of "sorted tree":</p>
+      <ul>
+        <li>A B-tree is fast for <strong>equality</strong> (<code class="inline">=</code>, <code class="inline">IN</code>), <strong>ranges</strong> (<code class="inline">&lt;</code>, <code class="inline">BETWEEN</code>), and <strong>ordered reads</strong> (<code class="inline">ORDER BY</code>, prefix <code class="inline">LIKE 'abc%'</code>) — anything that maps to "jump to a point and walk in order".</li>
+        <li>After the index finds matching entries it usually still has to visit the heap to fetch the row (an <strong>Index Scan</strong>). Avoiding that heap trip is what covering indexes below are for.</li>
+      </ul>
+      <div class="callout tip"><strong>Cardinality decides everything.</strong> An index earns its keep when a query selects a <em>small fraction</em> of the table. Indexing a boolean or a status with three values rarely helps — the planner will (correctly) prefer a Seq Scan. Index high-cardinality columns, or make a low-cardinality one useful with a <em>partial</em> index (§5).</div>
+    </section>
+
+    <section id="types">
+      <h2><span class="pill">The catalog</span> &nbsp;The six index types &amp; when to use each</h2>
+      <p>Postgres ships six access methods. Reach for B-tree by default; the others solve specific shapes B-tree can't.</p>
+      <article class="svc">
+        <h3>🅱️ B-tree <span class="tag good">default</span></h3>
+        <p>Equality, range, sorting, uniqueness — the workhorse. Use unless you have a concrete reason not to. Supports multicolumn, <code class="inline">INCLUDE</code>, and <code class="inline">UNIQUE</code>.</p>
+      </article>
+      <article class="svc">
+        <h3># Hash <span class="tag good">equality only</span></h3>
+        <p>Only <code class="inline">=</code>. Crash-safe &amp; replicated since PG&nbsp;10. Can be smaller than B-tree for very large keys, but no ranges or ordering — so it's rarely worth choosing over a B-tree. A niche tool.</p>
+      </article>
+      <article class="svc">
+        <h3>🌐 GiST <span class="tag good">geometry / ranges / KNN</span></h3>
+        <p>Extensible tree for overlapping data: geometric &amp; geographic (PostGIS), range types, full-text, and <strong>nearest-neighbour</strong> (<code class="inline">ORDER BY location &lt;-&gt; point</code>). Also backs <code class="inline">EXCLUDE</code> constraints.</p>
+      </article>
+      <article class="svc">
+        <h3>🌲 SP-GiST <span class="tag good">partitioned data</span></h3>
+        <p>Space-partitioned trees (quadtrees, radix tries) for non-balanced, naturally clustered data — IP ranges, phone numbers, text sharing long prefixes.</p>
+      </article>
+      <article class="svc">
+        <h3>🔎 GIN <span class="tag good">"many values per row"</span></h3>
+        <p>Inverted index for composite values you search <em>inside</em>: <code class="inline">jsonb</code>, arrays, full-text <code class="inline">tsvector</code>, and — via <code class="inline">pg_trgm</code> — substring <code class="inline">LIKE '%term%'</code>. Fast lookups, slower/heavier writes.</p>
+      </article>
+      <article class="svc">
+        <h3>🧱 BRIN <span class="tag good">huge, ordered tables</span></h3>
+        <p>Tiny "block-range" index storing min/max per block range. Ideal for append-only, physically-sorted data (time-series, sequential IDs) where a full B-tree would be enormous. Cheap to maintain, lossy but effective.</p>
+      </article>
+      <div class="callout tip"><strong>Quick decision:</strong> scalar equality/range → <strong>B-tree</strong>. Substring / JSON / arrays / full-text → <strong>GIN</strong>. Geo or nearest-neighbour → <strong>GiST</strong>. Billion-row time-series filtered by time → <strong>BRIN</strong>. Everything else → probably B-tree.</div>
+    </section>
+
+    <section id="multicolumn">
+      <h2><span class="pill">The core skill</span> &nbsp;Multicolumn indexes &amp; column order</h2>
+      <p>A multicolumn index is not "an index on each column" — it's one sorted structure ordered by the columns left to right, like a phone book sorted by (last name, first name). That ordering dictates which queries it can serve.</p>
+      <h3>The leftmost-prefix rule</h3>
+      <p>An index on <code class="inline">(a, b, c)</code> can be used for predicates on a <em>leading prefix</em>: <code class="inline">a</code>; <code class="inline">a, b</code>; <code class="inline">a, b, c</code>. It cannot efficiently serve <code class="inline">b</code> alone or <code class="inline">c</code> alone — the same way a phone book sorted by last name is useless if you only know the first name.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Query predicate</th><th>Index <code class="inline">(a, b, c)</code>?</th></tr></thead>
+          <tbody>
+            <tr><td><code class="inline">WHERE a = ?</code></td><td><span class="tag good">Yes</span> leading prefix</td></tr>
+            <tr><td><code class="inline">WHERE a = ? AND b = ?</code></td><td><span class="tag good">Yes</span> uses a and b</td></tr>
+            <tr><td><code class="inline">WHERE a = ? AND c = ?</code></td><td><span class="tag good">Partly</span> a to seek, c filtered afterward</td></tr>
+            <tr><td><code class="inline">WHERE b = ?</code> (alone)</td><td><span class="tag bad">No</span> b isn't a leading column</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <h3>The ordering rule: equality first, then range/sort</h3>
+      <p>Put columns used with <code class="inline">=</code> first, and the column used for a <strong>range</strong> or <code class="inline">ORDER BY</code> last. Equality columns narrow the index to a single contiguous slice; a range column can only be the last one you scan usefully.</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="cmt">-- Query: WHERE customer_id = ? AND status = ? ORDER BY created_at DESC</span>
+<span class="bad-l">-- ✗ range/sort column in the middle wastes the index</span>
+<span class="kw">CREATE INDEX</span> <span class="kw">ON</span> orders (customer_id, created_at, status);
+
+<span class="good-l">-- ✓ equality columns first, sort column last (in sort direction)</span>
+<span class="kw">CREATE INDEX</span> <span class="kw">ON</span> orders (customer_id, status, created_at <span class="kw">DESC</span>);</code></pre>
+      <div class="callout tip"><strong>Why the sort direction matters:</strong> an index on <code class="inline">(…, created_at DESC)</code> lets Postgres read the first 20 entries and stop for <code class="inline">ORDER BY created_at DESC LIMIT 20</code> — no separate sort node. See the <a href="postgres-performance.html#worked">worked 4.2&nbsp;s → 0.3&nbsp;ms example</a> in the performance guide for exactly this in a plan.</div>
+    </section>
+
+    <section id="covering">
+      <h2><span class="pill">Skip the heap</span> &nbsp;Covering indexes &amp; index-only scans</h2>
+      <p>Normally an index finds the row then fetches it from the heap. If the index <em>already contains every column the query needs</em>, Postgres skips the heap entirely — an <strong>Index Only Scan</strong>, often several times faster. Add non-filtered payload columns with <code class="inline">INCLUDE</code> so they ride along in the leaf without becoming part of the sort key.</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="cmt">-- Query: SELECT total FROM orders WHERE customer_id = ? AND status = ?</span>
+<span class="kw">CREATE INDEX</span> idx_orders_cust_status
+  <span class="kw">ON</span> orders (customer_id, status)   <span class="cmt">-- key columns (the WHERE)</span>
+  <span class="kw">INCLUDE</span> (total);                   <span class="cmt">-- payload, answered without the heap</span></code></pre>
+      <div class="callout warn"><strong>Index-only scans depend on VACUUM.</strong> Postgres can skip the heap only for pages the <em>visibility map</em> marks all-visible — which VACUUM maintains. On a heavily-updated table that autovacuum can't keep up with, your "index-only" scan quietly degrades to heap fetches. The two topics are linked: see <a href="postgres-vacuum.html">VACUUM &amp; autovacuum</a>.</div>
+    </section>
+
+    <section id="partial">
+      <h2><span class="pill">Index less</span> &nbsp;Partial indexes</h2>
+      <p>A <strong>partial index</strong> indexes only the rows matching a <code class="inline">WHERE</code> clause. Smaller index, cheaper writes, and it turns a useless low-cardinality column into a sharp tool — because you index only the interesting slice.</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="cmt">-- 99% of rows are done; you only ever query the pending ones:</span>
+<span class="kw">CREATE INDEX</span> idx_jobs_pending
+  <span class="kw">ON</span> jobs (created_at)
+  <span class="kw">WHERE</span> status = <span class="str">'pending'</span>;
+
+<span class="cmt">-- Enforce uniqueness on a subset (one active email per user):</span>
+<span class="kw">CREATE UNIQUE INDEX</span> <span class="kw">ON</span> users (email)
+  <span class="kw">WHERE</span> deleted_at <span class="kw">IS NULL</span>;</code></pre>
+      <div class="callout tip"><strong>The catch:</strong> the planner uses a partial index only when it can prove your query's predicate <em>implies</em> the index's. A query filtering <code class="inline">WHERE status = 'pending'</code> matches the first index above; <code class="inline">WHERE status = $1</code> with a parameter may not, because the value isn't known at plan time. Keep the index predicate matching a literal your queries actually use.</div>
+    </section>
+
+    <section id="expression">
+      <h2><span class="pill">Index a computation</span> &nbsp;Expression indexes</h2>
+      <p>When your filter wraps a column in a function, a plain index on the column can't be used. Index the <em>expression</em> instead so the computed value is what's stored and searched.</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="cmt">-- Case-insensitive lookup — index the lowercased value:</span>
+<span class="kw">CREATE INDEX</span> <span class="kw">ON</span> users (<span class="fn">lower</span>(email));
+<span class="cmt">-- now this uses the index:</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> users <span class="kw">WHERE</span> <span class="fn">lower</span>(email) = <span class="str">'a@b.com'</span>;
+
+<span class="cmt">-- Extract a JSON field, or index a derived value:</span>
+<span class="kw">CREATE INDEX</span> <span class="kw">ON</span> events ((payload <span class="kw">-&gt;&gt;</span> <span class="str">'user_id'</span>));</code></pre>
+      <div class="callout warn"><strong>The query must use the exact same expression</strong> as the index. <code class="inline">lower(email)</code> in the index won't help <code class="inline">email = 'A@B.com'</code>. And every write recomputes the expression to update the index — cheap for <code class="inline">lower()</code>, not free for heavy functions.</div>
+    </section>
+
+    <section id="building">
+      <h2><span class="pill">In production</span> &nbsp;Building indexes safely</h2>
+      <p>A plain <code class="inline">CREATE INDEX</code> takes a lock that <strong>blocks writes</strong> to the table for the whole build — fine on a 10k-row table, an outage on a 500M-row one. In production, build <strong>concurrently</strong>.</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="cmt">-- Build without blocking writes (two passes, slower, worth it):</span>
+<span class="kw">CREATE INDEX CONCURRENTLY</span> idx_orders_cust
+  <span class="kw">ON</span> orders (customer_id);
+
+<span class="cmt">-- Rebuild a bloated index online (PG 12+):</span>
+<span class="kw">REINDEX INDEX CONCURRENTLY</span> idx_orders_cust;</code></pre>
+      <div class="callout warn"><strong>Trade-offs of <code class="inline">CONCURRENTLY</code>:</strong> it can't run inside a transaction block, it does two table scans so it's slower, and if it fails it leaves an <code class="inline">INVALID</code> index behind that you must <code class="inline">DROP</code> and recreate. Check for leftovers: <code class="inline">SELECT * FROM pg_index WHERE NOT indisvalid;</code></div>
+    </section>
+
+    <section id="audit">
+      <h2><span class="pill">Prune</span> &nbsp;Auditing your indexes</h2>
+      <p>Indexes rot: workloads change, someone adds a broad index that shadows a narrow one, and unused indexes quietly tax every write. Two questions to ask regularly — <em>what's unused?</em> and <em>what's redundant?</em></p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="cmt">-- Unused indexes: zero scans since stats were last reset</span>
+<span class="kw">SELECT</span> relname, indexrelname,
+       idx_scan,
+       <span class="fn">pg_size_pretty</span>(<span class="fn">pg_relation_size</span>(indexrelid)) <span class="kw">AS</span> size
+<span class="kw">FROM</span>   pg_stat_user_indexes
+<span class="kw">WHERE</span>  idx_scan = <span class="num">0</span>
+<span class="kw">ORDER BY</span> <span class="fn">pg_relation_size</span>(indexrelid) <span class="kw">DESC</span>;</code></pre>
+      <div class="callout tip"><strong>Before you drop:</strong> check that stats have accumulated over a full workload cycle (a weekly report, month-end job, etc.), and check <em>replicas separately</em> — an index unused on the primary may serve read traffic on a standby. Never judge from a five-minute window.</div>
+      <p><strong>Redundant indexes:</strong> an index on <code class="inline">(a)</code> is largely covered by <code class="inline">(a, b)</code> for equality-prefix lookups, so the narrow one is often droppable — but the narrower index is smaller and faster for pure <code class="inline">a</code> lookups, so weigh it, don't reflexively delete. Duplicate indexes (same columns, same order) are always safe to remove.</p>
+    </section>
+
+    <section id="antipatterns">
+      <h2><span class="pill">Avoid</span> &nbsp;Indexing anti-patterns</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Anti-pattern</th><th>Why it hurts</th><th>Instead</th></tr></thead>
+          <tbody>
+            <tr><td>Index every column "just in case"</td><td>Each index slows every write and bloats disk/cache</td><td>Index for observed queries; measure with <code class="inline">pg_stat_statements</code></td></tr>
+            <tr><td>Duplicate / redundant indexes</td><td>Pure overhead, no new plans</td><td>Consolidate; drop the shadowed one</td></tr>
+            <tr><td>Single-column index on low cardinality</td><td>Planner ignores it; prefers Seq Scan</td><td>Composite, or a <em>partial</em> index on the hot slice</td></tr>
+            <tr><td>Unindexed foreign keys</td><td>Slow joins &amp; cascade deletes; lock contention</td><td>Index the referencing column yourself (not automatic)</td></tr>
+            <tr><td>Function on the column in the filter</td><td>Non-SARGable — the plain index can't be used</td><td>Expression index, or rewrite the predicate</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout warn"><strong>Writes pay for reads.</strong> Every index must be updated on <code class="inline">INSERT</code>/<code class="inline">UPDATE</code>/<code class="inline">DELETE</code> (an <code class="inline">UPDATE</code> that changes an indexed column can't use the cheap HOT path — see <a href="postgres-vacuum.html#tuning">HOT updates</a>). The best index is the one that turns a slow query fast <em>and</em> that you can point at a query in production. If you can't name the query, don't create the index.</div>
+    </section>
+
+    <section id="worked">
+      <h2><span class="pill">End to end</span> &nbsp;Worked example: designing a minimal index set</h2>
+      <p>An <code class="inline">orders</code> table serves three real queries. The goal isn't "an index for each" — it's the <em>fewest</em> indexes that make all three fast.</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="cmt">-- Q1: a customer's recent orders in a state</span>
+<span class="kw">WHERE</span> customer_id = ? <span class="kw">AND</span> status = ? <span class="kw">ORDER BY</span> created_at <span class="kw">DESC</span>;
+
+<span class="cmt">-- Q2: the pending-orders worker poll (tiny hot slice of a huge table)</span>
+<span class="kw">WHERE</span> status = <span class="str">'pending'</span> <span class="kw">ORDER BY</span> created_at;
+
+<span class="cmt">-- Q3: case-insensitive lookup by email</span>
+<span class="kw">WHERE</span> <span class="fn">lower</span>(email) = ?;</code></pre>
+
+      <h3>Step 1 · One composite index for Q1</h3>
+      <p>Equality columns first (<code class="inline">customer_id</code>, <code class="inline">status</code>), sort column last in its direction. This one index satisfies the filter <em>and</em> the ordering.</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="kw">CREATE INDEX CONCURRENTLY</span> idx_orders_cust_status_created
+  <span class="kw">ON</span> orders (customer_id, status, created_at <span class="kw">DESC</span>);</code></pre>
+
+      <h3>Step 2 · A tiny partial index for Q2</h3>
+      <p><code class="inline">status = 'pending'</code> is a fraction of a percent of rows. A partial index stays small and hot no matter how big the table grows — far better than a full index on <code class="inline">status</code>.</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="kw">CREATE INDEX CONCURRENTLY</span> idx_orders_pending
+  <span class="kw">ON</span> orders (created_at)
+  <span class="kw">WHERE</span> status = <span class="str">'pending'</span>;</code></pre>
+
+      <h3>Step 3 · An expression index for Q3</h3>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="kw">CREATE INDEX CONCURRENTLY</span> idx_orders_lower_email
+  <span class="kw">ON</span> orders (<span class="fn">lower</span>(email));</code></pre>
+
+      <h3>Step 4 · What we did <em>not</em> create</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Tempting index</th><th>Why we skipped it</th></tr></thead>
+          <tbody>
+            <tr><td><code class="inline">(customer_id)</code></td><td>Redundant — the Q1 composite already serves <code class="inline">customer_id = ?</code> as its leading prefix.</td></tr>
+            <tr><td><code class="inline">(status)</code></td><td>Low cardinality; the partial index handles the only status we query hot.</td></tr>
+            <tr><td><code class="inline">(created_at)</code> alone</td><td>No query filters by <code class="inline">created_at</code> without also fixing <code class="inline">customer_id</code> or <code class="inline">status</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout tip"><strong>Result:</strong> three queries, three purpose-built indexes, zero redundant ones. Each traces to a real query, each was built <code class="inline">CONCURRENTLY</code>, and there's nothing for an audit to flag as unused. That's the whole strategy: index deliberately, then verify the planner uses what you built with <a href="postgres-performance.html">EXPLAIN ANALYZE</a>.</div>
+    </section>
+
+    <section id="cheatsheet">
+      <h2>Cheat sheet</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Question</th><th>Short answer</th></tr></thead>
+          <tbody>
+            <tr><td>Default index type?</td><td>B-tree — equality, range, sorting, uniqueness.</td></tr>
+            <tr><td>Substring / JSON / array / full-text?</td><td>GIN (with <code class="inline">pg_trgm</code> for <code class="inline">LIKE '%x%'</code>).</td></tr>
+            <tr><td>Geo or nearest-neighbour?</td><td>GiST. Billion-row time-series? BRIN.</td></tr>
+            <tr><td>Multicolumn column order?</td><td>Equality columns first, range/sort column last.</td></tr>
+            <tr><td>Which queries can use <code class="inline">(a,b,c)</code>?</td><td>Any leading prefix: a, a+b, a+b+c — not b or c alone.</td></tr>
+            <tr><td>Skip the heap fetch?</td><td>Covering index with <code class="inline">INCLUDE</code> → Index Only Scan (needs VACUUM).</td></tr>
+            <tr><td>Low-cardinality hot slice?</td><td>Partial index with a <code class="inline">WHERE</code> clause.</td></tr>
+            <tr><td>Function in the filter?</td><td>Expression index on the exact expression.</td></tr>
+            <tr><td>Build in production?</td><td><code class="inline">CREATE INDEX CONCURRENTLY</code> — no write blocking.</td></tr>
+            <tr><td>Find dead weight?</td><td><code class="inline">pg_stat_user_indexes</code> where <code class="inline">idx_scan = 0</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="b">
+          <p>1. You have an index on <code class="inline">(customer_id, status, created_at)</code>. Which query <em>cannot</em> use it efficiently?</p>
+          <label><input type="radio" name="q1" value="a"> WHERE customer_id = 42</label>
+          <label><input type="radio" name="q1" value="b"> WHERE status = 'shipped' (alone)</label>
+          <label><input type="radio" name="q1" value="c"> WHERE customer_id = 42 AND status = 'shipped'</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>2. For a query <code class="inline">WHERE a = ? AND b = ? ORDER BY c</code>, the best column order is…</p>
+          <label><input type="radio" name="q2" value="a"> (c, a, b) — sort column first</label>
+          <label><input type="radio" name="q2" value="b"> (a, c, b) — alternate them</label>
+          <label><input type="radio" name="q2" value="c"> (a, b, c) — equality columns first, sort column last</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>3. What enables an <strong>Index Only Scan</strong> (no heap fetch)?</p>
+          <label><input type="radio" name="q3" value="a"> The index contains every column the query needs (e.g. via INCLUDE) and the pages are all-visible</label>
+          <label><input type="radio" name="q3" value="b"> Using a Hash index</label>
+          <label><input type="radio" name="q3" value="c"> Disabling autovacuum</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>4. Which index type suits substring search <code class="inline">WHERE name LIKE '%smith%'</code>?</p>
+          <label><input type="radio" name="q4" value="a"> A plain B-tree on name</label>
+          <label><input type="radio" name="q4" value="b"> A GIN index with the pg_trgm extension</label>
+          <label><input type="radio" name="q4" value="c"> A BRIN index</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>5. Why build a large index with <code class="inline">CREATE INDEX CONCURRENTLY</code>?</p>
+          <label><input type="radio" name="q5" value="a"> It makes the index smaller</label>
+          <label><input type="radio" name="q5" value="b"> It's always faster than a plain build</label>
+          <label><input type="radio" name="q5" value="c"> It doesn't block writes to the table while building</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. An index shows <code class="inline">idx_scan = 0</code> in <code class="inline">pg_stat_user_indexes</code> after a month. It is…</p>
+          <label><input type="radio" name="q6" value="a"> Definitely corrupt</label>
+          <label><input type="radio" name="q6" value="b"> A strong candidate to drop — but check replicas &amp; rare workloads first</label>
+          <label><input type="radio" name="q6" value="c"> Working perfectly and should be kept</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>🐘 Query performance</h4><p><a href="postgres-performance.html">Verify it worked</a> — read EXPLAIN ANALYZE and confirm the planner picks your index.</p></div>
+        <div class="card"><h4>🧹 VACUUM &amp; autovacuum</h4><p><a href="postgres-vacuum.html">Keep indexes healthy</a> — index-only scans, index bloat &amp; REINDEX.</p></div>
+        <div class="card"><h4>🧵 Concurrency design</h4><p><a href="concurrency-design.html">The app side</a> — pooling, N+1, and the write cost of indexes.</p></div>
+        <div class="card"><h4>📓 All tutorials</h4><p><a href="index.html">The hub</a> — LLMs, agents, data &amp; infra.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  PostgreSQL indexing strategies — match the index to the query, cover equality first, and delete what nothing scans. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) { root.setAttribute("data-theme", t); tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 "; tLabel.textContent = t === "dark" ? "Light" : "Dark"; }
+  var saved = null; try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () { var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark"; applyTheme(next); try { localStorage.setItem("theme", next); } catch (e) {} });
+  var menuBtn = document.getElementById("menuToggle"); var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () { var open = side.classList.toggle("open"); menuBtn.setAttribute("aria-expanded", String(open)); });
+  side.addEventListener("click", function (e) { if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); } });
+  var bar = document.getElementById("progress");
+  function onScroll() { var h = document.documentElement; var max = h.scrollHeight - h.clientHeight; bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%"; }
+  document.addEventListener("scroll", onScroll, { passive: true }); onScroll();
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a")); var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) { entries.forEach(function (en) { if (en.isIntersecting) { links.forEach(function (a) { a.classList.remove("active"); }); if (map[en.target.id]) map[en.target.id].classList.add("active"); } }); }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+  document.querySelectorAll("pre .cp").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var code = btn.parentNode.querySelector("code");
+      navigator.clipboard.writeText(code.innerText).then(function () { var old = btn.textContent; btn.textContent = "Copied!"; setTimeout(function () { btn.textContent = old; }, 1500); });
+    });
+  });
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q"); var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      q.querySelector('input[value="' + answer + '"]').parentNode.classList.add("correct");
+      if (chosen && chosen.value !== answer) chosen.parentNode.classList.add("wrong");
+      if (chosen && chosen.value === answer) score++;
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length + (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>
