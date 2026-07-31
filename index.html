@@ -37,6 +37,8 @@
     --loop: #475569;  /* slate   */
     --eng: #57534e;   /* stone (agent engineering) */
     --crew: #be185d;  /* rose (AutoGen vs CrewAI) */
+    --next: #111827;  /* graphite (Next.js) */
+    --gql: #e10098;   /* GraphQL pink */
     --net: #4d7c0f;   /* lime    */
     --api: #0369a1;   /* sky     */
     --mcp: #4338ca;   /* indigo (build MCP) */
@@ -82,6 +84,8 @@
     --loop: #94a3b8;
     --eng: #a8a29e;
     --crew: #f472b6;
+    --next: #cbd5e1;
+    --gql: #f472b6;
     --net: #a3e635;
     --api: #7dd3fc;
     --mcp: #c7d2fe;
@@ -172,6 +176,8 @@
   .tile.eval { --tile: var(--eval); }
   .tile.adk { --tile: var(--adk); }
   .tile.crew { --tile: var(--crew); }
+  .tile.next { --tile: var(--next); }
+  .tile.gql { --tile: var(--gql); }
   .tile.ant { --tile: var(--ant); }
   .tile.goo { --tile: var(--goo); }
   .tile.loop { --tile: var(--loop); }
@@ -223,6 +229,8 @@
   .path li.eval { --step: var(--eval); }
   .path li.adk { --step: var(--adk); }
   .path li.crew { --step: var(--crew); }
+  .path li.next { --step: var(--next); }
+  .path li.gql { --step: var(--gql); }
   .path li.ant { --step: var(--ant); }
   .path li.goo { --step: var(--goo); }
   .path li.loop { --step: var(--loop); }
@@ -282,7 +290,7 @@
   <div class="hero">
     <p class="eyebrow">Interactive tutorials</p>
     <h1>Build with LLMs, agents &amp; AWS</h1>
-    <p>Thirty-six self-contained, hands-on guides — from the transformer under the hood to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
+    <p>Thirty-eight self-contained, hands-on guides — from the transformer under the hood to a fridge that reasons about groceries and orders them itself. Each runs in the browser: dark mode, copyable code, and a knowledge-check quiz.</p>
   </div>
 
   <div class="search" role="search">
@@ -432,6 +440,20 @@
         <h3>REST vs GraphQL vs gRPC</h3>
         <p>Three ways for services to talk: REST's resources over HTTP, GraphQL's ask-for-exactly-what-you-need queries, and gRPC's fast typed binary RPC — the problem each solves, and when to choose which.</p>
         <span class="go">Compare API styles</span>
+      </a>
+
+      <a class="tile gql" href="graphql.html">
+        <div class="top"><span class="ico">◼</span><span class="kicker">API design</span></div>
+        <h3>GraphQL Deep-Dive</h3>
+        <p>One typed endpoint, client-specified queries: the schema &amp; type system, resolvers, the N+1 problem &amp; DataLoader, cursor pagination, caching, the security guardrails a public API needs, and federation.</p>
+        <span class="go">Query the graph</span>
+      </a>
+
+      <a class="tile next" href="nextjs-best-practices.html">
+        <div class="top"><span class="ico">▲</span><span class="kicker">Frontend framework</span></div>
+        <h3>Next.js Best Practices</h3>
+        <p>The App Router done right: Server vs Client Components, data fetching &amp; the four caching layers, rendering strategies (static, dynamic, streaming), Server Actions, performance, and the pitfalls to avoid.</p>
+        <span class="go">Build with the grain</span>
       </a>
 
       <a class="tile api" href="api-mcp.html">
@@ -637,6 +659,14 @@
         <h3><a href="rest-graphql-grpc.html">REST vs GraphQL vs gRPC</a></h3>
         <p>How services actually talk over the network — the API-design choices beneath every app and agent.</p>
       </li>
+      <li class="gql">
+        <h3><a href="graphql.html">GraphQL Deep-Dive</a></h3>
+        <p>Go deep on one API style — schema, resolvers, the N+1 fix, pagination, caching, and the guardrails a public graph needs.</p>
+      </li>
+      <li class="next">
+        <h3><a href="nextjs-best-practices.html">Next.js Best Practices</a></h3>
+        <p>Build the frontend that consumes it — Server Components, caching layers, Server Actions, and rendering strategies.</p>
+      </li>
       <li class="api">
         <h3><a href="api-mcp.html">APIs vs MCP</a></h3>
         <p>How those agents reach the outside world — and why MCP standardizes connecting them to tools.</p>
@@ -706,7 +736,7 @@
 </main>
 
 <footer>
-  Thirty-six interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
+  Thirty-eight interactive tutorials · companion to <a href="README.md">the LangChain write-up</a> and <a href="https://github.com/coolloic/create-llm-app">create-llm-app</a>. · MIT Licensed
 </footer>
 
 <script>

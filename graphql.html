@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◼</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="GraphQL explained — the schema &amp; type system, queries/mutations/subscriptions, how resolvers work, the N+1 problem &amp; DataLoader, cursor pagination, error handling, caching, security, and federation, with a worked schema design.">
+<title>GraphQL — Schema, Resolvers, DataLoader &amp; Security</title>
+<style>
+  :root {
+    --bg: #ffffff; --bg-soft: #fdf2f9; --bg-code: #1a0e1a; --text: #1f1420; --text-soft: #6b5568; --border: #f0dcec;
+    --accent: #e10098; --ink: #b3007a;
+    --solve: #15803d; --limit: #b45309; --choose: #1e40af; --solve-bg: #dcfce7; --limit-bg: #fef3c7; --choose-bg: #dbeafe;
+    --radius: 12px; --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #140f16; --bg-soft: #221824; --bg-code: #0f0710; --text: #f2e6f0; --text-soft: #c3a8bd; --border: #3a2838;
+    --accent: #f472b6; --ink: #f9a8d4; --solve: #86efac; --limit: #fcd34d; --choose: #93c5fd; --solve-bg: #14351f; --limit-bg: #3a2a0c; --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; } html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: var(--font); color: var(--text); background: var(--bg); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  .skip-link { position: absolute; left: -999px; top: 0; background: var(--accent); color: #fff; padding: .75rem 1rem; z-index: 100; } .skip-link:focus { left: 0; }
+  #progress { position: fixed; top: 0; left: 0; height: 4px; width: 0%; background: linear-gradient(90deg, var(--accent), var(--ink)); z-index: 60; transition: width .1s linear; }
+  header.top { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; padding: .6rem 1rem; }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; } header.top .brand span { color: var(--accent); } header.top .spacer { flex: 1; }
+  .btn { font: inherit; cursor: pointer; border: 1px solid var(--border); background: var(--bg-soft); color: var(--text); border-radius: 999px; padding: .5rem .9rem; min-height: 44px; display: inline-flex; align-items: center; gap: .4rem; }
+  .btn:hover { border-color: var(--accent); } #menuToggle { display: none; }
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side { position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px); overflow-y: auto; padding: 1.25rem 0; font-size: .93rem; }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a { display: block; padding: .45rem .75rem; border-radius: 8px; color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent; }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); } nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.12rem; margin: 1.6rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; } .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .card .count { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; } .callout strong { color: var(--accent); }
+  .callout.tip { border-left-color: var(--solve); } .callout.tip strong { color: var(--solve); }
+  .callout.warn { border-left-color: var(--limit); } .callout.warn strong { color: var(--limit); }
+  .svc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-soft); padding: 1rem 1.2rem; margin: 1.1rem 0; }
+  .svc h3 { margin: 0 0 .5rem; } .svc p { margin: .4rem 0; font-size: .95rem; }
+  .tag { display: inline-block; min-width: 5rem; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .12rem .5rem; border-radius: 6px; margin-right: .5rem; text-align: center; }
+  .tag.good { background: var(--solve-bg); color: var(--solve); } .tag.bad { background: var(--limit-bg); color: var(--limit); }
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; } table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; } th { background: var(--bg-soft); }
+  code.inline { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; color: var(--ink); }
+  pre { background: var(--bg-code); color: #f0e6ee; border-radius: var(--radius); padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .85rem; line-height: 1.55; position: relative; }
+  pre .cp { position: absolute; top: .5rem; right: .5rem; font-size: .72rem; padding: .3rem .6rem; min-height: auto; background: rgba(255,255,255,.1); color: #f0e6ee; border-color: rgba(255,255,255,.2); }
+  .kw { color: #f9a8d4; } .fn { color: #86efac; } .str { color: #fca5a5; } .num { color: #fcd34d; } .cmt { color: #7a6675; } .ty { color: #93c5fd; } .bad-l { color: #fca5a5; } .good-l { color: #86efac; }
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); } details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+  /* lifecycle diagram */
+  .lc-wrap { overflow-x: auto; margin: 1.3rem 0; }
+  .lc { width: 100%; min-width: 660px; max-width: 720px; height: auto; display: block; margin: 0 auto; font-family: var(--font); }
+  .lc-box { fill: var(--bg-soft); stroke: var(--accent); stroke-width: 1.6; }
+  .lc-alt { fill: var(--bg-soft); stroke: var(--border); stroke-width: 1.5; }
+  .lc-hot { fill: var(--bg-soft); stroke: var(--accent); stroke-width: 2.4; }
+  .lc-line { fill: none; stroke: var(--text-soft); stroke-width: 1.6; } .lc-ah { fill: var(--text-soft); }
+  .lc-t { fill: var(--text); font-size: 12px; font-weight: 700; } .lc-s { fill: var(--text-soft); font-size: 10.5px; }
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; } .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); } .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; } [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; } #score { font-weight: 700; margin-left: 1rem; }
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; } #menuToggle { display: inline-flex; } main { padding-top: .5rem; } .tag { min-width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <a class="btn home" href="index.html" aria-label="Back to all tutorials">← All tutorials</a>
+  <div class="brand">Graph<span>QL</span></div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#schema">1 · Schema &amp; type system</a></li>
+      <li><a href="#operations">2 · Queries, mutations, subscriptions</a></li>
+      <li><a href="#resolvers">3 · Resolvers</a></li>
+      <li><a href="#nplus1">4 · N+1 &amp; DataLoader</a></li>
+      <li><a href="#pagination">5 · Pagination</a></li>
+      <li><a href="#errors">6 · Errors &amp; nullability</a></li>
+      <li><a href="#caching">7 · Caching</a></li>
+      <li><a href="#security">8 · Security &amp; performance</a></li>
+      <li><a href="#federation">9 · Federation</a></li>
+      <li><a href="#worked">Worked example</a></li>
+      <li><a href="#cheatsheet">Cheat sheet</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>GraphQL</h1>
+      <p class="lede">GraphQL is a query language for your API and a runtime for answering those queries. Instead of many endpoints each returning a fixed shape, you expose <strong>one endpoint</strong> and a <strong>typed graph</strong> of your data — and the client asks for exactly the fields it wants, no more, no less. That flips who controls the response shape from the server to the client.</p>
+      <div class="callout"><strong>The core idea.</strong> One endpoint, one strongly-typed schema, client-specified queries. It kills over-fetching and under-fetching and gives you a self-documenting contract — at the cost of new problems (caching, N+1, query-cost control) that REST solved for free. This is how it works and how to run it safely.</div>
+    </section>
+
+    <section id="schema">
+      <h2><span class="pill">Foundations</span> &nbsp;The schema &amp; type system</h2>
+      <p>Everything starts with the <strong>schema</strong>, written in the Schema Definition Language (SDL). It defines the types, their fields, and how they connect — the graph clients are allowed to traverse. Three <em>root</em> types are the entry points: <code class="inline">Query</code> (reads), <code class="inline">Mutation</code> (writes), <code class="inline">Subscription</code> (live streams).</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="kw">type</span> <span class="ty">User</span> {
+  id: <span class="ty">ID</span>!                 <span class="cmt"># ! = non-null (guaranteed present)</span>
+  name: <span class="ty">String</span>!
+  email: <span class="ty">String</span>
+  posts: [<span class="ty">Post</span>!]!          <span class="cmt"># non-null list of non-null Posts</span>
+}
+
+<span class="kw">type</span> <span class="ty">Post</span> {
+  id: <span class="ty">ID</span>!
+  title: <span class="ty">String</span>!
+  author: <span class="ty">User</span>!            <span class="cmt"># the graph: Post → User → Posts …</span>
+}
+
+<span class="kw">type</span> <span class="ty">Query</span> {
+  user(id: <span class="ty">ID</span>!): <span class="ty">User</span>       <span class="cmt"># a field with an argument</span>
+  posts(first: <span class="ty">Int</span>): [<span class="ty">Post</span>!]!
+}</code></pre>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Building block</th><th>What it is</th></tr></thead>
+          <tbody>
+            <tr><td>Scalars</td><td>Leaf values: <code class="inline">Int</code>, <code class="inline">Float</code>, <code class="inline">String</code>, <code class="inline">Boolean</code>, <code class="inline">ID</code> (+ custom, e.g. <code class="inline">DateTime</code>)</td></tr>
+            <tr><td>Object types</td><td>Named sets of fields (<code class="inline">User</code>, <code class="inline">Post</code>) — the nodes of the graph</td></tr>
+            <tr><td><code class="inline">!</code> and <code class="inline">[]</code></td><td>Non-null and list modifiers — the schema <em>is</em> the type contract</td></tr>
+            <tr><td>Enum / Interface / Union</td><td>Fixed value sets; shared field contracts; "one of several types"</td></tr>
+            <tr><td>Input types</td><td>Structured arguments for mutations (<code class="inline">input CreatePostInput { … }</code>)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout tip"><strong>Schema-first thinking:</strong> design the graph around how clients <em>consume</em> data, not how your tables are laid out. The schema is a product surface and a contract — get the types and nullability right and the rest of the API follows.</div>
+    </section>
+
+    <section id="operations">
+      <h2><span class="pill">The client side</span> &nbsp;Queries, mutations &amp; subscriptions</h2>
+      <p>A client sends an <strong>operation</strong> that mirrors the shape it wants back. The response JSON has the same structure as the query — that predictability is a big part of the appeal.</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="cmt"># Query with a variable, nested selection, and an alias</span>
+<span class="kw">query</span> <span class="fn">GetUser</span>($id: <span class="ty">ID</span>!) {
+  user(id: $id) {
+    name
+    posts { title }        <span class="cmt"># traverse the graph in one round-trip</span>
+  }
+}
+
+<span class="cmt"># Mutation — a write, returning the fields you want back</span>
+<span class="kw">mutation</span> <span class="fn">AddPost</span>($input: <span class="ty">CreatePostInput</span>!) {
+  createPost(input: $input) { id title }
+}</code></pre>
+      <p>Reusable field sets go in <strong>fragments</strong>; <code class="inline">Subscription</code>s push updates over a persistent transport (typically WebSockets) when server-side events fire.</p>
+      <div class="callout warn"><strong>One round-trip, but one big query.</strong> The client fetching <code class="inline">user → posts → comments → author</code> in a single request is the superpower — and the risk. A deeply nested query can fan out into an enormous amount of work on the server. That's what resolvers, DataLoader, and cost limits (below) exist to control.</div>
+    </section>
+
+    <section id="resolvers">
+      <h2><span class="pill">The server side</span> &nbsp;Resolvers</h2>
+      <p>The schema says <em>what</em> exists; <strong>resolvers</strong> say <em>how</em> to fetch it. Every field can have a resolver function; the engine walks the query tree, calling each field's resolver and passing its result down as the <code class="inline">parent</code> of the next.</p>
+      <div class="lc-wrap">
+        <svg class="lc" viewBox="0 0 720 180" role="img" aria-labelledby="lc-title lc-desc">
+          <title id="lc-title">How a resolver chain executes a query</title>
+          <desc id="lc-desc">The query user then posts then title resolves top-down: the Query.user resolver returns a user, passed as parent to the posts resolver, then each post to the title resolver, hitting different data sources.</desc>
+          <defs><marker id="lc-a" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" class="lc-ah"/></marker></defs>
+          <rect class="lc-hot" x="20" y="66" width="150" height="48" rx="10"/><text class="lc-t" x="95" y="86" text-anchor="middle">Query.user</text><text class="lc-s" x="95" y="102" text-anchor="middle">→ fetch User(id)</text>
+          <path class="lc-line" d="M170,90 L210,90" marker-end="url(#lc-a)"/><text class="lc-s" x="190" y="80" text-anchor="middle">parent</text>
+          <rect class="lc-box" x="210" y="66" width="160" height="48" rx="10"/><text class="lc-t" x="290" y="86" text-anchor="middle">User.posts</text><text class="lc-s" x="290" y="102" text-anchor="middle">→ fetch posts of user</text>
+          <path class="lc-line" d="M370,90 L410,90" marker-end="url(#lc-a)"/><text class="lc-s" x="390" y="80" text-anchor="middle">each</text>
+          <rect class="lc-box" x="410" y="66" width="160" height="48" rx="10"/><text class="lc-t" x="490" y="86" text-anchor="middle">Post.title</text><text class="lc-s" x="490" y="102" text-anchor="middle">→ default: parent.title</text>
+          <rect class="lc-alt" x="600" y="66" width="100" height="48" rx="10"/><text class="lc-t" x="650" y="93" text-anchor="middle">JSON</text>
+          <path class="lc-line" d="M570,90 L600,90" marker-end="url(#lc-a)"/>
+          <text class="lc-s" x="360" y="30" text-anchor="middle">resolvers run top-down; each field's result becomes the next field's parent</text>
+          <text class="lc-s" x="360" y="150" text-anchor="middle">a field with no resolver falls back to reading the property off parent</text>
+        </svg>
+      </div>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="cmt">// (parent, args, context, info) => value  — the resolver signature</span>
+<span class="kw">const</span> resolvers = {
+  <span class="ty">Query</span>: {
+    user: (_parent, { id }, ctx) =&gt; ctx.db.<span class="fn">user</span>(id),
+  },
+  <span class="ty">User</span>: {
+    <span class="cmt">// resolves User.posts using the parent user's id</span>
+    posts: (user, _args, ctx) =&gt; ctx.db.<span class="fn">postsByAuthor</span>(user.id),
+  },
+};</code></pre>
+      <div class="callout tip"><strong><code class="inline">context</code> is where auth lives.</strong> Build a per-request <code class="inline">context</code> (the authenticated user, DB handles, loaders) once and every resolver receives it. Do authorization <em>in resolvers</em> against that context — not at a single gateway — because any field can expose data.</div>
+    </section>
+
+    <section id="nplus1">
+      <h2><span class="pill">The classic trap</span> &nbsp;The N+1 problem &amp; DataLoader</h2>
+      <p>Resolvers running per-field per-item cause GraphQL's most infamous performance bug. Query 10 posts and ask each for its <code class="inline">author</code>: the <code class="inline">Post.author</code> resolver fires 10 times → <strong>1 query for posts + N queries for authors</strong>. At scale this melts your database.</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="bad-l">// ✗ N+1: this resolver runs once PER post</span>
+<span class="ty">Post</span>: { author: (post, _a, ctx) =&gt; ctx.db.<span class="fn">user</span>(post.authorId) }
+<span class="cmt">// → SELECT * FROM users WHERE id = ?   (fired N times)</span>
+
+<span class="good-l">// ✓ Batch with DataLoader: collect ids in one tick, one query</span>
+<span class="ty">Post</span>: { author: (post, _a, ctx) =&gt; ctx.loaders.user.<span class="fn">load</span>(post.authorId) }
+<span class="cmt">// → SELECT * FROM users WHERE id IN (?, ?, …)  (fired once)</span></code></pre>
+      <p><strong>DataLoader</strong> is the standard fix: it collects all the <code class="inline">.load(id)</code> calls made during one tick of the event loop, dispatches a <em>single</em> batched fetch (<code class="inline">WHERE id IN (…)</code>), and caches results per request so repeated ids are free.</p>
+      <div class="callout warn"><strong>One loader set per request.</strong> Create fresh DataLoaders in the request <code class="inline">context</code>, never as module singletons — their cache must not leak data between users. This is the same "dedupe within a request" idea as an ORM's identity map, and it's mandatory for any non-trivial GraphQL server. The database side of this is the <a href="postgres-performance.html#antipatterns">N+1 anti-pattern</a>.</div>
+    </section>
+
+    <section id="pagination">
+      <h2><span class="pill">Lists at scale</span> &nbsp;Pagination</h2>
+      <p>Returning <code class="inline">[Post!]!</code> unbounded is a footgun. Two paginate styles exist; the GraphQL community standard is <strong>cursor-based (Relay) connections</strong>, which survive inserts and deletes that break <code class="inline">OFFSET</code>.</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="kw">type</span> <span class="ty">PostConnection</span> {
+  edges: [<span class="ty">PostEdge</span>!]!
+  pageInfo: <span class="ty">PageInfo</span>!
+}
+<span class="kw">type</span> <span class="ty">PostEdge</span> { node: <span class="ty">Post</span>!  cursor: <span class="ty">String</span>! }
+<span class="kw">type</span> <span class="ty">PageInfo</span> { hasNextPage: <span class="ty">Boolean</span>!  endCursor: <span class="ty">String</span> }
+
+<span class="kw">type</span> <span class="ty">Query</span> {
+  posts(first: <span class="ty">Int</span>!, after: <span class="ty">String</span>): <span class="ty">PostConnection</span>!
+}</code></pre>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th></th><th>Offset (<code class="inline">limit/offset</code>)</th><th>Cursor (connections)</th></tr></thead>
+          <tbody>
+            <tr><td>Simple to build</td><td><span class="tag good">Yes</span></td><td>More boilerplate</td></tr>
+            <tr><td>Stable under inserts/deletes</td><td><span class="tag bad">No</span> — rows shift</td><td><span class="tag good">Yes</span></td></tr>
+            <tr><td>Deep pages</td><td>Slow (scans &amp; skips)</td><td>Fast (seeks by cursor)</td></tr>
+            <tr><td>Jump to page N</td><td>Easy</td><td>Not directly</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout tip"><strong>Cursor = keyset.</strong> A cursor is just an opaque encoding of "where we left off" (e.g. the last id/timestamp), so the DB can <code class="inline">WHERE id &gt; ?</code> instead of skipping rows — the same keyset-pagination win covered in <a href="postgres-performance.html">query performance</a>.</div>
+    </section>
+
+    <section id="errors">
+      <h2><span class="pill">Half-success</span> &nbsp;Errors &amp; nullability</h2>
+      <p>Unlike REST's single status code, a GraphQL response can be <strong>partially successful</strong>: it returns both a <code class="inline">data</code> object and an <code class="inline">errors</code> array. If a non-null field errors, the <code class="inline">null</code> "bubbles up" to the nearest nullable parent.</p>
+      <pre><button class="cp btn" type="button">Copy</button><code>{
+  <span class="str">"data"</span>: { <span class="str">"user"</span>: { <span class="str">"name"</span>: <span class="str">"Ada"</span>, <span class="str">"email"</span>: <span class="kw">null</span> } },
+  <span class="str">"errors"</span>: [{
+    <span class="str">"message"</span>: <span class="str">"Not authorized to read email"</span>,
+    <span class="str">"path"</span>: [<span class="str">"user"</span>, <span class="str">"email"</span>],
+    <span class="str">"extensions"</span>: { <span class="str">"code"</span>: <span class="str">"FORBIDDEN"</span> }
+  }]
+}</code></pre>
+      <div class="callout warn"><strong>Nullability is a design decision.</strong> Marking a field non-null (<code class="inline">!</code>) means an error there nullifies its whole parent — powerful but blast-radius-heavy. Use <code class="inline">extensions.code</code> for machine-readable error categories, and <strong>never leak internal messages/stack traces</strong> to clients in production.</div>
+    </section>
+
+    <section id="caching">
+      <h2><span class="pill">The hard part</span> &nbsp;Caching</h2>
+      <p>REST gets HTTP caching for free — a <code class="inline">GET /posts/1</code> is cacheable by URL. GraphQL usually POSTs every query to <code class="inline">/graphql</code>, so that layer doesn't apply. You recover caching deliberately, at three levels:</p>
+      <article class="svc">
+        <h3>🗂️ Client cache (normalized)</h3>
+        <p>Apollo Client, urql, and Relay keep a normalized cache keyed by type + id, so repeated objects are deduped and updates propagate. This is where most GraphQL caching actually happens.</p>
+      </article>
+      <article class="svc">
+        <h3>🌐 CDN via persisted queries</h3>
+        <p>Send a hash instead of the full query (<strong>Automatic Persisted Queries</strong>) and use <code class="inline">GET</code>, so a CDN can cache by hash — recovering edge caching for read-heavy queries.</p>
+      </article>
+      <article class="svc">
+        <h3>⚙️ Server / field caching</h3>
+        <p>Cache expensive resolver results (e.g. in Redis) with per-field TTLs, plus DataLoader's per-request cache to dedupe within a single operation.</p>
+      </article>
+      <div class="callout tip"><strong>Give objects a global <code class="inline">id</code>.</strong> Normalized client caches rely on stable identifiers. Expose a unique <code class="inline">id</code> on every object type so the client can cache and update entities precisely — it's the single most impactful thing you can do for cacheability.</div>
+    </section>
+
+    <section id="security">
+      <h2><span class="pill">Guardrails</span> &nbsp;Security &amp; performance</h2>
+      <p>A flexible query language means a client can ask for something ruinously expensive. A public GraphQL API <em>needs</em> these limits before it ships.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Control</th><th>Stops</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Depth limiting</strong></td><td>Deeply nested cyclic queries (<code class="inline">author → posts → author → …</code>)</td></tr>
+            <tr><td><strong>Cost / complexity analysis</strong></td><td>Expensive queries — assign each field a cost, reject over a budget</td></tr>
+            <tr><td><strong>Pagination caps</strong></td><td><code class="inline">first: 1000000</code> — enforce a max page size</td></tr>
+            <tr><td><strong>Timeouts &amp; rate limits</strong></td><td>Slow/abusive operations exhausting the server</td></tr>
+            <tr><td><strong>Persisted-query allowlist</strong></td><td>Arbitrary ad-hoc queries — only pre-approved operations run</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout warn"><strong>Auth per field, not per endpoint.</strong> There's one URL, so URL-based authorization is meaningless — enforce it in resolvers against the request <code class="inline">context</code>. Also consider disabling <strong>introspection</strong> and the GraphiQL playground in production, and cap query depth/cost, or a single crafted query can become a denial-of-service. See <a href="owasp.html">OWASP</a> and <a href="web-ai-security.html">web security</a> for the broader picture.</div>
+    </section>
+
+    <section id="federation">
+      <h2><span class="pill">At org scale</span> &nbsp;Federation</h2>
+      <p>One giant schema owned by every team becomes a bottleneck. <strong>Federation</strong> (e.g. Apollo Federation) lets each team own a <em>subgraph</em>; a gateway composes them into one <strong>supergraph</strong> that clients see as a single API. Types can be extended across services via <code class="inline">@key</code> entity references.</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="cmt"># users subgraph owns User</span>
+<span class="kw">type</span> <span class="ty">User</span> @key(fields: <span class="str">"id"</span>) { id: <span class="ty">ID</span>!  name: <span class="ty">String</span>! }
+
+<span class="cmt"># reviews subgraph EXTENDS User with a reviews field</span>
+<span class="kw">extend type</span> <span class="ty">User</span> @key(fields: <span class="str">"id"</span>) {
+  id: <span class="ty">ID</span>! @external
+  reviews: [<span class="ty">Review</span>!]!
+}</code></pre>
+      <div class="callout tip"><strong>Don't reach for it early.</strong> Federation solves an <em>organisational</em> scaling problem — many teams, many services. A single well-structured schema is simpler and right for most apps. Adopt federation when team boundaries, not query volume, force it.</div>
+    </section>
+
+    <section id="worked">
+      <h2><span class="pill">End to end</span> &nbsp;Worked example: a blog API done right</h2>
+      <p>Expose posts with their authors and paginated comments — and avoid every trap above.</p>
+
+      <h3>Step 1 · Model the graph (with connections)</h3>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="kw">type</span> <span class="ty">Post</span> {
+  id: <span class="ty">ID</span>!
+  title: <span class="ty">String</span>!
+  author: <span class="ty">User</span>!
+  comments(first: <span class="ty">Int</span>! = <span class="num">10</span>, after: <span class="ty">String</span>): <span class="ty">CommentConnection</span>!
+}
+<span class="kw">type</span> <span class="ty">Query</span> { post(id: <span class="ty">ID</span>!): <span class="ty">Post</span> }</code></pre>
+
+      <h3>Step 2 · Resolve authors with a loader (no N+1)</h3>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="cmt">// context created per request — loaders live here</span>
+<span class="kw">function</span> <span class="fn">context</span>(req) {
+  <span class="kw">return</span> {
+    user: <span class="fn">authenticate</span>(req),              <span class="cmt">// for per-field authz</span>
+    loaders: { user: <span class="kw">new</span> <span class="fn">DataLoader</span>(ids =&gt; <span class="fn">usersByIds</span>(ids)) },
+  };
+}
+
+<span class="ty">Post</span>: { author: (post, _a, ctx) =&gt; ctx.loaders.user.<span class="fn">load</span>(post.authorId) }</code></pre>
+
+      <h3>Step 3 · Enforce the guardrails</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Risk in this API</th><th>Guardrail applied</th></tr></thead>
+          <tbody>
+            <tr><td><code class="inline">post → author → posts → author …</code></td><td>Depth limit (e.g. max 7)</td></tr>
+            <tr><td><code class="inline">comments(first: 100000)</code></td><td>Cap <code class="inline">first</code> at 50; validate the arg</td></tr>
+            <tr><td>Author's private email exposed</td><td><code class="inline">User.email</code> resolver checks <code class="inline">ctx.user</code></td></tr>
+            <tr><td>Repeated author lookups</td><td>DataLoader batches + caches per request</td></tr>
+            <tr><td>Ad-hoc expensive queries</td><td>Persisted-query allowlist in production</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout tip"><strong>The pattern:</strong> design the schema around the client, resolve relationships through DataLoaders, paginate lists with cursors, authorize inside resolvers, and bound every query with depth/cost limits. Do those five things and GraphQL is a joy; skip any one and it bites. Compare the whole approach against REST &amp; gRPC in <a href="rest-graphql-grpc.html">the API-styles guide</a>.</div>
+    </section>
+
+    <section id="cheatsheet">
+      <h2>Cheat sheet</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Question</th><th>Short answer</th></tr></thead>
+          <tbody>
+            <tr><td>What is GraphQL?</td><td>One endpoint + a typed schema; clients request exactly the fields they need.</td></tr>
+            <tr><td>Three root types?</td><td><code class="inline">Query</code> (read), <code class="inline">Mutation</code> (write), <code class="inline">Subscription</code> (stream).</td></tr>
+            <tr><td>What does <code class="inline">!</code> mean?</td><td>Non-null; an error there bubbles to the nearest nullable parent.</td></tr>
+            <tr><td>What's a resolver?</td><td><code class="inline">(parent, args, context, info)</code> → the field's value.</td></tr>
+            <tr><td>The N+1 fix?</td><td>DataLoader — batch per tick, cache per request (in context).</td></tr>
+            <tr><td>Best pagination?</td><td>Cursor-based connections (edges/node/pageInfo).</td></tr>
+            <tr><td>Why is caching hard?</td><td>Single POST endpoint → no free HTTP caching; use client/CDN/field caches.</td></tr>
+            <tr><td>Must-have guardrails?</td><td>Depth + cost limits, pagination caps, per-field auth.</td></tr>
+            <tr><td>When to federate?</td><td>Team/org scaling — not query volume.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="b">
+          <p>1. What most distinguishes GraphQL from typical REST?</p>
+          <label><input type="radio" name="q1" value="a"> It can't do mutations</label>
+          <label><input type="radio" name="q1" value="b"> One endpoint + a typed schema where the client specifies exactly which fields it wants</label>
+          <label><input type="radio" name="q1" value="c"> It only returns XML</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>2. A resolver's signature is…</p>
+          <label><input type="radio" name="q2" value="a"> (request, response)</label>
+          <label><input type="radio" name="q2" value="b"> (query, variables)</label>
+          <label><input type="radio" name="q2" value="c"> (parent, args, context, info)</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>3. Querying 20 posts and each post's author fires 1 + 20 DB queries. This is…</p>
+          <label><input type="radio" name="q3" value="a"> The N+1 problem — fix it with DataLoader batching</label>
+          <label><input type="radio" name="q3" value="b"> Expected and unavoidable in GraphQL</label>
+          <label><input type="radio" name="q3" value="c"> A schema syntax error</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>4. Where should DataLoaders be created?</p>
+          <label><input type="radio" name="q4" value="a"> As module-level singletons shared across all requests</label>
+          <label><input type="radio" name="q4" value="b"> Fresh in each request's context, so caches never leak between users</label>
+          <label><input type="radio" name="q4" value="c"> Inside the database itself</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>5. Why is HTTP caching harder in GraphQL than REST?</p>
+          <label><input type="radio" name="q5" value="a"> GraphQL forbids caching</label>
+          <label><input type="radio" name="q5" value="b"> Responses are never JSON</label>
+          <label><input type="radio" name="q5" value="c"> Queries POST to a single endpoint, so you can't cache by URL — you use client/CDN/field caches (e.g. persisted queries)</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. Which is essential before exposing a <em>public</em> GraphQL API?</p>
+          <label><input type="radio" name="q6" value="a"> Removing all mutations</label>
+          <label><input type="radio" name="q6" value="b"> Query depth/cost limits, pagination caps, and per-field authorization</label>
+          <label><input type="radio" name="q6" value="c"> Returning every field as non-null</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:#fff;border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>🔗 API styles compared</h4><p><a href="rest-graphql-grpc.html">REST vs GraphQL vs gRPC</a> — when GraphQL is (and isn't) the right call.</p></div>
+        <div class="card"><h4>▲ Next.js</h4><p><a href="nextjs-best-practices.html">Consume it</a> — fetch GraphQL from Server Components.</p></div>
+        <div class="card"><h4>🐘 Query performance</h4><p><a href="postgres-performance.html">Under the resolvers</a> — the N+1 &amp; keyset pagination at the DB level.</p></div>
+        <div class="card"><h4>🛡️ Web security</h4><p><a href="web-ai-security.html">Lock it down</a> — the attack surface a flexible query API opens.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  GraphQL — one typed endpoint, client-specified queries. Batch with DataLoader, paginate with cursors, and bound every query. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) { root.setAttribute("data-theme", t); tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 "; tLabel.textContent = t === "dark" ? "Light" : "Dark"; }
+  var saved = null; try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () { var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark"; applyTheme(next); try { localStorage.setItem("theme", next); } catch (e) {} });
+  var menuBtn = document.getElementById("menuToggle"); var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () { var open = side.classList.toggle("open"); menuBtn.setAttribute("aria-expanded", String(open)); });
+  side.addEventListener("click", function (e) { if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); } });
+  var bar = document.getElementById("progress");
+  function onScroll() { var h = document.documentElement; var max = h.scrollHeight - h.clientHeight; bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%"; }
+  document.addEventListener("scroll", onScroll, { passive: true }); onScroll();
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a")); var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) { entries.forEach(function (en) { if (en.isIntersecting) { links.forEach(function (a) { a.classList.remove("active"); }); if (map[en.target.id]) map[en.target.id].classList.add("active"); } }); }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+  document.querySelectorAll("pre .cp").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var code = btn.parentNode.querySelector("code");
+      navigator.clipboard.writeText(code.innerText).then(function () { var old = btn.textContent; btn.textContent = "Copied!"; setTimeout(function () { btn.textContent = old; }, 1500); });
+    });
+  });
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q"); var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      q.querySelector('input[value="' + answer + '"]').parentNode.classList.add("correct");
+      if (chosen && chosen.value !== answer) chosen.parentNode.classList.add("wrong");
+      if (chosen && chosen.value === answer) score++;
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length + (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>

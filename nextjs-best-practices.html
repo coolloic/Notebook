@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>▲</text></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Next.js best practices — the App Router and file conventions, Server vs Client Components, data fetching &amp; the caching layers, rendering strategies (static, dynamic, streaming, PPR), Server Actions, performance, and the pitfalls to avoid.">
+<title>Next.js Best Practices — App Router, RSC &amp; Caching</title>
+<style>
+  :root {
+    --bg: #ffffff; --bg-soft: #f4f5f7; --bg-code: #0e1b2b; --text: #17202e; --text-soft: #516074; --border: #e2e5ea;
+    --accent: #111827; --ink: #1f2937;
+    --solve: #15803d; --limit: #b45309; --choose: #1e40af; --solve-bg: #dcfce7; --limit-bg: #fef3c7; --choose-bg: #dbeafe;
+    --radius: 12px; --maxw: 820px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  [data-theme="dark"] {
+    --bg: #0d1522; --bg-soft: #172130; --bg-code: #0a1524; --text: #e4ecf7; --text-soft: #9fb0c8; --border: #263243;
+    --accent: #e5e9f0; --ink: #cbd5e1; --solve: #86efac; --limit: #fcd34d; --choose: #93c5fd; --solve-bg: #14351f; --limit-bg: #3a2a0c; --choose-bg: #16233f;
+  }
+  * { box-sizing: border-box; } html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: var(--font); color: var(--text); background: var(--bg); line-height: 1.65; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  .skip-link { position: absolute; left: -999px; top: 0; background: var(--accent); color: var(--bg); padding: .75rem 1rem; z-index: 100; } .skip-link:focus { left: 0; }
+  #progress { position: fixed; top: 0; left: 0; height: 4px; width: 0%; background: linear-gradient(90deg, var(--accent), var(--text-soft)); z-index: 60; transition: width .1s linear; }
+  header.top { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; padding: .6rem 1rem; }
+  header.top .brand { font-weight: 700; font-size: 1.05rem; } header.top .brand span { color: var(--accent); } header.top .spacer { flex: 1; }
+  .btn { font: inherit; cursor: pointer; border: 1px solid var(--border); background: var(--bg-soft); color: var(--text); border-radius: 999px; padding: .5rem .9rem; min-height: 44px; display: inline-flex; align-items: center; gap: .4rem; }
+  .btn:hover { border-color: var(--accent); } #menuToggle { display: none; }
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; max-width: 1180px; margin: 0 auto; padding: 0 1rem; }
+  nav.side { position: sticky; top: 64px; align-self: start; height: calc(100vh - 80px); overflow-y: auto; padding: 1.25rem 0; font-size: .93rem; }
+  nav.side ol { list-style: none; margin: 0; padding: 0; }
+  nav.side a { display: block; padding: .45rem .75rem; border-radius: 8px; color: var(--text-soft); text-decoration: none; border-left: 3px solid transparent; }
+  nav.side a:hover { background: var(--bg-soft); color: var(--text); } nav.side a.active { color: var(--text); font-weight: 600; border-left-color: var(--accent); background: var(--bg-soft); }
+  main { max-width: var(--maxw); padding: 1.5rem 0 6rem; }
+  section { padding-top: 2.5rem; margin-top: -1rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 1rem 0 .5rem; }
+  h2 { font-size: 1.5rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.12rem; margin: 1.6rem 0 .5rem; }
+  .lede { font-size: 1.12rem; color: var(--text-soft); }
+  .pill { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .2rem .55rem; border-radius: 999px; background: var(--bg-soft); color: var(--accent); border: 1px solid var(--border); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin: 1.25rem 0; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; background: var(--bg-soft); border-top: 4px solid var(--accent); }
+  .card h4 { margin: .1rem 0 .4rem; font-size: 1rem; } .card p { margin: 0; font-size: .92rem; color: var(--text-soft); }
+  .card .count { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+  .callout { border-left: 4px solid var(--accent); background: var(--bg-soft); border-radius: 0 var(--radius) var(--radius) 0; padding: .9rem 1.1rem; margin: 1.25rem 0; } .callout strong { color: var(--accent); }
+  .callout.tip { border-left-color: var(--solve); } .callout.tip strong { color: var(--solve); }
+  .callout.warn { border-left-color: var(--limit); } .callout.warn strong { color: var(--limit); }
+  .svc { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-soft); padding: 1rem 1.2rem; margin: 1.1rem 0; }
+  .svc h3 { margin: 0 0 .5rem; } .svc p { margin: .4rem 0; font-size: .95rem; }
+  .tag { display: inline-block; min-width: 5rem; font-size: .68rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: .12rem .5rem; border-radius: 6px; margin-right: .5rem; text-align: center; }
+  .tag.good { background: var(--solve-bg); color: var(--solve); } .tag.bad { background: var(--limit-bg); color: var(--limit); }
+  .tag.srv { background: var(--choose-bg); color: var(--choose); } .tag.cli { background: #fce7f3; color: #be185d; } [data-theme="dark"] .tag.cli { background: #3a1228; color: #f9a8d4; }
+  .tbl-wrap { overflow-x: auto; margin: 1.1rem 0; } table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: .55rem .7rem; border-bottom: 1px solid var(--border); vertical-align: top; } th { background: var(--bg-soft); }
+  code.inline { font-family: var(--mono); font-size: .85em; background: var(--bg-soft); padding: .05rem .3rem; border-radius: 4px; color: var(--ink); }
+  pre { background: var(--bg-code); color: #e6eef7; border-radius: var(--radius); padding: 1rem 1.1rem; overflow-x: auto; font-family: var(--mono); font-size: .85rem; line-height: 1.55; position: relative; }
+  pre .cp { position: absolute; top: .5rem; right: .5rem; font-size: .72rem; padding: .3rem .6rem; min-height: auto; background: rgba(255,255,255,.1); color: #e6eef7; border-color: rgba(255,255,255,.2); }
+  .kw { color: #93c5fd; } .fn { color: #86efac; } .str { color: #fca5a5; } .num { color: #fcd34d; } .cmt { color: #64748b; } .bad-l { color: #fca5a5; } .good-l { color: #86efac; }
+  details { border: 1px solid var(--border); border-radius: var(--radius); padding: .5rem 1rem; margin: 1rem 0; background: var(--bg-soft); } details summary { cursor: pointer; font-weight: 600; padding: .35rem 0; }
+  /* lifecycle diagram */
+  .lc-wrap { overflow-x: auto; margin: 1.3rem 0; }
+  .lc { width: 100%; min-width: 660px; max-width: 720px; height: auto; display: block; margin: 0 auto; font-family: var(--font); }
+  .lc-box { fill: var(--bg-soft); stroke: var(--accent); stroke-width: 1.6; }
+  .lc-alt { fill: var(--bg-soft); stroke: var(--border); stroke-width: 1.5; }
+  .lc-hot { fill: var(--bg-soft); stroke: var(--accent); stroke-width: 2.4; }
+  .lc-srv { fill: var(--choose-bg); stroke: var(--choose); stroke-width: 1.7; }
+  .lc-cli { fill: #fce7f3; stroke: #be185d; stroke-width: 1.7; } [data-theme="dark"] .lc-cli { fill: #3a1228; stroke: #f9a8d4; }
+  .lc-line { fill: none; stroke: var(--text-soft); stroke-width: 1.6; } .lc-ah { fill: var(--text-soft); }
+  .lc-t { fill: var(--text); font-size: 12px; font-weight: 700; } .lc-s { fill: var(--text-soft); font-size: 10.5px; }
+  .quiz { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; background: var(--bg-soft); }
+  .q { margin-bottom: 1.4rem; } .q p { font-weight: 600; margin: 0 0 .5rem; }
+  .q label { display: block; padding: .55rem .75rem; border: 1px solid var(--border); border-radius: 8px; margin: .35rem 0; cursor: pointer; background: var(--bg); min-height: 44px; }
+  .q label:hover { border-color: var(--accent); } .q label.correct { border-color: var(--solve); background: var(--solve-bg); }
+  .q label.wrong { border-color: #dc2626; background: #fee2e2; } [data-theme="dark"] .q label.wrong { background: #3b1414; }
+  .q input { margin-right: .5rem; } #score { font-weight: 700; margin-left: 1rem; }
+  footer { border-top: 1px solid var(--border); margin-top: 3rem; padding: 2rem 1rem; text-align: center; color: var(--text-soft); font-size: .9rem; }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { position: fixed; inset: 56px 0 auto 0; height: auto; max-height: 70vh; background: var(--bg); border-bottom: 1px solid var(--border); padding: .5rem 1rem 1rem; z-index: 40; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    nav.side.open { display: block; } #menuToggle { display: inline-flex; } main { padding-top: .5rem; } .tag { min-width: auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } #progress { transition: none; } }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#overview">Skip to content</a>
+<div id="progress" role="progressbar" aria-label="Reading progress"></div>
+
+<header class="top">
+  <button id="menuToggle" class="btn" aria-expanded="false" aria-controls="sidenav">☰ Menu</button>
+  <a class="btn home" href="index.html" aria-label="Back to all tutorials">← All tutorials</a>
+  <div class="brand">Next.js <span>Best Practices</span></div>
+  <div class="spacer"></div>
+  <button id="themeToggle" class="btn" aria-label="Toggle dark mode">🌙 <span class="tlabel">Dark</span></button>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sidenav" aria-label="Table of contents">
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#router">1 · App Router &amp; conventions</a></li>
+      <li><a href="#rsc">2 · Server vs Client Components</a></li>
+      <li><a href="#data">3 · Data fetching &amp; caching</a></li>
+      <li><a href="#rendering">4 · Rendering strategies</a></li>
+      <li><a href="#actions">5 · Server Actions</a></li>
+      <li><a href="#perf">6 · Performance</a></li>
+      <li><a href="#structure">7 · Structure &amp; conventions</a></li>
+      <li><a href="#pitfalls">8 · Common pitfalls</a></li>
+      <li><a href="#worked">Worked example</a></li>
+      <li><a href="#cheatsheet">Cheat sheet</a></li>
+      <li><a href="#quiz">Knowledge check</a></li>
+      <li><a href="#next">Next steps</a></li>
+    </ol>
+  </nav>
+
+  <main id="content">
+
+    <section id="overview">
+      <h1>Next.js best practices</h1>
+      <p class="lede">Next.js stopped being "React with routing" and became a full-stack framework built on <strong>React Server Components</strong>. The App Router changed the defaults: components render on the server, data is fetched where it's used, and caching happens on four different layers. Getting Next.js right today is mostly about understanding those defaults — and knowing when to opt out.</p>
+      <div class="callout"><strong>The mental shift.</strong> In the App Router everything is a Server Component <em>until you say otherwise</em>. Fetch data on the server, keep secrets on the server, ship as little JavaScript as possible, and add <code class="inline">"use client"</code> only at the interactive leaves. Most Next.js mistakes are fighting that grain instead of working with it.</div>
+    </section>
+
+    <section id="router">
+      <h2><span class="pill">Foundations</span> &nbsp;The App Router &amp; file conventions</h2>
+      <p>Routing is defined by the folder structure under <code class="inline">app/</code>. Special files have reserved meanings — you compose a route from them rather than wiring routing by hand.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>File</th><th>Role</th></tr></thead>
+          <tbody>
+            <tr><td><code class="inline">page.tsx</code></td><td>The unique UI of a route (makes the segment publicly routable).</td></tr>
+            <tr><td><code class="inline">layout.tsx</code></td><td>Shared UI that wraps children and <em>persists</em> across navigation (no re-render).</td></tr>
+            <tr><td><code class="inline">loading.tsx</code></td><td>Instant loading UI — a Suspense fallback shown while the segment streams.</td></tr>
+            <tr><td><code class="inline">error.tsx</code></td><td>Error boundary for the segment (a Client Component).</td></tr>
+            <tr><td><code class="inline">not-found.tsx</code></td><td>UI for <code class="inline">notFound()</code> and unmatched routes.</td></tr>
+            <tr><td><code class="inline">route.ts</code></td><td>A Route Handler — an HTTP API endpoint (GET/POST…) instead of a page.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="cmt">app/</span>
+  layout.tsx            <span class="cmt">// root layout (required): &lt;html&gt;&lt;body&gt;</span>
+  page.tsx              <span class="cmt">// route: /</span>
+  blog/
+    layout.tsx          <span class="cmt">// wraps every /blog/* route</span>
+    page.tsx            <span class="cmt">// route: /blog</span>
+    [slug]/
+      page.tsx          <span class="cmt">// dynamic route: /blog/:slug</span>
+      loading.tsx       <span class="cmt">// streamed fallback for the post</span>
+  api/
+    revalidate/
+      route.ts          <span class="cmt">// POST /api/revalidate</span></code></pre>
+      <div class="callout tip"><strong>Route groups &amp; more:</strong> wrap a folder in parentheses <code class="inline">(marketing)</code> to organise routes without affecting the URL. <code class="inline">@slot</code> folders enable <strong>parallel routes</strong> (render multiple pages in one layout) and <code class="inline">(.)</code> prefixes enable <strong>intercepting routes</strong> (e.g. a modal that has its own URL). Reach for these only when you need them.</div>
+    </section>
+
+    <section id="rsc">
+      <h2><span class="pill">The core model</span> &nbsp;Server vs Client Components</h2>
+      <p>This is the single most important concept. Components are <strong>Server Components by default</strong>: they run only on the server, can be <code class="inline">async</code>, can talk to your database directly, and ship <em>zero</em> JavaScript to the browser. Adding <code class="inline">"use client"</code> at the top of a file opts that component (and its imports) into the client bundle so it can be interactive.</p>
+      <div class="lc-wrap">
+        <svg class="lc" viewBox="0 0 720 200" role="img" aria-labelledby="lc-title lc-desc">
+          <title id="lc-title">Server and Client Components in one tree</title>
+          <desc id="lc-desc">A server component tree renders on the server; small client component leaves marked use client are hydrated in the browser for interactivity.</desc>
+          <defs><marker id="lc-a" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L6.5,3 L0,6 Z" class="lc-ah"/></marker></defs>
+          <rect class="lc-srv" x="290" y="14" width="140" height="40" rx="10"/><text class="lc-t" x="360" y="32" text-anchor="middle">layout (server)</text><text class="lc-s" x="360" y="47" text-anchor="middle">no JS shipped</text>
+          <path class="lc-line" d="M330,54 L220,88" marker-end="url(#lc-a)"/>
+          <path class="lc-line" d="M390,54 L500,88" marker-end="url(#lc-a)"/>
+          <rect class="lc-srv" x="130" y="90" width="180" height="40" rx="10"/><text class="lc-t" x="220" y="108" text-anchor="middle">page (server, async)</text><text class="lc-s" x="220" y="123" text-anchor="middle">fetches data directly</text>
+          <rect class="lc-srv" x="420" y="90" width="180" height="40" rx="10"/><text class="lc-t" x="510" y="108" text-anchor="middle">ProductList (server)</text>
+          <path class="lc-line" d="M510,130 L510,158" marker-end="url(#lc-a)"/>
+          <rect class="lc-cli" x="410" y="160" width="200" height="34" rx="10"/><text class="lc-t" x="510" y="181" text-anchor="middle">"use client" AddToCart 🖱️</text>
+          <path class="lc-line" d="M220,130 L220,158" marker-end="url(#lc-a)"/>
+          <rect class="lc-cli" x="120" y="160" width="200" height="34" rx="10"/><text class="lc-t" x="220" y="181" text-anchor="middle">"use client" SearchBox 🔎</text>
+        </svg>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th></th><th><span class="tag srv">Server Component</span></th><th><span class="tag cli">Client Component</span></th></tr></thead>
+          <tbody>
+            <tr><td>Default?</td><td>Yes</td><td>Opt in with <code class="inline">"use client"</code></td></tr>
+            <tr><td>Can fetch data / hit DB</td><td>Yes, directly (<code class="inline">async</code>)</td><td>No — via API or props</td></tr>
+            <tr><td>Hooks (<code class="inline">useState</code>, <code class="inline">useEffect</code>)</td><td>No</td><td>Yes</td></tr>
+            <tr><td>Event handlers / interactivity</td><td>No</td><td>Yes (<code class="inline">onClick</code>…)</td></tr>
+            <tr><td>Ships JS to browser</td><td>No</td><td>Yes</td></tr>
+            <tr><td>Access secrets / <code class="inline">process.env</code></td><td>Yes (safe)</td><td>Only <code class="inline">NEXT_PUBLIC_*</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout tip"><strong>Push <code class="inline">"use client"</code> to the leaves.</strong> Don't mark a whole page as client just because one button needs <code class="inline">onClick</code>. Keep the page a Server Component and extract the interactive bit into its own small client component. Server Components can freely <em>render</em> client ones; you can also pass a Server Component <em>as a child</em> into a client component to keep it out of the bundle.</div>
+    </section>
+
+    <section id="data">
+      <h2><span class="pill">Data</span> &nbsp;Fetching &amp; the caching layers</h2>
+      <p>You fetch data <em>in the component that needs it</em> — usually an <code class="inline">async</code> Server Component calling <code class="inline">fetch()</code> or your DB. Next dedupes identical requests in one render (request memoization), so you don't need to hoist fetching or prop-drill.</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="cmt">// app/blog/[slug]/page.tsx — a Server Component fetching its own data</span>
+<span class="kw">export default async function</span> <span class="fn">Post</span>({ params }) {
+  <span class="kw">const</span> { slug } = <span class="kw">await</span> params;             <span class="cmt">// Next 15: params is async</span>
+  <span class="kw">const</span> post = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">`https://api/posts/${slug}`</span>, {
+    next: { revalidate: <span class="num">3600</span> },              <span class="cmt">// ISR: re-cache hourly</span>
+  }).<span class="fn">then</span>(r =&gt; r.<span class="fn">json</span>());
+  <span class="kw">return</span> &lt;<span class="fn">article</span>&gt;{post.title}&lt;/<span class="fn">article</span>&gt;;
+}</code></pre>
+      <p>Next.js caches on four distinct layers — knowing which one you're touching is what makes caching predictable:</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Layer</th><th>What it caches</th><th>Invalidate with</th></tr></thead>
+          <tbody>
+            <tr><td>Request Memoization</td><td>Duplicate <code class="inline">fetch</code>es within one render pass</td><td>Automatic (per request)</td></tr>
+            <tr><td>Data Cache</td><td><code class="inline">fetch</code> results across requests &amp; deploys</td><td><code class="inline">revalidateTag</code> / <code class="inline">revalidatePath</code> / time</td></tr>
+            <tr><td>Full Route Cache</td><td>Rendered HTML/RSC payload of static routes</td><td>Redeploy or data-cache revalidation</td></tr>
+            <tr><td>Router Cache</td><td>Visited route segments, client-side</td><td>Navigation / <code class="inline">router.refresh()</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout warn"><strong>Caching defaults changed — check your version.</strong> In Next 14, <code class="inline">fetch</code> was cached by default. <strong>Next 15 flipped this</strong>: <code class="inline">fetch</code>, GET Route Handlers, and the client Router Cache are <em>uncached</em> by default — you opt <em>into</em> caching with <code class="inline">cache: 'force-cache'</code> or <code class="inline">next: { revalidate }</code>. Never assume; verify against the version in your <code class="inline">package.json</code>.</div>
+    </section>
+
+    <section id="rendering">
+      <h2><span class="pill">Rendering</span> &nbsp;Static, dynamic, streaming</h2>
+      <p>A route is <strong>statically rendered</strong> (at build time, cached, fast) unless something forces <strong>dynamic rendering</strong> (per request). You rarely choose explicitly — using a dynamic API opts the route in automatically.</p>
+      <article class="svc">
+        <h3>🟢 Static Rendering <span class="tag good">default</span></h3>
+        <p>Rendered ahead of time and reused. Best for content that's the same for everyone — marketing pages, blog posts, docs. Add <code class="inline">revalidate</code> for <strong>ISR</strong> (rebuild in the background on a schedule).</p>
+      </article>
+      <article class="svc">
+        <h3>🟠 Dynamic Rendering</h3>
+        <p>Triggered when you use request-time data: <code class="inline">cookies()</code>, <code class="inline">headers()</code>, <code class="inline">searchParams</code>, or an uncached fetch. Use for personalised or always-fresh pages — dashboards, authenticated views.</p>
+      </article>
+      <article class="svc">
+        <h3>🔵 Streaming with Suspense</h3>
+        <p>Wrap a slow part in <code class="inline">&lt;Suspense&gt;</code> (or add <code class="inline">loading.tsx</code>) to send the fast shell immediately and stream the slow chunk when ready — better perceived performance without going fully dynamic.</p>
+      </article>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="cmt">// Send the page shell now; stream the slow feed when it resolves</span>
+<span class="kw">import</span> { Suspense } <span class="kw">from</span> <span class="str">"react"</span>;
+
+<span class="kw">export default function</span> <span class="fn">Page</span>() {
+  <span class="kw">return</span> (
+    &lt;&gt;
+      &lt;<span class="fn">Header</span> /&gt;                        <span class="cmt">// instant</span>
+      &lt;<span class="fn">Suspense</span> fallback={&lt;<span class="fn">Skeleton</span> /&gt;}&gt;
+        &lt;<span class="fn">SlowFeed</span> /&gt;                   <span class="cmt">// streams in when ready</span>
+      &lt;/<span class="fn">Suspense</span>&gt;
+    &lt;/&gt;
+  );
+}</code></pre>
+      <div class="callout tip"><strong>Partial Prerendering (PPR)</strong> is the emerging best-of-both: a static shell served instantly with dynamic "holes" streamed in, in one response. It's still experimental — know it's coming, but don't build production on it until it's stable in your version.</div>
+    </section>
+
+    <section id="actions">
+      <h2><span class="pill">Mutations</span> &nbsp;Server Actions</h2>
+      <p>For writes, <strong>Server Actions</strong> replace hand-rolled API routes for most cases. A function marked <code class="inline">"use server"</code> runs on the server but can be called directly from a form or a client component — with progressive enhancement, so forms work before JS loads.</p>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="cmt">// app/actions.ts</span>
+<span class="str">"use server"</span>;
+<span class="kw">import</span> { revalidatePath } <span class="kw">from</span> <span class="str">"next/cache"</span>;
+
+<span class="kw">export async function</span> <span class="fn">addComment</span>(formData) {
+  <span class="kw">const</span> text = formData.<span class="fn">get</span>(<span class="str">"text"</span>);
+  <span class="kw">await</span> db.comments.<span class="fn">insert</span>({ text });   <span class="cmt">// runs on server, secrets safe</span>
+  <span class="fn">revalidatePath</span>(<span class="str">"/post"</span>);              <span class="cmt">// refresh cached data</span>
+}
+
+<span class="cmt">// in a Server Component — no client JS, no API route needed:</span>
+&lt;<span class="fn">form</span> action={addComment}&gt;&lt;<span class="fn">input</span> name=<span class="str">"text"</span> /&gt;&lt;/<span class="fn">form</span>&gt;</code></pre>
+      <div class="callout warn"><strong>Server Actions are public HTTP endpoints.</strong> Anyone can invoke one — so <em>always authenticate and validate inside the action</em>, exactly as you would an API route. Never trust the caller; check the session and validate the input (e.g. with Zod) before touching data.</div>
+    </section>
+
+    <section id="perf">
+      <h2><span class="pill">Speed</span> &nbsp;Performance best practices</h2>
+      <article class="svc">
+        <h3>🖼️ <code class="inline">next/image</code></h3>
+        <p>Use it for all images: automatic resizing, modern formats, and lazy loading. Always set <code class="inline">width</code>/<code class="inline">height</code> (or <code class="inline">fill</code>) so the browser reserves space and avoids layout shift (CLS). Mark the above-the-fold hero <code class="inline">priority</code>.</p>
+      </article>
+      <article class="svc">
+        <h3>🔤 <code class="inline">next/font</code></h3>
+        <p>Self-hosts fonts at build time — no external request, no layout shift. If you can, prefer a <strong>system font stack</strong> and skip web fonts entirely for the fastest first paint.</p>
+      </article>
+      <article class="svc">
+        <h3>📦 Ship less JavaScript</h3>
+        <p>Keep the client bundle small: minimise <code class="inline">"use client"</code>, <code class="inline">dynamic()</code>-import heavy client-only widgets, and lean on Server Components so most rendering ships no JS at all.</p>
+      </article>
+      <div class="callout tip"><strong>Measure, don't guess.</strong> Watch the <strong>Core Web Vitals</strong> (LCP, INP, CLS) with the built-in analytics or Lighthouse. The framework gives you fast defaults; regressions almost always come from a large client bundle or an unoptimised image — both visible in the build output and a trace.</div>
+    </section>
+
+    <section id="structure">
+      <h2><span class="pill">Conventions</span> &nbsp;Project structure that scales</h2>
+      <ul>
+        <li><strong>Colocate</strong> components, tests, and helpers next to the route that uses them; promote to a shared folder only when a second route needs them.</li>
+        <li><strong>Fetch where you render.</strong> Don't hoist all data to the top and prop-drill — request memoization dedupes, so fetch in the component that needs the data.</li>
+        <li><strong>Server-only by default.</strong> Keep DB clients and secret-using code in Server Components / server files; add the <code class="inline">server-only</code> package to a module to make an accidental client import fail at build.</li>
+        <li><strong>Environment variables:</strong> only <code class="inline">NEXT_PUBLIC_*</code> reach the browser. Everything else is server-only — keep API keys unprefixed.</li>
+        <li><strong>Metadata for SEO:</strong> export <code class="inline">metadata</code> or <code class="inline">generateMetadata()</code> per route instead of hand-writing <code class="inline">&lt;head&gt;</code> tags.</li>
+      </ul>
+      <div class="callout warn"><strong>The secret-leak trap:</strong> importing a module that reads <code class="inline">process.env.API_KEY</code> into a Client Component can bundle that value into the browser. Prefix browser-safe values with <code class="inline">NEXT_PUBLIC_</code> deliberately, and guard server modules with <code class="inline">import "server-only"</code> so the mistake breaks the build instead of shipping.</div>
+    </section>
+
+    <section id="pitfalls">
+      <h2><span class="pill">Avoid</span> &nbsp;Common pitfalls</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Pitfall</th><th>Why it hurts</th><th>Instead</th></tr></thead>
+          <tbody>
+            <tr><td><code class="inline">"use client"</code> at the top of the tree</td><td>Turns the whole subtree into client JS; loses RSC benefits</td><td>Mark only the interactive leaf components</td></tr>
+            <tr><td><code class="inline">useEffect</code> + <code class="inline">fetch</code> for initial data</td><td>Client waterfall, no SSR data, worse LCP</td><td>Fetch in an <code class="inline">async</code> Server Component</td></tr>
+            <tr><td>Sequential <code class="inline">await</code>s</td><td>Request waterfall — each waits for the last</td><td><code class="inline">Promise.all</code> to parallelise independent fetches</td></tr>
+            <tr><td>Assuming the old caching default</td><td>Stale (or uncached) data after a version bump</td><td>Set <code class="inline">cache</code>/<code class="inline">revalidate</code> explicitly</td></tr>
+            <tr><td>Unauthenticated Server Actions</td><td>A public endpoint anyone can call</td><td>Auth + validate inside every action</td></tr>
+            <tr><td><code class="inline">&lt;img&gt;</code> instead of <code class="inline">next/image</code></td><td>Layout shift, oversized downloads</td><td><code class="inline">next/image</code> with dimensions</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="worked">
+      <h2><span class="pill">End to end</span> &nbsp;Worked example: a product page done right</h2>
+      <p>A <code class="inline">/products/[id]</code> page shows product details (cacheable, same for everyone) plus a live stock count (per-request) and an interactive "add to cart" button. The best-practice split uses all three ideas at once.</p>
+
+      <h3>Step 1 · Static shell, streamed dynamic hole</h3>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="cmt">// page.tsx — Server Component; product is cached, stock streams in</span>
+<span class="kw">export default async function</span> <span class="fn">ProductPage</span>({ params }) {
+  <span class="kw">const</span> { id } = <span class="kw">await</span> params;
+  <span class="kw">const</span> product = <span class="kw">await</span> <span class="fn">getProduct</span>(id);   <span class="cmt">// cached (force-cache)</span>
+  <span class="kw">return</span> (
+    &lt;&gt;
+      &lt;<span class="fn">ProductInfo</span> product={product} /&gt;   <span class="cmt">// static, no JS</span>
+      &lt;<span class="fn">Suspense</span> fallback={&lt;<span class="fn">StockSkeleton</span> /&gt;}&gt;
+        &lt;<span class="fn">LiveStock</span> id={id} /&gt;             <span class="cmt">// dynamic, streamed</span>
+      &lt;/<span class="fn">Suspense</span>&gt;
+      &lt;<span class="fn">AddToCart</span> id={id} /&gt;              <span class="cmt">// client leaf</span>
+    &lt;/&gt;
+  );
+}</code></pre>
+
+      <h3>Step 2 · The interactive leaf is the only client code</h3>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="str">"use client"</span>;                          <span class="cmt">// this file only</span>
+<span class="kw">export function</span> <span class="fn">AddToCart</span>({ id }) {
+  <span class="kw">const</span> [pending, start] = <span class="fn">useTransition</span>();
+  <span class="kw">return</span> &lt;<span class="fn">button</span> onClick={() =&gt; <span class="fn">start</span>(() =&gt; <span class="fn">addToCart</span>(id))}&gt;
+    {pending ? <span class="str">"Adding…"</span> : <span class="str">"Add to cart"</span>}
+  &lt;/<span class="fn">button</span>&gt;;
+}</code></pre>
+
+      <h3>Step 3 · The mutation is a Server Action</h3>
+      <pre><button class="cp btn" type="button">Copy</button><code><span class="str">"use server"</span>;
+<span class="kw">export async function</span> <span class="fn">addToCart</span>(id) {
+  <span class="kw">const</span> user = <span class="kw">await</span> <span class="fn">requireSession</span>();     <span class="cmt">// auth inside the action</span>
+  <span class="kw">await</span> db.cart.<span class="fn">add</span>(user.id, id);
+  <span class="fn">revalidateTag</span>(<span class="str">"cart"</span>);
+}</code></pre>
+      <div class="callout tip"><strong>Why this is the "right" shape:</strong> the product info is static and instant; the stock count is dynamic but streamed so it never blocks the shell; only the button ships JavaScript; and the write is an authenticated Server Action that revalidates the affected cache tag. Each concern uses the tool built for it — that's Next.js with the grain, not against it.</div>
+    </section>
+
+    <section id="cheatsheet">
+      <h2>Cheat sheet</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Question</th><th>Short answer</th></tr></thead>
+          <tbody>
+            <tr><td>Default component type?</td><td>Server Component — add <code class="inline">"use client"</code> only for interactivity.</td></tr>
+            <tr><td>Where to fetch data?</td><td>In the <code class="inline">async</code> Server Component that needs it; memoization dedupes.</td></tr>
+            <tr><td>What triggers dynamic rendering?</td><td><code class="inline">cookies()</code>, <code class="inline">headers()</code>, <code class="inline">searchParams</code>, or an uncached fetch.</td></tr>
+            <tr><td>Periodic rebuild (ISR)?</td><td><code class="inline">next: { revalidate: N }</code> on the fetch or segment.</td></tr>
+            <tr><td>How to do writes?</td><td>Server Actions (<code class="inline">"use server"</code>) — auth &amp; validate inside.</td></tr>
+            <tr><td>Invalidate cached data?</td><td><code class="inline">revalidatePath</code> / <code class="inline">revalidateTag</code>.</td></tr>
+            <tr><td>Faster perceived load?</td><td><code class="inline">&lt;Suspense&gt;</code> / <code class="inline">loading.tsx</code> to stream.</td></tr>
+            <tr><td>Browser-exposed env var?</td><td>Prefix with <code class="inline">NEXT_PUBLIC_</code> (only these leak).</td></tr>
+            <tr><td>Images &amp; fonts?</td><td><code class="inline">next/image</code> (with dimensions) and <code class="inline">next/font</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="quiz">
+      <h2>Knowledge check</h2>
+      <p>Six questions. Pick an answer for each, then check your score.</p>
+      <form class="quiz" id="quiz">
+        <div class="q" data-answer="b">
+          <p>1. In the App Router, a component with no directive is…</p>
+          <label><input type="radio" name="q1" value="a"> A Client Component by default</label>
+          <label><input type="radio" name="q1" value="b"> A Server Component by default — it ships no JS and can fetch data directly</label>
+          <label><input type="radio" name="q1" value="c"> Not rendered until hydration</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>2. You need an <code class="inline">onClick</code> handler on a button inside a mostly-static page. Best practice?</p>
+          <label><input type="radio" name="q2" value="a"> Add "use client" to the whole page</label>
+          <label><input type="radio" name="q2" value="b"> Fetch the data in useEffect</label>
+          <label><input type="radio" name="q2" value="c"> Keep the page a Server Component; extract the button into a small "use client" leaf</label>
+        </div>
+        <div class="q" data-answer="a">
+          <p>3. Which forces a route into <strong>dynamic rendering</strong>?</p>
+          <label><input type="radio" name="q3" value="a"> Reading <code class="inline">cookies()</code>, <code class="inline">headers()</code>, or using an uncached fetch</label>
+          <label><input type="radio" name="q3" value="b"> Importing a component</label>
+          <label><input type="radio" name="q3" value="c"> Using next/image</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>4. What's the correct way to handle a form submission that writes to the database?</p>
+          <label><input type="radio" name="q4" value="a"> A useEffect that POSTs on mount</label>
+          <label><input type="radio" name="q4" value="b"> A Server Action ("use server") that authenticates and validates before writing</label>
+          <label><input type="radio" name="q4" value="c"> Inline the SQL in a Client Component</label>
+        </div>
+        <div class="q" data-answer="c">
+          <p>5. A secret API key must stay off the browser. What keeps it server-only?</p>
+          <label><input type="radio" name="q5" value="a"> Naming it <code class="inline">NEXT_PUBLIC_API_KEY</code></label>
+          <label><input type="radio" name="q5" value="b"> Putting it in a Client Component</label>
+          <label><input type="radio" name="q5" value="c"> Leaving it unprefixed and only using it in server code (optionally <code class="inline">import "server-only"</code>)</label>
+        </div>
+        <div class="q" data-answer="b">
+          <p>6. Your app upgraded from Next 14 to 15 and data looks stale/uncached unexpectedly. Likely cause?</p>
+          <label><input type="radio" name="q6" value="a"> Server Components were removed</label>
+          <label><input type="radio" name="q6" value="b"> Caching defaults changed — <code class="inline">fetch</code> is now uncached by default; set <code class="inline">cache</code>/<code class="inline">revalidate</code> explicitly</label>
+          <label><input type="radio" name="q6" value="c"> The App Router no longer supports fetch</label>
+        </div>
+        <button type="button" class="btn" id="checkQuiz" style="background:var(--accent);color:var(--bg);border-color:var(--accent);">Check answers</button>
+        <span id="score" role="status" aria-live="polite"></span>
+      </form>
+    </section>
+
+    <section id="next">
+      <h2>Next steps</h2>
+      <div class="cards">
+        <div class="card"><h4>🔗 API styles</h4><p><a href="rest-graphql-grpc.html">REST vs GraphQL vs gRPC</a> — how the data your Server Components fetch is exposed.</p></div>
+        <div class="card"><h4>◼ GraphQL deep-dive</h4><p><a href="graphql.html">Schemas &amp; resolvers</a> — if your Next.js data layer speaks GraphQL.</p></div>
+        <div class="card"><h4>🧵 Concurrency design</h4><p><a href="concurrency-design.html">The backend it calls</a> — capacity, retries &amp; idempotency.</p></div>
+        <div class="card"><h4>📓 All tutorials</h4><p><a href="index.html">The hub</a> — LLMs, agents, data &amp; infra.</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  Next.js best practices — Server Components by default, fetch where you render, cache deliberately, and push interactivity to the leaves. · MIT Licensed
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var root = document.documentElement;
+  var tBtn = document.getElementById("themeToggle");
+  var tLabel = tBtn.querySelector(".tlabel");
+  function applyTheme(t) { root.setAttribute("data-theme", t); tBtn.firstChild.textContent = t === "dark" ? "☀️ " : "🌙 "; tLabel.textContent = t === "dark" ? "Light" : "Dark"; }
+  var saved = null; try { saved = localStorage.getItem("theme"); } catch (e) {}
+  applyTheme(saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  tBtn.addEventListener("click", function () { var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark"; applyTheme(next); try { localStorage.setItem("theme", next); } catch (e) {} });
+  var menuBtn = document.getElementById("menuToggle"); var side = document.getElementById("sidenav");
+  menuBtn.addEventListener("click", function () { var open = side.classList.toggle("open"); menuBtn.setAttribute("aria-expanded", String(open)); });
+  side.addEventListener("click", function (e) { if (e.target.tagName === "A") { side.classList.remove("open"); menuBtn.setAttribute("aria-expanded", "false"); } });
+  var bar = document.getElementById("progress");
+  function onScroll() { var h = document.documentElement; var max = h.scrollHeight - h.clientHeight; bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + "%"; }
+  document.addEventListener("scroll", onScroll, { passive: true }); onScroll();
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.side a")); var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  var obs = new IntersectionObserver(function (entries) { entries.forEach(function (en) { if (en.isIntersecting) { links.forEach(function (a) { a.classList.remove("active"); }); if (map[en.target.id]) map[en.target.id].classList.add("active"); } }); }, { rootMargin: "-45% 0px -50% 0px" });
+  document.querySelectorAll("main section").forEach(function (s) { obs.observe(s); });
+  document.querySelectorAll("pre .cp").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var code = btn.parentNode.querySelector("code");
+      navigator.clipboard.writeText(code.innerText).then(function () { var old = btn.textContent; btn.textContent = "Copied!"; setTimeout(function () { btn.textContent = old; }, 1500); });
+    });
+  });
+  var checkBtn = document.getElementById("checkQuiz");
+  checkBtn.addEventListener("click", function () {
+    var qs = document.querySelectorAll("#quiz .q"); var score = 0;
+    qs.forEach(function (q) {
+      var answer = q.dataset.answer;
+      q.querySelectorAll("label").forEach(function (l) { l.classList.remove("correct", "wrong"); });
+      var chosen = q.querySelector("input:checked");
+      q.querySelector('input[value="' + answer + '"]').parentNode.classList.add("correct");
+      if (chosen && chosen.value !== answer) chosen.parentNode.classList.add("wrong");
+      if (chosen && chosen.value === answer) score++;
+    });
+    document.getElementById("score").textContent = "Score: " + score + " / " + qs.length + (score === qs.length ? " 🎉" : "");
+  });
+})();
+</script>
+</body>
+</html>
